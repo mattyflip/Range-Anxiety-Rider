@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef } from 'react'
 import { GoogleMap, useJsApiLoader, DirectionsService, DirectionsRenderer, Marker } from '@react-google-maps/api'
 import axios from 'axios'
+import { toPng } from 'html-to-image'
 
 const LIBRARIES: ("places")[] = ["places"];
 
@@ -63,6 +64,7 @@ function App() {
   })
 
   const mapRef = useRef<google.maps.Map | null>(null);
+  const shareCardRef = useRef<HTMLDivElement>(null);
 
   const [specs, setSpecs] = useState<BikeSpecs>({
     voltage: 48,
@@ -404,6 +406,23 @@ function App() {
   const handleSpecChange = (name: keyof BikeSpecs, value: string) => {
     const parsed = parseFloat(value);
     setSpecs(prev => ({ ...prev, [name]: isNaN(parsed) ? 0 : parsed }));
+  };
+
+  const downloadShareCard = async () => {
+    if (shareCardRef.current === null) return;
+    
+    setIsLoading(true);
+    try {
+      const dataUrl = await toPng(shareCardRef.current, { cacheBust: true });
+      const link = document.createElement('a');
+      link.download = `range-anxiety-route-${Date.now()}.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch (err) {
+      console.error('Failed to generate image:', err);
+      setError('Failed to generate share image.');
+    }
+    setIsLoading(false);
   };
 
   return (
@@ -799,6 +818,24 @@ function App() {
               🚀 Open in Google Maps
             </button>
 
+            <button 
+              onClick={downloadShareCard}
+              style={{ 
+                width: '100%', 
+                marginTop: '0.5rem', 
+                padding: '0.6rem', 
+                backgroundColor: 'var(--accent-color)', 
+                color: 'white', 
+                border: 'none', 
+                borderRadius: '6px', 
+                fontWeight: '700', 
+                cursor: 'pointer',
+                fontSize: '0.85rem'
+              }}
+            >
+              📸 Save Image to Share
+            </button>
+
             <p style={{ marginTop: '1rem', fontSize: '0.65rem', color: '#777', fontStyle: 'italic', lineHeight: '1.2' }}>
               * Results may vary based on battery age, cycle count, and internal degradation.
             </p>
@@ -892,6 +929,54 @@ function App() {
           &copy; 2026 Range Anxiety. All calculations are theoretical estimates. Actual range is significantly impacted by battery health, tire pressure, and riding style.
         </p>
       </footer>
+
+      {/* Hidden Share Card Template */}
+      {metrics && response && (
+        <div className="share-card-container">
+          <div ref={shareCardRef} className="share-card">
+            <div className="share-card-header">
+              <div className="share-card-logo">Range Anxiety</div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: '0.8rem', color: '#888' }}>Planned Route Summary</div>
+                <div style={{ fontSize: '1rem', fontWeight: 'bold' }}>{trip.origin.split(',')[0]} → {trip.destination.split(',')[0]}</div>
+              </div>
+            </div>
+
+            <img 
+              className="share-card-map"
+              src={`https://maps.googleapis.com/maps/api/staticmap?size=600x300&scale=2&maptype=roadmap&theme=dark&style=element:geometry%7Ccolor:0x242f3e&style=element:labels.text.stroke%7Ccolor:0x242f3e&style=element:labels.text.fill%7Ccolor:0x746855&style=feature:administrative.locality%7Celement:labels.text.fill%7Ccolor:0xd59563&style=feature:poi%7Celement:labels.text.fill%7Ccolor:0xd59563&style=feature:poi.park%7Celement:geometry%7Ccolor:0x263c3f&style=feature:poi.park%7Celement:labels.text.fill%7Ccolor:0x6b9a76&style=feature:road%7Celement:geometry%7Ccolor:0x38414e&style=feature:road%7Celement:geometry.stroke%7Ccolor:0x212a37&style=feature:road%7Celement:labels.text.fill%7Ccolor:0x9ca5b3&style=feature:road.highway%7Celement:geometry%7Ccolor:0x746855&style=feature:road.highway%7Celement:geometry.stroke%7Ccolor:0x1f2835&style=feature:road.highway%7Celement:labels.text.fill%7Ccolor:0xf3d19c&style=feature:transit%7Celement:geometry%7Ccolor:0x2f3948&style=feature:transit.station%7Celement:labels.text.fill%7Ccolor:0xd59563&style=feature:water%7Celement:geometry%7Ccolor:0x17263c&style=feature:water%7Celement:labels.text.fill%7Ccolor:0x515c6d&style=feature:water%7Celement:labels.text.stroke%7Ccolor:0x17263c&path=color:0xff6600%7Cweight:5%7Cenc:${encodeURIComponent(typeof response.routes[0].overview_polyline === 'string' ? response.routes[0].overview_polyline : (response.routes[0].overview_polyline as any).points)}&key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}`}
+              alt="Route Map"
+            />
+
+            <div className="share-card-metrics">
+              <div className="share-metric-box">
+                <div className="share-metric-label">Remaining Battery</div>
+                <div className="share-metric-value">{metrics.batteryPercentUsed.toFixed(1)}%</div>
+              </div>
+              <div className="share-metric-box">
+                <div className="share-metric-label">Est. Final Voltage</div>
+                <div className="share-metric-value">{(getBatteryLevels(specs.voltage).min + (metrics.batteryPercentUsed / 100) * (getBatteryLevels(specs.voltage).max - getBatteryLevels(specs.voltage).min)).toFixed(1)}V</div>
+              </div>
+              <div className="share-metric-box">
+                <div className="share-metric-label">Total Distance</div>
+                <div className="share-metric-value">{metrics.distanceMiles.toFixed(1)} mi</div>
+              </div>
+              <div className="share-metric-box">
+                <div className="share-metric-label">Target Speed</div>
+                <div className="share-metric-value">{targetSpeedMph} mph</div>
+              </div>
+              <div className="share-metric-box" style={{ gridColumn: 'span 2' }}>
+                <div className="share-metric-label">Elevation Gain</div>
+                <div className="share-metric-value">{metrics.elevationGainFeet.toFixed(0)} ft total ascent</div>
+              </div>
+            </div>
+
+            <div style={{ textAlign: 'center', fontSize: '0.7rem', color: '#666' }}>
+              Planned with Range Anxiety E-Bike Tool
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
