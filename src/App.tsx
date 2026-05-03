@@ -166,19 +166,17 @@ function App() {
     mapRef.current = map;
   }, []);
 
-  const searchPOIs = (category: string) => {
-    if (!mapRef.current || !response) return;
-    setPoiCategory(category);
+  const searchByMapCenter = () => {
+    if (!mapRef.current || !poiCategory) return;
+    const center = mapRef.current.getCenter();
+    if (!center) return;
 
     const service = new google.maps.places.PlacesService(mapRef.current);
-    const route = response.routes[0];
-    const destination = route.legs[route.legs.length - 1].end_location;
-
     service.nearbySearch(
       {
-        location: destination,
-        radius: 5000, // 5km radius around destination
-        keyword: category
+        location: center,
+        radius: 2000, // 2km radius around current view center
+        keyword: poiCategory
       },
       (results, status) => {
         if (status === google.maps.places.PlacesServiceStatus.OK && results) {
@@ -187,12 +185,61 @@ function App() {
             name: r.name || 'Unknown',
             address: r.vicinity || 'No address',
             position: { lat: r.geometry?.location?.lat() || 0, lng: r.geometry?.location?.lng() || 0 },
-            type: category
+            type: poiCategory
           }));
-          setPois(newPois);
+          // Append new POIs to existing ones, avoiding duplicates
+          setPois(prev => {
+            const existingIds = new Set(prev.map(p => p.id));
+            const filtered = newPois.filter(p => !existingIds.has(p.id));
+            return [...prev, ...filtered];
+          });
         }
       }
     );
+  };
+
+  const searchPOIs = (category: string) => {
+    if (!mapRef.current || !response) return;
+    setPoiCategory(category);
+    setPois([]); // Reset for new category search
+
+    const service = new google.maps.places.PlacesService(mapRef.current);
+    const route = response.routes[0];
+    const path = route.overview_path;
+
+    // Sample points along the route (Start, Middle, End)
+    const searchPoints = [
+      path[0],
+      path[Math.floor(path.length / 2)],
+      path[path.length - 1]
+    ];
+
+    searchPoints.forEach(point => {
+      service.nearbySearch(
+        {
+          location: point,
+          radius: 5000, 
+          keyword: category
+        },
+        (results, status) => {
+          if (status === google.maps.places.PlacesServiceStatus.OK && results) {
+            const batch = results.map(r => ({
+              id: r.place_id || Math.random().toString(),
+              name: r.name || 'Unknown',
+              address: r.vicinity || 'No address',
+              position: { lat: r.geometry?.location?.lat() || 0, lng: r.geometry?.location?.lng() || 0 },
+              type: category
+            }));
+            
+            setPois(prev => {
+              const existingIds = new Set(prev.map(p => p.id));
+              const unique = batch.filter(p => !existingIds.has(p.id));
+              return [...prev, ...unique];
+            });
+          }
+        }
+      );
+    });
   };
 
   const addPOIAsWaypoint = (poi: POI) => {
@@ -667,6 +714,26 @@ function App() {
               <button onClick={() => searchPOIs('park')} className={poiCategory === 'park' ? 'active' : ''}>🌳 Parks</button>
               <button onClick={() => searchPOIs('charging station')} className={poiCategory === 'charging station' ? 'active' : ''}>⚡ Charging</button>
             </div>
+            
+            {poiCategory && (
+              <button 
+                onClick={searchByMapCenter}
+                style={{ 
+                  width: '100%', 
+                  marginTop: '0.8rem', 
+                  padding: '0.5rem', 
+                  backgroundColor: '#333', 
+                  color: 'white', 
+                  border: '1px solid #555', 
+                  borderRadius: '6px', 
+                  fontSize: '0.75rem',
+                  cursor: 'pointer'
+                }}
+              >
+                🔍 Search This Map Area
+              </button>
+            )}
+
             {pois.length > 0 && <p style={{ fontSize: '0.7rem', color: 'var(--secondary-text)', marginTop: '0.5rem' }}>Found {pois.length} spots. Click a marker on the map to add as stop!</p>}
           </section>
         )}
