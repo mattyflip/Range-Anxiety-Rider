@@ -175,7 +175,7 @@ function App() {
     service.nearbySearch(
       {
         location: center,
-        radius: 2000, // 2km radius around current view center
+        radius: 2000, 
         keyword: poiCategory
       },
       (results, status) => {
@@ -187,7 +187,6 @@ function App() {
             position: { lat: r.geometry?.location?.lat() || 0, lng: r.geometry?.location?.lng() || 0 },
             type: poiCategory
           }));
-          // Append new POIs to existing ones, avoiding duplicates
           setPois(prev => {
             const existingIds = new Set(prev.map(p => p.id));
             const filtered = newPois.filter(p => !existingIds.has(p.id));
@@ -201,13 +200,12 @@ function App() {
   const searchPOIs = (category: string) => {
     if (!mapRef.current || !response) return;
     setPoiCategory(category);
-    setPois([]); // Reset for new category search
+    setPois([]);
 
     const service = new google.maps.places.PlacesService(mapRef.current);
     const route = response.routes[0];
     const path = route.overview_path;
 
-    // Sample points along the route (Start, Middle, End)
     const searchPoints = [
       path[0],
       path[Math.floor(path.length / 2)],
@@ -243,7 +241,6 @@ function App() {
   };
 
   const addPOIAsWaypoint = (poi: POI) => {
-    // Using Coordinates (lat,lng) is 100% reliable for routing vs just a name
     const locationString = `${poi.position.lat},${poi.position.lng}`;
     setTrip(prev => ({
       ...prev,
@@ -715,25 +712,6 @@ function App() {
               <button onClick={() => searchPOIs('charging station')} className={poiCategory === 'charging station' ? 'active' : ''}>⚡ Charging</button>
             </div>
             
-            {poiCategory && (
-              <button 
-                onClick={searchByMapCenter}
-                style={{ 
-                  width: '100%', 
-                  marginTop: '0.8rem', 
-                  padding: '0.5rem', 
-                  backgroundColor: '#333', 
-                  color: 'white', 
-                  border: '1px solid #555', 
-                  borderRadius: '6px', 
-                  fontSize: '0.75rem',
-                  cursor: 'pointer'
-                }}
-              >
-                🔍 Search This Map Area
-              </button>
-            )}
-
             {pois.length > 0 && <p style={{ fontSize: '0.7rem', color: 'var(--secondary-text)', marginTop: '0.5rem' }}>Found {pois.length} spots. Click a marker on the map to add as stop!</p>}
           </section>
         )}
@@ -828,14 +806,41 @@ function App() {
         )}
       </aside>
 
-      <main>
+      <main style={{ position: 'relative' }}>
         {isLoaded ? (
-          <GoogleMap
-            mapContainerStyle={containerStyle}
-            center={center}
-            zoom={10}
-            onLoad={onMapLoad}
-          >
+          <>
+            {poiCategory && (
+              <button 
+                onClick={searchByMapCenter}
+                style={{ 
+                  position: 'absolute',
+                  top: '1rem',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  zIndex: 1000,
+                  backgroundColor: '#ffffff',
+                  color: '#333',
+                  border: '1px solid #ccc',
+                  padding: '0.6rem 1rem',
+                  borderRadius: '24px',
+                  fontSize: '0.85rem',
+                  fontWeight: '600',
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}
+              >
+                🔍 Search This Area
+              </button>
+            )}
+            <GoogleMap
+              mapContainerStyle={containerStyle}
+              center={center}
+              zoom={10}
+              onLoad={onMapLoad}
+            >
             {trip.origin && trip.destination && isLoading && !response && (
               <DirectionsService
                 options={{
@@ -876,6 +881,7 @@ function App() {
               />
             ))}
           </GoogleMap>
+        </>
         ) : (
           <div className="map-placeholder">Loading Google Maps...</div>
         )}
