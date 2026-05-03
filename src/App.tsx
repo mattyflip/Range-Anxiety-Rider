@@ -6,10 +6,10 @@ import { toPng } from 'html-to-image'
 const LIBRARIES: ("places")[] = ["places"];
 
 interface BikeSpecs {
-  voltage: number;
-  capacityAh: number;
-  motorWatts: number;
-  totalWeightLbs: number;
+  voltage: number | '';
+  capacityAh: number | '';
+  motorWatts: number | '';
+  totalWeightLbs: number | '';
 }
 
 interface TripDetails {
@@ -84,11 +84,11 @@ function App() {
   const [ridingStyle, setRidingStyle] = useState<'relaxed' | 'aggressive'>('relaxed');
   const [isRoundTrip, setIsRoundTrip] = useState(false);
   const [isCustomReturn, setIsCustomReturn] = useState(false);
-  const [targetSpeedMph, setTargetSpeedMph] = useState(15);
+  const [targetSpeedMph, setTargetSpeedMph] = useState<number | ''>(15);
   const [batteryInputMode, setBatteryInputMode] = useState<'percent' | 'voltage'>('percent');
   const [capacityInputMode, setCapacityInputMode] = useState<'ah' | 'wh'>('ah');
-  const [startBattery, setStartBattery] = useState(100);
-  const [startVoltage, setStartVoltage] = useState(54.6);
+  const [startBattery, setStartBattery] = useState<number | ''>(100);
+  const [startVoltage, setStartVoltage] = useState<number | ''>(54.6);
   const [response, setResponse] = useState<google.maps.DirectionsResult | null>(null);
   const [metrics, setMetrics] = useState<RouteMetrics | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -167,6 +167,28 @@ function App() {
   const onMapLoad = useCallback((map: google.maps.Map) => {
     mapRef.current = map;
   }, []);
+
+  const useCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setError("Geolocation is not supported by your browser.");
+      return;
+    }
+
+    setIsLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        const coords = `${latitude},${longitude}`;
+        setTrip(prev => ({ ...prev, origin: coords }));
+        setIsLoading(false);
+      },
+      (err) => {
+        console.error("Geolocation error:", err);
+        setError("Unable to retrieve your location. Ensure location permissions are enabled.");
+        setIsLoading(false);
+      }
+    );
+  };
 
   const searchByMapCenter = () => {
     if (!mapRef.current || !poiCategory) return;
@@ -271,18 +293,27 @@ function App() {
     });
 
     const distanceMiles = totalDistanceMeters * 0.000621371;
+
+    // Type-safe value extraction
+    const v = Number(specs.voltage) || 48;
+    const c = Number(specs.capacityAh) || 15;
+    const w = Number(specs.totalWeightLbs) || 220;
+    const s = Number(targetSpeedMph) || 15;
+    const sb = Number(startBattery);
+    const sv = Number(startVoltage);
+
     const totalWhAvailable = capacityInputMode === 'ah' 
-      ? specs.voltage * specs.capacityAh 
-      : specs.capacityAh; 
+      ? (v * c)
+      : c; 
     
     const multiplier = (isRoundTrip && !isCustomReturn) ? 2 : 1;
-    const totalWeightKg = specs.totalWeightLbs * 0.453592;
+    const totalWeightKg = w * 0.453592;
 
-    let effectiveStartPercent = startBattery;
-    const { max, min } = getBatteryLevels(specs.voltage);
+    let effectiveStartPercent = sb;
+    const { max, min } = getBatteryLevels(v);
 
     if (batteryInputMode === 'voltage') {
-      effectiveStartPercent = ((startVoltage - min) / (max - min)) * 100;
+      effectiveStartPercent = ((sv - min) / (max - min)) * 100;
       effectiveStartPercent = Math.min(100, Math.max(0, effectiveStartPercent));
     }
 
@@ -324,7 +355,7 @@ function App() {
 
       const elevationGainFeet = elevationGainM * 3.28084;
       
-      const airSpeed = Math.max(5, targetSpeedMph + headwindComponent);
+      const airSpeed = Math.max(5, s + headwindComponent);
       const styleMultiplier = ridingStyle === 'aggressive' ? 1.3 : 1.0;
       const Wh_base = 12 * styleMultiplier; 
       const Wh_drag = 0.04 * Math.pow(airSpeed, 2);
@@ -335,7 +366,7 @@ function App() {
       
       const estimatedWh = Wh_flat + Wh_climb;
       const batteryPercentUsed = (estimatedWh / totalWhAvailable) * 100;
-      const calculatedDurationMin = (distanceMiles / targetSpeedMph) * 60;
+      const calculatedDurationMin = (distanceMiles / s) * 60;
 
       setMetrics({
         distanceMiles: distanceMiles * multiplier,
@@ -355,12 +386,12 @@ function App() {
       setError('Note: Some data (Elevation/Weather) unavailable. Using simplified estimates.');
       
       const Wh_base = 15;
-      const Wh_drag = 0.05 * Math.pow(targetSpeedMph, 2);
+      const Wh_drag = 0.05 * Math.pow(s, 2);
       const estWh = (Wh_base + Wh_drag) * distanceMiles * multiplier;
 
       setMetrics({
         distanceMiles: distanceMiles * multiplier,
-        durationMin: (distanceMiles / targetSpeedMph) * 60 * multiplier,
+        durationMin: (distanceMiles / s) * 60 * multiplier,
         elevationGainFeet: 0,
         estimatedWh: estWh,
         batteryPercentUsed: (effectiveStartPercent - (estWh / totalWhAvailable) * 100),
@@ -406,8 +437,12 @@ function App() {
   };
 
   const handleSpecChange = (name: keyof BikeSpecs, value: string) => {
+    if (value === '') {
+      setSpecs(prev => ({ ...prev, [name]: '' }));
+      return;
+    }
     const parsed = parseFloat(value);
-    setSpecs(prev => ({ ...prev, [name]: isNaN(parsed) ? 0 : parsed }));
+    setSpecs(prev => ({ ...prev, [name]: isNaN(parsed) ? '' : parsed }));
   };
 
   const downloadShareCard = async () => {
@@ -476,13 +511,22 @@ function App() {
 
         <section className="form-group">
           <label>Origin</label>
-          <input 
-            type="text" 
-            name="origin" 
-            placeholder="e.g. Times Square, NY" 
-            value={trip.origin}
-            onChange={handleInputChange}
-          />
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <input 
+              type="text" 
+              name="origin" 
+              placeholder="e.g. Times Square, NY" 
+              value={trip.origin}
+              onChange={handleInputChange}
+            />
+            <button 
+              onClick={useCurrentLocation}
+              style={{ background: '#333', color: 'white', border: '1px solid #444', borderRadius: '4px', padding: '0 0.8rem', cursor: 'pointer' }}
+              title="Use Current Location"
+            >
+              📍
+            </button>
+          </div>
         </section>
 
         {trip.waypoints.map((wp, idx) => (
@@ -621,8 +665,10 @@ function App() {
               type="number" 
               value={startBattery}
               onChange={(e) => {
-                const val = parseFloat(e.target.value);
-                setStartBattery(isNaN(val) ? 0 : Math.min(100, Math.max(0, val)));
+                const val = e.target.value;
+                if (val === '') { setStartBattery(''); return; }
+                const parsed = parseFloat(val);
+                setStartBattery(isNaN(parsed) ? '' : Math.min(100, Math.max(0, parsed)));
               }}
             />
           ) : (
@@ -630,7 +676,12 @@ function App() {
               type="number" 
               step="0.1"
               value={startVoltage}
-              onChange={(e) => setStartVoltage(parseFloat(e.target.value) || 0)}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === '') { setStartVoltage(''); return; }
+                const parsed = parseFloat(val);
+                setStartVoltage(isNaN(parsed) ? '' : parsed);
+              }}
             />
           )}
         </section>
@@ -640,7 +691,12 @@ function App() {
           <input 
             type="number" 
             value={targetSpeedMph}
-            onChange={(e) => setTargetSpeedMph(parseFloat(e.target.value) || 0)}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (val === '') { setTargetSpeedMph(''); return; }
+              const parsed = parseFloat(val);
+              setTargetSpeedMph(isNaN(parsed) ? '' : parsed);
+            }}
           />
         </section>
 
@@ -768,7 +824,7 @@ function App() {
               Remaining Battery: {metrics.batteryPercentUsed.toFixed(1)}%
             </p>
             <p style={{ fontSize: '1rem', color: 'var(--secondary-text)', marginBottom: '0.8rem' }}>
-              Est. Final Voltage: {(getBatteryLevels(specs.voltage).min + (metrics.batteryPercentUsed / 100) * (getBatteryLevels(specs.voltage).max - getBatteryLevels(specs.voltage).min)).toFixed(1)}V
+              Est. Final Voltage: {(getBatteryLevels(Number(specs.voltage)).min + (metrics.batteryPercentUsed / 100) * (getBatteryLevels(Number(specs.voltage)).max - getBatteryLevels(Number(specs.voltage)).min)).toFixed(1)}V
             </p>
             
             {metrics.windConditions && (
@@ -981,7 +1037,7 @@ function App() {
               </div>
               <div className="share-metric-box">
                 <div className="share-metric-label">Est. Final Voltage</div>
-                <div className="share-metric-value">{(getBatteryLevels(specs.voltage).min + (metrics.batteryPercentUsed / 100) * (getBatteryLevels(specs.voltage).max - getBatteryLevels(specs.voltage).min)).toFixed(1)}V</div>
+                <div className="share-metric-value">{(getBatteryLevels(Number(specs.voltage)).min + (metrics.batteryPercentUsed / 100) * (getBatteryLevels(Number(specs.voltage)).max - getBatteryLevels(Number(specs.voltage)).min)).toFixed(1)}V</div>
               </div>
               <div className="share-metric-box">
                 <div className="share-metric-label">Total Distance</div>
