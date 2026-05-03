@@ -40,6 +40,7 @@ interface SavedBike {
 interface POI {
   id: string;
   name: string;
+  address: string;
   position: google.maps.LatLngLiteral;
   type: string;
 }
@@ -184,6 +185,7 @@ function App() {
           const newPois = results.map(r => ({
             id: r.place_id || Math.random().toString(),
             name: r.name || 'Unknown',
+            address: r.vicinity || 'No address',
             position: { lat: r.geometry?.location?.lat() || 0, lng: r.geometry?.location?.lng() || 0 },
             type: category
           }));
@@ -194,13 +196,15 @@ function App() {
   };
 
   const addPOIAsWaypoint = (poi: POI) => {
+    // Using Coordinates (lat,lng) is 100% reliable for routing vs just a name
+    const locationString = `${poi.position.lat},${poi.position.lng}`;
     setTrip(prev => ({
       ...prev,
-      waypoints: [...prev.waypoints, poi.name]
+      waypoints: [...prev.waypoints, locationString]
     }));
     setPois([]);
     setPoiCategory(null);
-    handleCalculate(); // Trigger re-calculation
+    handleCalculate(); 
   };
 
   const getBatteryLevels = (nominal: number) => {
