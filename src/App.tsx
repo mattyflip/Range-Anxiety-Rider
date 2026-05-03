@@ -1,7 +1,11 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { GoogleMap, useJsApiLoader, DirectionsService, DirectionsRenderer, Marker } from '@react-google-maps/api'
 import axios from 'axios'
 import { toPng } from 'html-to-image'
+import { auth, db } from './firebase'
+import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'firebase/auth'
+import type { User } from 'firebase/auth'
+import { doc, getDoc, setDoc } from 'firebase/firestore'
 
 const LIBRARIES: ("places")[] = ["places"];
 
@@ -96,6 +100,58 @@ function App() {
   const [pois, setPois] = useState<POI[]>([]);
   const [poiCategory, setPoiCategory] = useState<string | null>(null);
   
+  const [user, setUser] = useState<User | null>(null);
+  const [isPro, setIsPro] = useState(false);
+  const [authEmail, setAuthEmail] = useState('');
+  const [authPass, setAuthPass] = useState('');
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [isRegistering, setIsRegistering] = useState(false);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      setUser(currentUser);
+      if (currentUser) {
+        try {
+          const userDoc = await getDoc(doc(db, "users", currentUser.uid));
+          if (userDoc.exists()) {
+            setIsPro(userDoc.data().isPro || false);
+          } else {
+            await setDoc(doc(db, "users", currentUser.uid), {
+              email: currentUser.email,
+              isPro: false,
+              createdAt: new Date()
+            });
+            setIsPro(false);
+          }
+        } catch (e) {
+          console.error("Firestore error:", e);
+        }
+      } else {
+        setIsPro(false);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleAuth = async () => {
+    setError(null);
+    try {
+      if (isRegistering) {
+        await createUserWithEmailAndPassword(auth, authEmail, authPass);
+      } else {
+        await signInWithEmailAndPassword(auth, authEmail, authPass);
+      }
+      setShowAuthModal(false);
+      setAuthEmail('');
+      setAuthPass('');
+    } catch (err: any) {
+      console.error("Auth error:", err);
+      setError(err.message);
+    }
+  };
+
+  const handleSignOut = () => signOut(auth);
+
   const [savedBikes, setSavedBikes] = useState<SavedBike[]>(() => {
     const local = localStorage.getItem('ebike-saved-bikes');
     return local ? JSON.parse(local) : [];
@@ -466,15 +522,74 @@ function App() {
     <div className="container">
       <header>
         <h1>Range Anxiety</h1>
-        <button 
-          className="calculate-btn" 
-          onClick={handleCalculate} 
-          disabled={isLoading}
-          style={{ margin: 0, padding: '0.5rem 1.2rem', whiteSpace: 'nowrap' }}
-        >
-          {isLoading ? 'Calculating...' : 'Find Route'}
-        </button>
+        <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center' }}>
+          <button 
+            onClick={user ? handleSignOut : () => setShowAuthModal(true)}
+            style={{ 
+              background: 'none', 
+              border: '1px solid #444', 
+              color: user ? 'white' : 'var(--accent-color)', 
+              borderRadius: '20px', 
+              padding: '0.4rem 1rem', 
+              fontSize: '0.8rem',
+              cursor: 'pointer',
+              fontWeight: '600'
+            }}
+          >
+            {user ? `Sign Out (${isPro ? 'PRO' : 'Free'})` : 'Sign In'}
+          </button>
+          <button 
+            className="calculate-btn" 
+            onClick={handleCalculate} 
+            disabled={isLoading}
+            style={{ margin: 0, padding: '0.5rem 1.2rem', whiteSpace: 'nowrap' }}
+          >
+            {isLoading ? 'Calculating...' : 'Find Route'}
+          </button>
+        </div>
       </header>
+
+      {/* Authentication Modal */}
+      {showAuthModal && (
+        <div style={{ 
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
+          backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 10000, 
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          backdropFilter: 'blur(10px)'
+        }}>
+          <div className="card" style={{ width: '350px', border: '1px solid var(--accent-color)' }}>
+            <h2 style={{ color: 'var(--accent-color)', marginBottom: '1.5rem', textAlign: 'center' }}>
+              {isRegistering ? 'Create Account' : 'Sign In'}
+            </h2>
+            <div className="form-group">
+              <label>Email</label>
+              <input type="email" value={authEmail} onChange={e => setAuthEmail(e.target.value)} />
+            </div>
+            <div className="form-group">
+              <label>Password</label>
+              <input type="password" value={authPass} onChange={e => setAuthPass(e.target.value)} />
+            </div>
+            <button className="calculate-btn" style={{ width: '100%' }} onClick={handleAuth}>
+              {isRegistering ? 'Register' : 'Login'}
+            </button>
+            <p style={{ marginTop: '1rem', textAlign: 'center', fontSize: '0.8rem', color: '#888' }}>
+              {isRegistering ? 'Already have an account?' : 'Need an account?'}
+              <button 
+                onClick={() => setIsRegistering(!isRegistering)}
+                style={{ background: 'none', border: 'none', color: 'var(--accent-color)', cursor: 'pointer', textDecoration: 'underline', marginLeft: '0.5rem' }}
+              >
+                {isRegistering ? 'Sign In' : 'Register Now'}
+              </button>
+            </p>
+            <button 
+              onClick={() => setShowAuthModal(false)}
+              style={{ width: '100%', marginTop: '1.5rem', background: 'none', border: 'none', color: '#666', cursor: 'pointer', fontSize: '0.8rem' }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
       <aside className="sidebar">
         <section className="form-group" style={{ backgroundColor: 'var(--card-bg)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
@@ -915,6 +1030,28 @@ function App() {
             <p style={{ marginTop: '1rem', fontSize: '0.65rem', color: '#777', fontStyle: 'italic', lineHeight: '1.2' }}>
               * Results may vary based on battery age, cycle count, and internal degradation.
             </p>
+          </div>
+        )}
+
+        {!isPro && (
+          <div style={{ 
+            marginTop: '2rem', 
+            padding: '1rem', 
+            background: 'rgba(0,0,0,0.3)', 
+            border: '1px dashed #444', 
+            borderRadius: '8px', 
+            textAlign: 'center' 
+          }}>
+            <p style={{ fontSize: '0.65rem', color: '#666', marginBottom: '0.5rem' }}>SPONSORED</p>
+            <div style={{ height: '80px', backgroundColor: '#222', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#444', fontSize: '0.8rem' }}>
+              AdSense Banner Area
+            </div>
+            <button 
+              onClick={() => setShowAuthModal(true)}
+              style={{ background: 'none', border: 'none', color: 'var(--accent-color)', fontSize: '0.7rem', marginTop: '0.5rem', cursor: 'pointer' }}
+            >
+              Remove Ads with PRO
+            </button>
           </div>
         )}
       </aside>
