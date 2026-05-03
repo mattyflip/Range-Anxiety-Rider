@@ -410,9 +410,14 @@ function App() {
     <div className="container">
       <header>
         <h1>Range Anxiety</h1>
-        <div style={{ fontSize: '0.8rem', color: 'var(--secondary-text)' }}>
-          Efficient E-Bike Planning
-        </div>
+        <button 
+          className="calculate-btn" 
+          onClick={handleCalculate} 
+          disabled={isLoading}
+          style={{ margin: 0, padding: '0.5rem 1.2rem', whiteSpace: 'nowrap' }}
+        >
+          {isLoading ? 'Calculating...' : 'Find Route'}
+        </button>
       </header>
 
       <aside className="sidebar">
@@ -696,10 +701,6 @@ function App() {
             </button>
           </div>
         </section>
-
-        <button className="calculate-btn" onClick={handleCalculate} disabled={isLoading}>
-          {isLoading ? 'Calculating...' : 'Find Efficient Route'}
-        </button>
 
         {response && (
           <section className="form-group" style={{ marginTop: '1.5rem', backgroundColor: 'var(--card-bg)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}>

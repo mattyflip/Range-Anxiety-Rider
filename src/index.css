@@ -40,8 +40,12 @@ header {
   position: absolute;
   top: 1.5rem;
   left: 1.5rem;
+  right: 1.5rem;
   z-index: 100;
-  pointer-events: none; /* Let clicks pass to map if not on text */
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  pointer-events: none;
 }
 
 h1 {
@@ -58,13 +62,18 @@ h1 {
   box-shadow: 0 4px 12px rgba(0,0,0,0.5);
 }
 
+header .calculate-btn {
+  pointer-events: auto;
+  box-shadow: 0 4px 12px rgba(255, 102, 0, 0.5);
+}
+
 .sidebar {
   position: absolute;
-  top: 5rem;
+  top: 5.5rem;
   left: 1.5rem;
   z-index: 10;
   width: 380px;
-  max-height: calc(100% - 7rem);
+  max-height: calc(100% - 7.5rem);
   display: flex;
   flex-direction: column;
   gap: var(--spacing-unit);
@@ -152,7 +161,6 @@ input:focus {
   font-size: 0.9rem;
   text-transform: uppercase;
   cursor: pointer;
-  margin-top: 0.5rem;
   box-shadow: 0 4px 12px rgba(255, 102, 0, 0.3);
 }
 
@@ -193,12 +201,18 @@ main {
     left: 1rem;
     right: 1rem;
     display: flex;
-    justify-content: center;
+    justify-content: space-between;
+    align-items: center;
   }
   
   h1 {
-    font-size: 1.2rem;
+    font-size: 1rem;
     padding: 0.4rem 0.8rem;
+  }
+
+  header .calculate-btn {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.8rem;
   }
 
   .sidebar {
@@ -206,16 +220,11 @@ main {
     bottom: 0;
     left: 0;
     width: 100%;
-    max-height: 40%; /* Initial compact height */
+    max-height: 35%; /* Fixed height to keep map visible */
     border-radius: 20px 20px 0 0;
     border-left: none;
     border-right: none;
     border-bottom: none;
     padding: 1.5rem 1rem;
-    transition: max-height 0.3s ease;
-  }
-
-  .sidebar:focus-within {
-    max-height: 85%; /* Expand when interacting */
   }
 }
