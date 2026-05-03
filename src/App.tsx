@@ -21,6 +21,16 @@ interface RouteMetrics {
   estimatedWh: number;
   batteryPercentUsed: number;
   recommendedSpeedMph: number;
+  windConditions?: {
+    speed: number;
+    direction: number;
+    headwindComponent: number;
+  };
+}
+
+interface SavedBike {
+  name: string;
+  specs: BikeSpecs;
 }
 
 const containerStyle = {
@@ -62,6 +72,24 @@ function App() {
   const [metrics, setMetrics] = useState<RouteMetrics | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  const [savedBikes, setSavedBikes] = useState<SavedBike[]>(() => {
+    const local = localStorage.getItem('ebike-saved-bikes');
+    return local ? JSON.parse(local) : [];
+  });
+  const [newBikeName, setNewBikeName] = useState('');
+
+  const saveCurrentBike = () => {
+    if (!newBikeName) return;
+    const updated = [...savedBikes, { name: newBikeName, specs }];
+    setSavedBikes(updated);
+    localStorage.setItem('ebike-saved-bikes', JSON.stringify(updated));
+    setNewBikeName('');
+  };
+
+  const loadBike = (bike: SavedBike) => {
+    setSpecs(bike.specs);
+  };
 
   const getBatteryLevels = (nominal: number) => {
     const series = Math.round(nominal / 3.7);
@@ -92,6 +120,7 @@ function App() {
     const recommendedSpeedMph = mode === 'eco' ? 15 : 22;
 
     try {
+      // 1. Fetch Elevation
       const polyline = typeof route.overview_polyline === 'string' 
         ? route.overview_polyline 
         : (route.overview_polyline as any).points;
@@ -100,11 +129,27 @@ function App() {
         params: { path: `enc:${polyline}` }
       });
 
-      if (!elevRes.data.results || elevRes.data.results.length === 0) {
-        throw new Error('No elevation results found');
-      }
+      // 2. Fetch Weather (using destination coordinates as a sample)
+      const lat = leg.end_location.lat();
+      const lon = leg.end_location.lng();
+      const weatherRes = await axios.get(`/api/weather`, { params: { lat, lon } });
+      const { wind_speed, wind_deg } = weatherRes.data;
 
-      const elevations = elevRes.data.results;
+      // 3. Calculate Headwind Component
+      // Simplification: Calculate average route bearing
+      const startLat = leg.start_location.lat() * (Math.PI / 180);
+      const startLon = leg.start_location.lng() * (Math.PI / 180);
+      const endLat = leg.end_location.lat() * (Math.PI / 180);
+      const endLon = leg.end_location.lng() * (Math.PI / 180);
+      const y = Math.sin(endLon - startLon) * Math.cos(endLat);
+      const x = Math.cos(startLat) * Math.sin(endLat) - Math.sin(startLat) * Math.cos(endLat) * Math.cos(endLon - startLon);
+      const routeBearing = ((Math.atan2(y, x) * 180 / Math.PI) + 360) % 360;
+
+      // Angle difference between wind and route
+      const angleDiff = (wind_deg - routeBearing) * (Math.PI / 180);
+      const headwindComponent = wind_speed * Math.cos(angleDiff);
+
+      const elevations = elevRes.data.results || [];
       let elevationGainM = 0;
       for (let i = 1; i < elevations.length; i++) {
         const diff = elevations[i].elevation - elevations[i - 1].elevation;
@@ -112,8 +157,11 @@ function App() {
       }
 
       const elevationGainFeet = elevationGainM * 3.28084;
+      
+      // Physics: Speed-based Drag + Wind
+      const airSpeed = Math.max(5, targetSpeedMph + headwindComponent);
       const Wh_base = 12; 
-      const Wh_drag = 0.04 * Math.pow(targetSpeedMph, 2);
+      const Wh_drag = 0.04 * Math.pow(airSpeed, 2);
       const effectiveWhPerMile = Wh_base + Wh_drag;
 
       const Wh_flat = effectiveWhPerMile * distanceMiles * multiplier;
@@ -129,11 +177,16 @@ function App() {
         elevationGainFeet: elevationGainFeet * multiplier,
         estimatedWh,
         batteryPercentUsed: (effectiveStartPercent - batteryPercentUsed),
-        recommendedSpeedMph
+        recommendedSpeedMph,
+        windConditions: {
+          speed: wind_speed,
+          direction: wind_deg,
+          headwindComponent
+        }
       });
     } catch (err) {
       console.error('Efficiency calculation failed:', err);
-      setError('Note: Elevation data unavailable. Using flat-ground estimates.');
+      setError('Note: Some data (Elevation/Weather) unavailable. Using simplified estimates.');
       
       const Wh_base = 15;
       const Wh_drag = 0.05 * Math.pow(targetSpeedMph, 2);
@@ -201,6 +254,38 @@ function App() {
       </header>
 
       <aside className="sidebar">
+        <section className="form-group" style={{ backgroundColor: 'var(--card-bg)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+          <label>Favorite Bikes</label>
+          <select 
+            style={{ marginBottom: '0.5rem' }} 
+            onChange={(e) => {
+              const bike = savedBikes.find(b => b.name === e.target.value);
+              if (bike) loadBike(bike);
+            }}
+            value=""
+          >
+            <option value="" disabled>Load a saved bike...</option>
+            {savedBikes.map((bike, idx) => (
+              <option key={idx} value={bike.name}>{bike.name}</option>
+            ))}
+          </select>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <input 
+              type="text" 
+              placeholder="Bike Name" 
+              value={newBikeName} 
+              onChange={(e) => setNewBikeName(e.target.value)}
+              style={{ padding: '0.4rem', fontSize: '0.85rem' }}
+            />
+            <button 
+              onClick={saveCurrentBike}
+              style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', cursor: 'pointer', backgroundColor: 'var(--accent-color)', color: 'white', border: 'none', borderRadius: '4px' }}
+            >
+              Save
+            </button>
+          </div>
+        </section>
+
         <section className="form-group">
           <label>Origin</label>
           <input 
@@ -364,6 +449,16 @@ function App() {
             <p style={{ fontSize: '1rem', color: 'var(--secondary-text)', marginBottom: '0.5rem' }}>
               Est. Final Voltage: {(getBatteryLevels(specs.voltage).min + (metrics.batteryPercentUsed / 100) * (getBatteryLevels(specs.voltage).max - getBatteryLevels(specs.voltage).min)).toFixed(1)}V
             </p>
+            
+            {metrics.windConditions && (
+              <div style={{ margin: '0.5rem 0', fontSize: '0.85rem', padding: '0.5rem', backgroundColor: '#f0f7ff', borderRadius: '4px' }}>
+                <strong>Wind:</strong> {metrics.windConditions.speed} mph | 
+                <span style={{ color: metrics.windConditions.headwindComponent > 0 ? '#d93025' : '#188038' }}>
+                  {metrics.windConditions.headwindComponent > 0 ? ` +${metrics.windConditions.headwindComponent.toFixed(1)} mph Headwind` : ` ${Math.abs(metrics.windConditions.headwindComponent).toFixed(1)} mph Tailwind`}
+                </span>
+              </div>
+            )}
+
             <div style={{ margin: '0.8rem 0', padding: '0.8rem', backgroundColor: 'var(--card-bg)', borderRadius: '4px' }}>
               <p style={{ color: 'var(--text-color)', fontSize: '0.9rem', fontWeight: '600' }}>
                 Your Target Speed: {targetSpeedMph} mph
