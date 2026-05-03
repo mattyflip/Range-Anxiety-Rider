@@ -47,8 +47,7 @@ interface POI {
 
 const containerStyle = {
   width: '100%',
-  height: '500px',
-  borderRadius: '8px'
+  height: '100%'
 };
 
 const center = {
