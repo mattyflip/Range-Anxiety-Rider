@@ -66,6 +66,7 @@ function App() {
   const [isRoundTrip, setIsRoundTrip] = useState(false);
   const [targetSpeedMph, setTargetSpeedMph] = useState(15);
   const [batteryInputMode, setBatteryInputMode] = useState<'percent' | 'voltage'>('percent');
+  const [capacityInputMode, setCapacityInputMode] = useState<'ah' | 'wh'>('ah');
   const [startBattery, setStartBattery] = useState(100);
   const [startVoltage, setStartVoltage] = useState(54.6);
   const [response, setResponse] = useState<google.maps.DirectionsResult | null>(null);
@@ -114,7 +115,9 @@ function App() {
     const leg = route.legs[0];
     
     const distanceMiles = (leg.distance?.value || 0) * 0.000621371;
-    const totalWhAvailable = specs.voltage * specs.capacityAh;
+    const totalWhAvailable = capacityInputMode === 'ah' 
+      ? specs.voltage * specs.capacityAh 
+      : specs.capacityAh; // Use capacityAh field for Wh if in 'wh' mode
     const multiplier = isRoundTrip ? 2 : 1;
     const totalWeightKg = specs.totalWeightLbs * 0.453592;
 
@@ -350,7 +353,21 @@ function App() {
             />
           </section>
           <section className="form-group">
-            <label>Capacity (Ah)</label>
+            <label>Capacity ({capacityInputMode === 'ah' ? 'Ah' : 'Wh'})</label>
+            <div className="mode-toggle" style={{ marginBottom: '0.5rem' }}>
+              <button 
+                className={capacityInputMode === 'ah' ? 'active' : ''} 
+                onClick={() => setCapacityInputMode('ah')}
+              >
+                Ah
+              </button>
+              <button 
+                className={capacityInputMode === 'wh' ? 'active' : ''} 
+                onClick={() => setCapacityInputMode('wh')}
+              >
+                Wh
+              </button>
+            </div>
             <input 
               type="number" 
               name="capacityAh" 
