@@ -12,6 +12,7 @@ interface BikeSpecs {
 interface TripDetails {
   origin: string;
   destination: string;
+  waypoints: string[];
 }
 
 interface RouteMetrics {
@@ -59,7 +60,8 @@ function App() {
 
   const [trip, setTrip] = useState<TripDetails>({
     origin: '',
-    destination: ''
+    destination: '',
+    waypoints: []
   });
 
   const [mode, setMode] = useState<'eco' | 'sport'>('eco');
@@ -94,11 +96,32 @@ function App() {
 
   const swapLocations = () => {
     setTrip(prev => ({
+      ...prev,
       origin: prev.destination,
       destination: prev.origin
     }));
     setResponse(null);
     setMetrics(null);
+  };
+
+  const addWaypoint = () => {
+    setTrip(prev => ({ ...prev, waypoints: [...prev.waypoints, ''] }));
+  };
+
+  const removeWaypoint = (index: number) => {
+    setTrip(prev => ({
+      ...prev,
+      waypoints: prev.waypoints.filter((_, i) => i !== index)
+    }));
+    setResponse(null);
+    setMetrics(null);
+  };
+
+  const updateWaypoint = (index: number, value: string) => {
+    setTrip(prev => ({
+      ...prev,
+      waypoints: prev.waypoints.map((wp, i) => i === index ? value : wp)
+    }));
   };
 
   const getBatteryLevels = (nominal: number) => {
@@ -112,12 +135,17 @@ function App() {
   const calculateEfficiency = async (directions: google.maps.DirectionsResult) => {
     setError(null);
     const route = directions.routes[0];
-    const leg = route.legs[0];
     
-    const distanceMiles = (leg.distance?.value || 0) * 0.000621371;
+    // Aggregate distance and duration from all legs
+    let totalDistanceMeters = 0;
+    route.legs.forEach(leg => {
+      totalDistanceMeters += leg.distance?.value || 0;
+    });
+
+    const distanceMiles = totalDistanceMeters * 0.000621371;
     const totalWhAvailable = capacityInputMode === 'ah' 
       ? specs.voltage * specs.capacityAh 
-      : specs.capacityAh; // Use capacityAh field for Wh if in 'wh' mode
+      : specs.capacityAh; 
     const multiplier = isRoundTrip ? 2 : 1;
     const totalWeightKg = specs.totalWeightLbs * 0.453592;
 
@@ -132,7 +160,6 @@ function App() {
     const recommendedSpeedMph = mode === 'eco' ? 15 : 22;
 
     try {
-      // 1. Fetch Elevation
       const polyline = typeof route.overview_polyline === 'string' 
         ? route.overview_polyline 
         : (route.overview_polyline as any).points;
@@ -141,23 +168,21 @@ function App() {
         params: { path: `enc:${polyline}` }
       });
 
-      // 2. Fetch Weather (using destination coordinates as a sample)
-      const lat = leg.end_location.lat();
-      const lon = leg.end_location.lng();
+      const lastLeg = route.legs[route.legs.length - 1];
+      const lat = lastLeg.end_location.lat();
+      const lon = lastLeg.end_location.lng();
       const weatherRes = await axios.get(`/api/weather`, { params: { lat, lon } });
       const { wind_speed, wind_deg } = weatherRes.data;
 
-      // 3. Calculate Headwind Component
-      // Simplification: Calculate average route bearing
-      const startLat = leg.start_location.lat() * (Math.PI / 180);
-      const startLon = leg.start_location.lng() * (Math.PI / 180);
-      const endLat = leg.end_location.lat() * (Math.PI / 180);
-      const endLon = leg.end_location.lng() * (Math.PI / 180);
+      const firstLeg = route.legs[0];
+      const startLat = firstLeg.start_location.lat() * (Math.PI / 180);
+      const startLon = firstLeg.start_location.lng() * (Math.PI / 180);
+      const endLat = lastLeg.end_location.lat() * (Math.PI / 180);
+      const endLon = lastLeg.end_location.lng() * (Math.PI / 180);
       const y = Math.sin(endLon - startLon) * Math.cos(endLat);
       const x = Math.cos(startLat) * Math.sin(endLat) - Math.sin(startLat) * Math.cos(endLat) * Math.cos(endLon - startLon);
       const routeBearing = ((Math.atan2(y, x) * 180 / Math.PI) + 360) % 360;
 
-      // Angle difference between wind and route
       const angleDiff = (wind_deg - routeBearing) * (Math.PI / 180);
       const headwindComponent = wind_speed * Math.cos(angleDiff);
 
@@ -170,7 +195,6 @@ function App() {
 
       const elevationGainFeet = elevationGainM * 3.28084;
       
-      // Physics: Speed-based Drag + Wind
       const airSpeed = Math.max(5, targetSpeedMph + headwindComponent);
       const Wh_base = 12; 
       const Wh_drag = 0.04 * Math.pow(airSpeed, 2);
@@ -309,7 +333,33 @@ function App() {
           />
         </section>
 
-        <div style={{ display: 'flex', justifyContent: 'center', margin: '-0.5rem 0 0.5rem 0' }}>
+        {trip.waypoints.map((wp, idx) => (
+          <section key={idx} className="form-group" style={{ position: 'relative' }}>
+            <label>Stop {idx + 1}</label>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <input 
+                type="text" 
+                placeholder="Enter waypoint" 
+                value={wp}
+                onChange={(e) => updateWaypoint(idx, e.target.value)}
+              />
+              <button 
+                onClick={() => removeWaypoint(idx)}
+                style={{ background: '#d93025', color: 'white', border: 'none', borderRadius: '4px', padding: '0 0.8rem', cursor: 'pointer' }}
+              >
+                ✕
+              </button>
+            </div>
+          </section>
+        ))}
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', margin: '0 0 1rem 0' }}>
+          <button 
+            onClick={addWaypoint}
+            style={{ background: '#333', color: 'white', border: '1px solid #444', borderRadius: '4px', padding: '0.4rem 0.8rem', fontSize: '0.8rem', cursor: 'pointer' }}
+          >
+            + Add Stop
+          </button>
           <button 
             onClick={swapLocations}
             style={{ 
@@ -528,7 +578,12 @@ function App() {
             </div>
             
             <button 
-              onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(trip.origin)}&destination=${encodeURIComponent(trip.destination)}&travelmode=bicycling`, '_blank')}
+              onClick={() => {
+                const wpQuery = trip.waypoints.length > 0 
+                  ? `&waypoints=${trip.waypoints.map(wp => encodeURIComponent(wp)).join('|')}` 
+                  : '';
+                window.open(`https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(trip.origin)}&destination=${encodeURIComponent(trip.destination)}${wpQuery}&travelmode=bicycling`, '_blank');
+              }}
               style={{ 
                 width: '100%', 
                 marginTop: '1rem', 
@@ -564,6 +619,7 @@ function App() {
                 options={{
                   destination: trip.destination,
                   origin: trip.origin,
+                  waypoints: trip.waypoints.filter(wp => wp.trim() !== '').map(wp => ({ location: wp, stopover: true })),
                   travelMode: google.maps.TravelMode.BICYCLING,
                 }}
                 callback={directionsCallback}
