@@ -247,7 +247,7 @@ function App() {
   return (
     <div className="container">
       <header>
-        <h1>Route Optimizer</h1>
+        <h1>Range Anxiety</h1>
         <div style={{ fontSize: '0.8rem', color: 'var(--secondary-text)' }}>
           Efficient E-Bike Planning
         </div>
