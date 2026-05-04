@@ -41,7 +41,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       },
     });
 
-    return res.status(200).json({ id: session.id });
+    return res.status(200).json({ url: session.url });
   } catch (error: any) {
     console.error('Stripe session creation error:', error);
     return res.status(500).json({ error: error.message });

@@ -167,9 +167,10 @@ function App() {
         email: user.email
       });
       
-      const stripe = await stripePromise;
-      if (stripe) {
-        await (stripe as any).redirectToCheckout({ sessionId: resp.data.id });
+      if (resp.data.url) {
+        window.location.href = resp.data.url;
+      } else {
+        throw new Error("No checkout URL returned.");
       }
     } catch (err: any) {
       console.error("Upgrade error:", err);
