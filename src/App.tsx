@@ -7,6 +7,7 @@ import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndP
 import type { User } from 'firebase/auth'
 import { doc, getDoc, setDoc } from 'firebase/firestore'
 import { loadStripe } from '@stripe/stripe-js'
+import AdBanner from './components/AdBanner'
 
 const LIBRARIES: ("places")[] = ["places"];
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || "");
@@ -1107,24 +1108,15 @@ function App() {
           </div>
         )}
 
+        <AdBanner isPro={isPro} />
+        
         {!isPro && (
-          <div style={{ 
-            marginTop: '2rem', 
-            padding: '1rem', 
-            background: 'rgba(0,0,0,0.3)', 
-            border: '1px dashed #444', 
-            borderRadius: '8px', 
-            textAlign: 'center' 
-          }}>
-            <p style={{ fontSize: '0.65rem', color: '#666', marginBottom: '0.5rem' }}>SPONSORED</p>
-            <div style={{ height: '80px', backgroundColor: '#222', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#444', fontSize: '0.8rem' }}>
-              AdSense Banner Area
-            </div>
+          <div style={{ textAlign: 'center', marginTop: '0.5rem' }}>
             <button 
-              onClick={() => setShowAuthModal(true)}
-              style={{ background: 'none', border: 'none', color: 'var(--accent-color)', fontSize: '0.7rem', marginTop: '0.5rem', cursor: 'pointer' }}
+              onClick={() => user ? handleUpgrade() : setShowAuthModal(true)}
+              style={{ background: 'none', border: 'none', color: 'var(--accent-color)', fontSize: '0.7rem', cursor: 'pointer', textTransform: 'uppercase', fontWeight: 'bold' }}
             >
-              Remove Ads with PRO
+              ⭐ Remove Ads with PRO
             </button>
           </div>
         )}
