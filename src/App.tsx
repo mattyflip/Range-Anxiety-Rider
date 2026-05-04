@@ -6,11 +6,9 @@ import { auth, db } from './firebase'
 import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'firebase/auth'
 import type { User } from 'firebase/auth'
 import { doc, getDoc, setDoc } from 'firebase/firestore'
-import { loadStripe } from '@stripe/stripe-js'
 import AdBanner from './components/AdBanner'
 
 const LIBRARIES: ("places")[] = ["places"];
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || "");
 
 interface BikeSpecs {
   voltage: number | '';
