@@ -49,6 +49,7 @@ interface POI {
   address: string;
   position: google.maps.LatLngLiteral;
   type: string;
+  details?: string;
 }
 
 const containerStyle = {
@@ -333,8 +334,16 @@ function App() {
     );
   };
 
-  const searchPOIs = (category: string) => {
+  const searchPOIs = async (category: string) => {
     if (!mapRef.current || !response) return;
+    
+    // Gating for Charging Station
+    if (category === 'charging station' && !isPro) {
+      setError("Premium Charging Data requires PRO. Unlock to see real-time charging stations!");
+      setShowAuthModal(!user);
+      return;
+    }
+
     setPoiCategory(category);
     setPois([]);
 
@@ -348,32 +357,51 @@ function App() {
       path[path.length - 1]
     ];
 
-    searchPoints.forEach(point => {
-      service.nearbySearch(
-        {
-          location: point,
-          radius: 5000, 
-          keyword: category
-        },
-        (results, status) => {
-          if (status === google.maps.places.PlacesServiceStatus.OK && results) {
-            const batch = results.map(r => ({
-              id: r.place_id || Math.random().toString(),
-              name: r.name || 'Unknown',
-              address: r.vicinity || 'No address',
-              position: { lat: r.geometry?.location?.lat() || 0, lng: r.geometry?.location?.lng() || 0 },
-              type: category
-            }));
-            
-            setPois(prev => {
-              const existingIds = new Set(prev.map(p => p.id));
-              const unique = batch.filter(p => !existingIds.has(p.id));
-              return [...prev, ...unique];
-            });
-          }
+    for (const point of searchPoints) {
+      if (category === 'charging station') {
+        // Use our premium Open Charge Map API for PRO users
+        try {
+          const lat = point.lat();
+          const lon = point.lng();
+          const ocmRes = await axios.get(`/api/charging`, { params: { lat, lon } });
+          const batch = ocmRes.data;
+          
+          setPois(prev => {
+            const existingIds = new Set(prev.map(p => p.id));
+            const unique = batch.filter((p: any) => !existingIds.has(p.id));
+            return [...prev, ...unique];
+          });
+        } catch (e) {
+          console.error("Premium charging fetch failed:", e);
         }
-      );
-    });
+      } else {
+        // Regular Places Search for other categories
+        service.nearbySearch(
+          {
+            location: point,
+            radius: 5000, 
+            keyword: category
+          },
+          (results, status) => {
+            if (status === google.maps.places.PlacesServiceStatus.OK && results) {
+              const batch = results.map(r => ({
+                id: r.place_id || Math.random().toString(),
+                name: r.name || 'Unknown',
+                address: r.vicinity || 'No address',
+                position: { lat: r.geometry?.location?.lat() || 0, lng: r.geometry?.location?.lng() || 0 },
+                type: category
+              }));
+              
+              setPois(prev => {
+                const existingIds = new Set(prev.map(p => p.id));
+                const unique = batch.filter(p => !existingIds.has(p.id));
+                return [...prev, ...unique];
+              });
+            }
+          }
+        );
+      }
+    }
   };
 
   const addPOIAsWaypoint = (poi: POI) => {
