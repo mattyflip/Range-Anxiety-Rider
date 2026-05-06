@@ -311,7 +311,7 @@ function App() {
       </header>
 
       <div style={{ display: 'flex', flexGrow: 1, position: 'relative', width: '100%', height: 'calc(100vh - 4.5rem)' }}>
-        <aside className="sidebar" style={{ position: 'absolute', top: '1.5rem', left: '1.5rem', width: '380px', maxHeight: '90%', background: 'rgba(30,30,30,0.95)', padding: '1.5rem', borderRadius: '16px', border: '1px solid #333', overflowY: 'auto', zIndex: 10, boxShadow: 0 }}>
+        <aside className="sidebar" style={{ position: 'absolute', top: '1.5rem', left: '1.5rem', width: '380px', maxHeight: '90%', background: 'rgba(30,30,30,0.95)', padding: '1.5rem', borderRadius: '16px', border: '1px solid #333', overflowY: 'auto', zIndex: 10, boxShadow: 'none' }}>
           {error && <div style={{ background: 'rgba(217,48,37,0.1)', color: '#d93025', padding: '0.8rem', borderRadius: '8px', marginBottom: '1rem', fontSize: '0.8rem' }}>{error}</div>}
           
           <section className="form-group" style={{ position: 'relative' }}>
