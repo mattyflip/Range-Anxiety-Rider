@@ -5,7 +5,7 @@ import { toPng } from 'html-to-image'
 import { auth, db } from './firebase'
 import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'firebase/auth'
 import type { User } from 'firebase/auth'
-import { doc, getDoc, setDoc } from 'firebase/firestore'
+import { doc, getDoc, setDoc, collection, addDoc } from 'firebase/firestore'
 import AdBanner from './components/AdBanner'
 
 const LIBRARIES: ("places")[] = ["places"];
@@ -189,11 +189,29 @@ function App() {
     const newBike = { name: newBikeName, specs };
     const updated = [...savedBikes, newBike];
     setSavedBikes(updated);
+    
+    // 1. Save to personal list (local or cloud)
     if (user) {
       try { await setDoc(doc(db, "users", user.uid), { bikes: updated }, { merge: true }); }
       catch (e) { console.error("Cloud save failed:", e); setError("Failed to sync bike to the cloud."); }
-    } else { localStorage.setItem('ebike-saved-bikes', JSON.stringify(updated)); }
+    } else { 
+      localStorage.setItem('ebike-saved-bikes', JSON.stringify(updated)); 
+    }
+
+    // 2. Submit to Global Review List for Admin
+    try {
+      await addDoc(collection(db, "bike_submissions"), {
+        ...newBike,
+        submittedBy: user?.email || "Guest",
+        submittedAt: new Date().toISOString(),
+        status: "pending"
+      });
+    } catch (e) {
+      console.error("Global submission failed:", e);
+    }
+
     setNewBikeName('');
+    alert(`"${newBikeName}" saved to your list and submitted for official review!`);
   };
 
   const getBatteryLevels = (v: number) => {
@@ -314,9 +332,8 @@ function App() {
         else if (mode === 'sport') { motorEfficiency = 0.75; modeStyleMultiplier = 1.25; }
       } else {
         // PAS Logic: Rider contributes power. Higher PAS = lower rider effort.
-        // PAS 1: 150W human | PAS 3: 75W human | PAS 5: 0W human (throttle)
         humanPowerWatts = Math.max(0, 150 - (pasLevel - 1) * 37.5);
-        motorEfficiency = 0.82; // PAS controllers usually standard sine wave
+        motorEfficiency = 0.82;
       }
       
       const combinedEfficiency = motorEfficiency * thermalEfficiency;
