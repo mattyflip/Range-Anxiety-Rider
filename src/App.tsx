@@ -435,11 +435,13 @@ function App() {
   return (
     <div className="container">
       <header>
-        <div className="logo">Range Anxiety</div>
-        <div className="nav-actions">
+        <div className="logo-container">
+          <div className="logo">Range Anxiety</div>
           <button className="mobile-toggle-btn" onClick={() => setShowMobileMenu(!showMobileMenu)}>
             {showMobileMenu ? 'Map' : 'Trip Settings'}
           </button>
+        </div>
+        <div className="nav-actions">
           <button onClick={() => user ? handleSignOut() : setShowAuthModal(true)} style={{ background: 'rgba(255,255,255,0.1)', color: 'white', border: 'none', borderRadius: '20px', padding: '0.4rem 1rem', fontSize: '0.8rem', cursor: 'pointer' }}>
             {user ? `Sign Out (${isPro ? 'PRO' : 'Free'})` : 'Sign In'}
           </button>
