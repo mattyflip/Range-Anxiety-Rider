@@ -202,6 +202,10 @@ function App() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
 
+  // Bike Search State
+  const [bikeSearchQuery, setBikeSearchQuery] = useState("");
+  const [showBikeResults, setShowBikeSearch] = useState(false);
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
@@ -318,6 +322,8 @@ function App() {
 
   const loadBike = (bike: SavedBike) => {
     setSpecs(bike.specs);
+    setBikeSearchQuery(bike.name);
+    setShowBikeSearch(false);
   };
 
   const swapLocations = () => {
@@ -562,6 +568,10 @@ function App() {
     }
   };
 
+  const filteredBikes = [...STANDARD_BIKES, ...savedBikes].filter(b => 
+    b.name.toLowerCase().includes(bikeSearchQuery.toLowerCase())
+  );
+
   return (
     <div className="app-container">
       <header className="top-nav">
@@ -635,34 +645,58 @@ function App() {
       )}
 
       <aside className="sidebar">
-        <section className="form-group" style={{ backgroundColor: 'var(--card-bg)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-          <label>Favorite Bikes</label>
-          <select
-            style={{ marginBottom: '0.5rem' }}
+        <section className="form-group" style={{ backgroundColor: 'var(--card-bg)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-color)', position: 'relative' }}>
+          <label>Search Bike Model</label>
+          <input
+            type="text"
+            placeholder="Search e.g. Onyx, Sur-Ron..."
+            value={bikeSearchQuery}
+            onFocus={() => setShowBikeSearch(true)}
             onChange={(e) => {
-              const bike = [...STANDARD_BIKES, ...savedBikes].find(b => b.name === e.target.value);
-              if (bike) loadBike(bike);
+              setBikeSearchQuery(e.target.value);
+              setShowBikeSearch(true);
             }}
-            value=""
-          >
-            <option value="" disabled>Load a bike...</option>
-            <optgroup label="Standard Models">
-              {STANDARD_BIKES.map((bike, idx) => (
-                <option key={idx} value={bike.name}>{bike.name}</option>
+            style={{ marginBottom: '0.5rem' }}
+          />
+          {showBikeResults && bikeSearchQuery && (
+            <div className="bike-results-dropdown" style={{
+              position: 'absolute',
+              top: '100%',
+              left: 0,
+              right: 0,
+              backgroundColor: '#1a1a1a',
+              border: '1px solid #333',
+              borderRadius: '4px',
+              zIndex: 1000,
+              maxHeight: '200px',
+              overflowY: 'auto',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.5)'
+            }}>
+              {filteredBikes.map((bike, idx) => (
+                <div
+                  key={idx}
+                  onClick={() => loadBike(bike)}
+                  style={{
+                    padding: '0.8rem',
+                    cursor: 'pointer',
+                    borderBottom: '1px solid #222',
+                    fontSize: '0.9rem'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#252525'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                >
+                  {bike.name}
+                </div>
               ))}
-            </optgroup>
-            {savedBikes.length > 0 && (
-              <optgroup label="Your Saved Bikes">
-                {savedBikes.map((bike, idx) => (
-                  <option key={idx} value={bike.name}>{bike.name}</option>
-                ))}
-              </optgroup>
-            )}
-          </select>
+              {filteredBikes.length === 0 && (
+                <div style={{ padding: '0.8rem', color: '#666', fontSize: '0.8rem' }}>No models found. Enter specs manually.</div>
+              )}
+            </div>
+          )}
           <div style={{ display: 'flex', gap: '0.5rem' }}>
             <input
               type="text"
-              placeholder="Bike Name"
+              placeholder="Nickname to Save"
               value={newBikeName}
               onChange={(e) => setNewBikeName(e.target.value)}
               style={{ padding: '0.4rem', fontSize: '0.85rem' }}
