@@ -106,7 +106,10 @@ function App() {
   const [tirePressurePsi, setTirePressurePsi] = useState<number | ''>(''); // Empty assumes optimal
 
   const [trip, setTrip] = useState<TripDetails>({ origin: '', destination: '', waypoints: [], returnWaypoints: [] });
+  const [controlType, setControlType] = useState<'switch' | 'pas'>('pas');
   const [mode, setMode] = useState<'eco' | 'normal' | 'sport'>('normal');
+  const [pasLevel, setPasLevel] = useState<number>(3); // 1-5 default
+
   const [ridingStyle, setRidingStyle] = useState<'relaxed' | 'aggressive'>('relaxed');        
   const [isRoundTrip, setIsRoundTrip] = useState(false);
   const [isCustomReturn, setIsCustomReturn] = useState(false);
@@ -209,6 +212,12 @@ function App() {
     if (bike.specs.voltage) {
       setStartVoltage(getBatteryLevels(Number(bike.specs.voltage)).max);
     }
+    // Simple heuristic to set control type
+    if (Number(bike.specs.voltage) >= 60 || bike.name.includes("Onyx") || bike.name.includes("Sur-Ron") || bike.name.includes("Talaria")) {
+      setControlType('switch');
+    } else {
+      setControlType('pas');
+    }
   };
 
   const onMapLoad = useCallback((map: google.maps.Map) => {
@@ -252,9 +261,7 @@ function App() {
       });
 
       const distMiles = totalDistMeters / 1609.34;
-      const durationMin = totalDurationSec / 60;
       const path = route.overview_path.map(p => ({ lat: p.lat(), lng: p.lng() }));
-      
       const routeBearing = calculateBearing(path[0], path[path.length - 1]);
 
       let gainFeet = 0;
@@ -297,27 +304,29 @@ function App() {
       let thermalEfficiency = 1.0;
       if (tempF < 60) thermalEfficiency -= (60 - tempF) * 0.003;
       
-      // --- 3-SPEED MODE SYSTEM ---
-      // ECO: High efficiency (85%), smooth power delivery
-      // NORMAL: Standard efficiency (80%)
-      // SPORT: Lower efficiency (75% due to heat/I2R losses), aggressive acceleration
+      // --- MODE SYSTEM ---
       let motorEfficiency = 0.80;
       let modeStyleMultiplier = 1.0;
-      
-      if (mode === 'eco') {
-        motorEfficiency = 0.85;
-        modeStyleMultiplier = 0.95; // Power saving logic
-      } else if (mode === 'sport') {
-        motorEfficiency = 0.75;
-        modeStyleMultiplier = 1.25; // Aggressive power mapping
+      let humanPowerWatts = 0;
+
+      if (controlType === 'switch') {
+        if (mode === 'eco') { motorEfficiency = 0.85; modeStyleMultiplier = 0.95; }
+        else if (mode === 'sport') { motorEfficiency = 0.75; modeStyleMultiplier = 1.25; }
+      } else {
+        // PAS Logic: Rider contributes power. Higher PAS = lower rider effort.
+        // PAS 1: 150W human | PAS 3: 75W human | PAS 5: 0W human (throttle)
+        humanPowerWatts = Math.max(0, 150 - (pasLevel - 1) * 37.5);
+        motorEfficiency = 0.82; // PAS controllers usually standard sine wave
       }
       
       const combinedEfficiency = motorEfficiency * thermalEfficiency;
       const WorkClimbJoules = massKg * 9.81 * gainMeters;
       const WhClimb = (WorkClimbJoules / 3600) / combinedEfficiency;
 
-      const PowerWatts = (ForceRolling + ForceDrag) * velocityMps;
-      const WhPerMileFlat = (PowerWatts / velocityMps) * (1609.34 / 3600) / combinedEfficiency;
+      const TotalPowerWatts = (ForceRolling + ForceDrag) * velocityMps;
+      const MotorPowerWatts = Math.max(0, TotalPowerWatts - humanPowerWatts);
+      
+      const WhPerMileFlat = (MotorPowerWatts / velocityMps) * (1609.34 / 3600) / combinedEfficiency;
 
       const styleMultiplier = ridingStyle === 'aggressive' ? 1.2 : 1.0;
       const estimatedWh = (distMiles * WhPerMileFlat * styleMultiplier * modeStyleMultiplier) + WhClimb;
@@ -338,11 +347,11 @@ function App() {
 
       setMetrics({
         distanceMiles: distMiles,
-        durationMin: durationMin,
+        durationMin: distMiles / (Number(targetSpeedMph) || 15) * 60,
         elevationGainFeet: gainFeet,
         estimatedWh,
         batteryPercentUsed: Math.max(0, batteryPercentRemaining),
-        recommendedSpeedMph: mode === 'eco' ? 18 : mode === 'normal' ? 25 : 35,
+        recommendedSpeedMph: mode === 'eco' || pasLevel <= 2 ? 18 : 25,
         windConditions: { speed: windSpeed, direction: windDir, headwindComponent: headwindMph }
       });
       setIsLoading(false);
@@ -459,6 +468,35 @@ function App() {
           </div>
 
           <section className="form-group">
+            <label>Power Control Type</label>
+            <div className="mode-toggle">
+              <button className={controlType === 'pas' ? 'active' : ''} onClick={() => setControlType('pas')}>Pedal Assist (PAS)</button>
+              <button className={controlType === 'switch' ? 'active' : ''} onClick={() => setControlType('switch')}>3-Speed Switch</button>
+            </div>
+          </section>
+
+          {controlType === 'pas' ? (
+            <section className="form-group">
+              <label>Pedal Assist Level (1-5)</label>
+              <div className="mode-toggle" style={{ flexWrap: 'wrap' }}>
+                {[1, 2, 3, 4, 5].map(lv => (
+                  <button key={lv} className={pasLevel === lv ? 'active' : ''} onClick={() => setPasLevel(lv)} style={{ flex: 'none', width: '18%' }}>{lv}</button>
+                ))}
+              </div>
+              <p style={{ fontSize: '0.6rem', color: '#777', marginTop: '0.4rem' }}>* Assumes 150W human power at PAS 1, decreasing as PAS increases.</p>
+            </section>
+          ) : (
+            <section className="form-group">
+              <label>3-Speed Switch Mode</label>
+              <div className="mode-toggle">
+                <button className={mode === 'eco' ? 'active' : ''} onClick={() => setMode('eco')}>ECO</button>
+                <button className={mode === 'normal' ? 'active' : ''} onClick={() => setMode('normal')}>NORMAL</button>
+                <button className={mode === 'sport' ? 'active' : ''} onClick={() => setMode('sport')}>SPORT</button>
+              </div>
+            </section>
+          )}
+
+          <section className="form-group">
             <label>Start Battery</label>
             <div className="mode-toggle" style={{ marginBottom: '0.5rem' }}>
               <button className={batteryInputMode === 'percent' ? 'active' : ''} onClick={() => setBatteryInputMode('percent')}>%</button>
@@ -483,15 +521,6 @@ function App() {
                 </label>
               </div>
             )}
-          </section>
-
-          <section className="form-group">
-            <label>3-Speed Switch Mode</label>
-            <div className="mode-toggle">
-              <button className={mode === 'eco' ? 'active' : ''} onClick={() => setMode('eco')}>ECO</button>
-              <button className={mode === 'normal' ? 'active' : ''} onClick={() => setMode('normal')}>NORMAL</button>
-              <button className={mode === 'sport' ? 'active' : ''} onClick={() => setMode('sport')}>SPORT</button>
-            </div>
           </section>
 
           <section className="form-group">
