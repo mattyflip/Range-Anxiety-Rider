@@ -141,6 +141,7 @@ function App() {
 
   const [agreedToToS, setAgreedToToS] = useState(false);
   const [showToSPage, setShowToSPage] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -432,18 +433,21 @@ function App() {
   );
 
   return (
-    <div className="container" style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw', overflow: 'hidden', position: 'relative' }}>
-      <header style={{ flexShrink: 0, height: '4.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 1.5rem', background: '#1e1e1e', borderBottom: '1px solid #333' }}>
-        <div className="logo" style={{ color: '#ff6600', fontWeight: '900', fontSize: '1.4rem' }}>Range Anxiety</div>
+    <div className="container">
+      <header>
+        <div className="logo">Range Anxiety</div>
         <div className="nav-actions">
+          <button className="mobile-toggle-btn" onClick={() => setShowMobileMenu(!showMobileMenu)}>
+            {showMobileMenu ? 'Close Map' : 'Trip Settings'}
+          </button>
           <button onClick={() => user ? handleSignOut() : setShowAuthModal(true)} style={{ background: 'rgba(255,255,255,0.1)', color: 'white', border: 'none', borderRadius: '20px', padding: '0.4rem 1rem', fontSize: '0.8rem', cursor: 'pointer' }}>
             {user ? `Sign Out (${isPro ? 'PRO' : 'Free'})` : 'Sign In'}
           </button>
         </div>
       </header>
 
-      <div style={{ display: 'flex', flexGrow: 1, position: 'relative', width: '100%', height: 'calc(100vh - 4.5rem)' }}>
-        <aside className="sidebar" style={{ position: 'absolute', top: '1.5rem', left: '1.5rem', width: '380px', maxHeight: '90%', background: 'rgba(30,30,30,0.95)', padding: '1.5rem', borderRadius: '16px', border: '1px solid #333', overflowY: 'auto', zIndex: 10, boxShadow: 'none' }}>
+      <div className="main-layout">
+        <aside className={`sidebar ${showMobileMenu ? 'mobile-visible' : ''}`}>
           {error && <div style={{ background: 'rgba(217,48,37,0.1)', color: '#d93025', padding: '0.8rem', borderRadius: '8px', marginBottom: '1rem', fontSize: '0.8rem' }}>{error}</div>}
           
           <section className="form-group" style={{ position: 'relative' }}>
@@ -613,7 +617,7 @@ function App() {
           
           <button 
             className="calculate-btn" 
-            onClick={handleCalculate} 
+            onClick={() => { handleCalculate(); setShowMobileMenu(false); }} 
             disabled={isLoading}
             style={{ width: '100%', marginTop: '1rem', padding: '1rem', borderRadius: '12px' }}
           >
@@ -621,7 +625,7 @@ function App() {
           </button>
         </aside>
 
-        <main style={{ flexGrow: 1, position: 'relative', width: '100%', height: '100%' }}>
+        <main>
           {isLoaded ? (
             <GoogleMap
               mapContainerStyle={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}
@@ -630,10 +634,10 @@ function App() {
               onLoad={onMapLoad}
             >
               {response && (
-                <div style={{ position: 'absolute', top: '1rem', right: '1rem', zIndex: 1, display: 'flex', gap: '0.5rem' }}>
-                    <button onClick={() => searchPOIs('cafe')} style={{ padding: '0.5rem 1rem', background: 'white', border: '1px solid #ccc', borderRadius: '20px', fontSize: '0.8rem', cursor: 'pointer' }}>☕ Cafes</button>
-                    <button onClick={() => searchPOIs('bike shop')} style={{ padding: '0.5rem 1rem', background: 'white', border: '1px solid #ccc', borderRadius: '20px', fontSize: '0.8rem', cursor: 'pointer' }}>🚲 Shops</button>
-                    <button onClick={searchByMapCenter} style={{ padding: '0.5rem 1rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '20px', fontSize: '0.8rem', cursor: 'pointer' }}>🔍 Search Area</button>
+                <div className="map-controls">
+                    <button onClick={() => searchPOIs('cafe')}>☕ Cafes</button>
+                    <button onClick={() => searchPOIs('bike shop')}>🚲 Shops</button>
+                    <button onClick={searchByMapCenter}>🔍 Search Area</button>
                 </div>
               )}
 
@@ -664,7 +668,7 @@ function App() {
               )}
             </GoogleMap>
           ) : (
-            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#121212', color: '#888' }}>
+            <div className="map-placeholder">
               {loadError ? (
                 <div style={{ textAlign: 'center', padding: '2rem' }}>
                   <p style={{ color: '#ff4444', fontWeight: 'bold' }}>Error Loading Maps</p>
@@ -677,8 +681,8 @@ function App() {
         </main>
       </div>
 
-      <footer style={{ position: 'fixed', bottom: '10px', width: '100%', textAlign: 'center', pointerEvents: 'none', zIndex: 100 }}>
-        <p style={{ fontSize: '0.6rem', color: '#444' }}>&copy; 2026 Range Anxiety. Estimates only.</p>
+      <footer>
+        <p>&copy; 2026 Range Anxiety. Estimates only.</p>
       </footer>
       
       {showAuthModal && (

@@ -178,53 +178,88 @@ main {
   color: var(--secondary-text);
 }
 
+.main-layout {
+  display: flex;
+  flex-grow: 1;
+  position: relative;
+  width: 100%;
+  height: calc(100vh - 4.5rem);
+}
+
+.mobile-toggle-btn {
+  display: none;
+  background: var(--accent-color);
+  color: white;
+  border: none;
+  border-radius: 20px;
+  padding: 0.4rem 1rem;
+  font-size: 0.8rem;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.map-controls {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  z-index: 1;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.map-controls button {
+  padding: 0.5rem 1rem;
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 20px;
+  fontSize: 0.8rem;
+  cursor: pointer;
+  color: #333;
+}
+
 @media (max-width: 800px) {
+  .mobile-toggle-btn {
+    display: block;
+  }
+
   header {
-    height: 3.5rem !important; /* Shrink header more */
-    padding: 0 1rem !important;
+    height: 4rem;
+    padding: 0 1rem;
   }
 
   .logo {
-    font-size: 0.9rem !important;
-  }
-
-  .nav-actions {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-
-  .calculate-btn {
-    padding: 0.4rem 0.8rem !important;
-    font-size: 0.7rem !important;
+    font-size: 1rem;
   }
 
   .sidebar {
     position: fixed !important;
-    top: auto !important;
-    bottom: 0 !important;
+    top: 4rem !important;
     left: 0 !important;
-    right: 0 !important;
     width: 100% !important;
-    height: 33vh !important;
-    max-height: 33vh !important;
-    border-radius: 20px 20px 0 0 !important;
-    border-left: none !important;
-    border-right: none !important;
-    border-bottom: none !important;
-    padding: 1rem !important;
-    margin: 0 !important;
-    box-shadow: 0 -4px 20px rgba(0,0,0,0.5) !important;
-    z-index: 200 !important; /* Ensure it's above everything */
+    height: calc(100% - 4rem) !important;
+    max-height: none !important;
+    border-radius: 0 !important;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease-in-out;
+    background: #1e1e1e;
+    z-index: 1000;
   }
 
-  /* Adjust map container to be visible above the bottom sheet */
+  .sidebar.mobile-visible {
+    transform: translateX(0);
+  }
+
   main {
-    height: calc(100vh - 3.5rem) !important;
-    width: 100% !important;
+    height: 100% !important;
+  }
+
+  .map-controls {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    width: 70%;
   }
 
   footer {
-    display: none !important; /* Hide footer on mobile to save space */
+    display: none;
   }
 }
