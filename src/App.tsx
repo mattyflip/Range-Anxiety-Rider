@@ -98,7 +98,13 @@ function App() {
   const shareCardRef = useRef<HTMLDivElement>(null);
 
   const [specs, setSpecs] = useState<BikeSpecs>({ voltage: 48, capacityAh: 15, motorWatts: 750, bikeWeightLbs: 65 });
-  const [riderWeightLbs, setRiderWeightLbs] = useState<number | ''>(175);
+  const [riderWeightLbs, setRiderWeightLbs] = useState<number | ''>(200);
+  
+  // Advanced Factors
+  const [ambientTempF, setAmbientTempF] = useState<number | ''>(70);
+  const [tireType, setTireType] = useState<'road' | 'knobby'>('road');
+  const [tirePressurePsi, setTirePressurePsi] = useState<number | ''>(''); // Empty assumes optimal
+
   const [trip, setTrip] = useState<TripDetails>({ origin: '', destination: '', waypoints: [], returnWaypoints: [] });
   const [mode, setMode] = useState<'eco' | 'sport'>('eco');
   const [ridingStyle, setRidingStyle] = useState<'relaxed' | 'aggressive'>('relaxed');        
@@ -200,7 +206,6 @@ function App() {
     setSpecs(bike.specs);
     setBikeSearchQuery(bike.name);
     setShowBikeResults(false);
-    // Automatically update starting voltage to max for the bike's system
     if (bike.specs.voltage) {
       setStartVoltage(getBatteryLevels(Number(bike.specs.voltage)).max);
     }
@@ -225,7 +230,6 @@ function App() {
     else { console.error('Directions error:', status); setError(`Google Maps Directions Error: ${status}`); setIsLoading(false); }
   };
 
-  // Helper to calculate bearing between two points
   const calculateBearing = (start: {lat: number, lng: number}, end: {lat: number, lng: number}) => {
     const startLat = (start.lat * Math.PI) / 180;
     const startLng = (start.lng * Math.PI) / 180;
@@ -272,34 +276,49 @@ function App() {
 
       // --- PHYSICS-BASED MODEL ---
       const bikeWeight = Number(specs.bikeWeightLbs) || 60;
-      const riderWeight = Number(riderWeightLbs) || 175;
+      const riderWeight = Number(riderWeightLbs) || 200;
       const massKg = (bikeWeight + riderWeight) * 0.453592;
-      const velocityMps = (Number(targetSpeedMph) || 15) * 0.44704; // mph to m/s
+      const velocityMps = (Number(targetSpeedMph) || 15) * 0.44704;
       
-      const Crr = 0.008;
+      // 1. Rolling Resistance (Crr)
+      // Road tires ~ 0.007, Knobby tires ~ 0.015
+      // Lower pressure increases resistance (simplified: every 5psi under 35 adds 0.002)
+      let Crr = tireType === 'road' ? 0.007 : 0.015;
+      if (tirePressurePsi !== '' && tirePressurePsi < 35) {
+        Crr += (35 - tirePressurePsi) / 5 * 0.002;
+      }
       const ForceRolling = Crr * massKg * 9.81;
 
-      const rho = 1.225; // air density kg/m3
+      // 2. Air Drag
+      // Air density (rho) changes with temperature (colder air = more dense = more drag)
+      const tempF = Number(ambientTempF) || 70;
+      const tempC = (tempF - 32) * 5 / 9;
+      const rho = 1.225 * (288.15 / (273.15 + tempC)); // STP adjustment
       const CdA = 0.55;
       const relativeVelocityMps = Math.max(0.1, velocityMps + (headwindMph * 0.44704));
       const ForceDrag = 0.5 * rho * CdA * Math.pow(relativeVelocityMps, 2);
 
+      // 3. Potential Energy (Hills)
       const gainMeters = gainFeet * 0.3048;
-      const efficiency = mode === 'eco' ? 0.85 : 0.75;
+      // Temperature impact on motor/battery efficiency
+      // Lithium batteries lose usable capacity and voltage consistency in the cold
+      let thermalEfficiency = 1.0;
+      if (tempF < 60) thermalEfficiency -= (60 - tempF) * 0.003; // ~3% loss per 10 degrees below 60
+      
+      const efficiency = (mode === 'eco' ? 0.85 : 0.75) * thermalEfficiency;
       const WorkClimbJoules = massKg * 9.81 * gainMeters;
       const WhClimb = (WorkClimbJoules / 3600) / efficiency;
 
+      // 4. Kinetic Power (Watts)
       const PowerWatts = (ForceRolling + ForceDrag) * velocityMps;
       const WhPerMileFlat = (PowerWatts / velocityMps) * (1609.34 / 3600) / efficiency;
 
       const styleMultiplier = ridingStyle === 'aggressive' ? 1.2 : 1.0;
-      
       const estimatedWh = (distMiles * WhPerMileFlat * styleMultiplier) + WhClimb;
       
       // --- BATTERY HEALTH & STATE ---
-      // "Broken-in" good health factor (92% usable capacity)
+      // "Broken-in" factor (92%)
       const BATTERY_HEALTH_FACTOR = 0.92;
-      
       const totalWhRaw = (capacityInputMode === 'ah') ? (Number(specs.voltage) * Number(specs.capacityAh)) : Number(specs.capacityAh);
       const totalWhUsable = totalWhRaw * BATTERY_HEALTH_FACTOR;
       
@@ -413,6 +432,27 @@ function App() {
           </div>
 
           <section className="form-group"><label>Rider Weight (lbs)</label><input type="number" value={riderWeightLbs} onChange={(e) => setRiderWeightLbs(parseFloat(e.target.value) || '')} /></section>
+
+          <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)', marginBottom: '1rem' }}>
+            <label style={{ color: 'var(--accent-color)', fontSize: '0.65rem' }}>Advanced Environment</label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '0.5rem' }}>
+               <section className="form-group">
+                 <label>Temp (°F)</label>
+                 <input type="number" value={ambientTempF} onChange={(e) => setAmbientTempF(parseFloat(e.target.value) || '')} />
+               </section>
+               <section className="form-group">
+                 <label>Tire PSI</label>
+                 <input type="number" placeholder="Auto" value={tirePressurePsi} onChange={(e) => setTirePressurePsi(parseFloat(e.target.value) || '')} />
+               </section>
+            </div>
+            <section className="form-group">
+               <label>Tire Type</label>
+               <div className="mode-toggle">
+                  <button className={tireType === 'road' ? 'active' : ''} onClick={() => setTireType('road')}>Road</button>
+                  <button className={tireType === 'knobby' ? 'active' : ''} onClick={() => setTireType('knobby')}>Knobby</button>
+               </div>
+            </section>
+          </div>
 
           <section className="form-group">
             <label>Start Battery</label>
