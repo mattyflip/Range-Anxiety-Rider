@@ -255,6 +255,7 @@ main {
   header {
     height: 4rem;
     padding: 0 1rem;
+    flex-shrink: 0;
   }
 
   h1 {
@@ -267,18 +268,20 @@ main {
     bottom: 0;
     left: 0;
     width: 100%;
-    max-height: 45%;
+    /* Occupies between 1/4 (25vh) and 1/3 (33vh) of the screen */
+    height: 33vh; 
+    max-height: 33vh;
     border-radius: 20px 20px 0 0;
-    border-left: none;
-    border-right: none;
+    border: 1px solid var(--border-color);
     border-bottom: none;
     padding: 1.5rem 1rem;
-    margin: 0; /* Reset margins */
-    box-sizing: border-box; /* Ensure padding doesn't overflow */
+    margin: 0;
+    box-shadow: 0 -8px 32px rgba(0,0,0,0.6);
   }
 
   main {
-    height: calc(100vh - 4rem); /* Ensure main takes up screen space above sidebar */
+    height: calc(100vh - 4rem - 33vh);
+    width: 100%;
   }
 
   .logo {
