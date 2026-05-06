@@ -449,8 +449,20 @@ function App() {
             <section className="form-group">
               <label>Capacity ({capacityInputMode.toUpperCase()})</label>
               <div className="mode-toggle" style={{ marginBottom: '0.5rem' }}>
-                <button className={capacityInputMode === 'ah' ? 'active' : ''} onClick={() => setCapacityInputMode('ah')}>Ah</button>
-                <button className={capacityInputMode === 'wh' ? 'active' : ''} onClick={() => setCapacityInputMode('wh')}>Wh</button>
+                <button className={capacityInputMode === 'ah' ? 'active' : ''} onClick={() => {
+                  if (capacityInputMode === 'wh' && specs.voltage && specs.capacityAh) {
+                    const ah = Number(specs.capacityAh) / Number(specs.voltage);
+                    setSpecs(prev => ({ ...prev, capacityAh: parseFloat(ah.toFixed(1)) }));
+                  }
+                  setCapacityInputMode('ah');
+                }}>Ah</button>
+                <button className={capacityInputMode === 'wh' ? 'active' : ''} onClick={() => {
+                  if (capacityInputMode === 'ah' && specs.voltage && specs.capacityAh) {
+                    const wh = Number(specs.voltage) * Number(specs.capacityAh);
+                    setSpecs(prev => ({ ...prev, capacityAh: parseFloat(wh.toFixed(0)) }));
+                  }
+                  setCapacityInputMode('wh');
+                }}>Wh</button>
               </div>
               <input type="number" value={specs.capacityAh} onChange={(e) => handleSpecChange('capacityAh', e.target.value)} />
             </section>
