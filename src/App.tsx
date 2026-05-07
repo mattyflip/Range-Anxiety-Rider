@@ -1,11 +1,11 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { GoogleMap, useJsApiLoader, DirectionsService, DirectionsRenderer, Marker, InfoWindow } from '@react-google-maps/api'
+import { GoogleMap, useJsApiLoader, DirectionsService, DirectionsRenderer, Marker, InfoWindow, Polyline } from '@react-google-maps/api'
 import axios from 'axios'
 import { toPng } from 'html-to-image'
 import { auth, db } from './firebase'
 import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'firebase/auth'
 import type { User } from 'firebase/auth'
-import { doc, getDoc, setDoc, collection, addDoc, serverTimestamp, onSnapshot, query, where, deleteDoc, getDocs } from 'firebase/firestore'
+import { doc, getDoc, setDoc, collection, addDoc, serverTimestamp, onSnapshot, query, where, deleteDoc, getDocs, updateDoc, arrayUnion } from 'firebase/firestore'
 import AdBanner from './components/AdBanner'
 import TermsOfService from './components/TermsOfService'
 
@@ -21,6 +21,8 @@ interface GroupRide {
   startLat: number;
   startLng: number;
   status: string;
+  leaderId?: string;
+  leaderTrail?: google.maps.LatLngLiteral[];
 }
 
 interface Participant {
@@ -238,12 +240,17 @@ function App() {
       }
     });
 
-    // Listen to the RIDE itself to detect when it ends (for participants)
+    // Listen to the RIDE itself to detect when it ends or if leader changes
     const rideUnsub = onSnapshot(doc(db, "group_rides", activeRide.id), (snap) => {
-      if (snap.exists() && snap.data().status === 'offline') {
-        alert(`The ride has ended. Thank you for joining ${activeRide.name}!`);
-        setActiveRide(null);
-        setRideParticipants([]);
+      if (snap.exists()) {
+        const data = snap.data();
+        if (data.status === 'offline') {
+          alert(`The ride has ended. Thank you for joining ${activeRide.name}!`);
+          setActiveRide(null);
+          setRideParticipants([]);
+        } else {
+          setActiveRide({ id: snap.id, ...data } as GroupRide);
+        }
       }
     });
 
@@ -269,6 +276,7 @@ function App() {
 
           if (hasMoved) {
             try {
+              // Standard location update
               await setDoc(doc(db, `group_rides/${activeRide.id}/participants`, user.uid), {
                 userId: user.uid,
                 name: username || user.email?.split('@')[0] || "Rider",
@@ -276,6 +284,14 @@ function App() {
                 lng: newLoc.lng,
                 lastUpdatedAt: Date.now()
               }, { merge: true });
+
+              // If user is the leader, add to the trail
+              if (activeRide.leaderId === user.uid) {
+                await updateDoc(doc(db, "group_rides", activeRide.id), {
+                  leaderTrail: arrayUnion(newLoc)
+                });
+              }
+
               lastUploadedLocRef.current = newLoc;
               setLastUploadedLocation(newLoc);
             } catch (e) { console.error("Location upload failed:", e); }
@@ -469,6 +485,13 @@ function App() {
         setRideError("Ride not found or invalid PIN.");
       }
     } catch (e) { console.error("Join ride failed:", e); setRideError("Failed to join ride."); }
+  };
+
+  const setLeader = async (participantId: string) => {
+    if (!user || !activeRide || user.uid !== activeRide.creatorId) return;
+    try {
+      await updateDoc(doc(db, "group_rides", activeRide.id), { leaderId: participantId, leaderTrail: [] });
+    } catch (e) { console.error("Set leader failed:", e); }
   };
 
   const leaveRide = async () => {
@@ -1101,10 +1124,33 @@ function App() {
                    </>
                  ) : (
                    <div style={{ background: 'rgba(52,168,83,0.1)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(52,168,83,0.3)' }}>
-                      <p style={{ margin: 0, fontWeight: 'bold', color: '#34a853' }}>LIVE: {activeRide.name}</p>
-                      <p style={{ margin: '0.2rem 0', fontSize: '0.7rem', color: '#888' }}>PIN: <span style={{ color: 'white', fontWeight: 'bold' }}>{activeRide.pin}</span></p>
-                      <p style={{ margin: '0.5rem 0', fontSize: '0.7rem' }}>👥 {rideParticipants.length} riders active</p>
-                      <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <p style={{ margin: 0, fontWeight: 'bold', color: '#34a853' }}>LIVE: {activeRide.name}</p>
+                        <span style={{ fontSize: '0.6rem', color: '#888' }}>PIN: <span style={{ color: 'white', fontWeight: 'bold' }}>{activeRide.pin}</span></span>
+                      </div>
+
+                      <div style={{ marginTop: '0.8rem', display: 'flex', flexDirection: 'column', gap: '0.4rem', maxHeight: '150px', overflowY: 'auto' }}>
+                        {rideParticipants.map(p => (
+                          <div key={p.userId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.03)', padding: '0.4rem', borderRadius: '6px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: activeRide.creatorId === p.userId ? '#34a853' : '#ff6600' }} />
+                              <span style={{ fontSize: '0.75rem' }}>
+                                {p.name} {activeRide.leaderId === p.userId && '⭐️'}
+                              </span>
+                            </div>
+                            {user?.uid === activeRide.creatorId && activeRide.leaderId !== p.userId && (
+                              <button 
+                                onClick={() => setLeader(p.userId)}
+                                style={{ background: 'none', border: '1px solid #444', color: '#888', fontSize: '0.6rem', padding: '2px 6px', borderRadius: '4px', cursor: 'pointer' }}
+                              >
+                                Set Leader
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
                         <button onClick={leaveRide} style={{ flex: 1, padding: '0.4rem', backgroundColor: '#444', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem' }}>Leave</button>
                         {user?.uid === activeRide.creatorId && (
                           <button onClick={endRide} style={{ flex: 2, padding: '0.4rem', backgroundColor: '#d93025', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.75rem' }}>End Ride</button>
@@ -1159,6 +1205,22 @@ function App() {
                 />
               )}
               {response && <DirectionsRenderer options={{ directions: response, routeIndex: selectedRouteIndex }} />}
+              
+              {activeRide?.leaderTrail && activeRide.leaderTrail.length > 1 && (
+                <Polyline 
+                  path={activeRide.leaderTrail}
+                  options={{
+                    strokeColor: '#34a853',
+                    strokeOpacity: 0.8,
+                    strokeWeight: 4,
+                    icons: [{
+                      icon: { path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW },
+                      offset: '100%',
+                      repeat: '100px'
+                    }]
+                  }}
+                />
+              )}
               
               <button 
                 onClick={recenterMap}
