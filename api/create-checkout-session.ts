@@ -10,11 +10,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { userId, email } = req.body;
+  const { userId, email, tier } = req.body;
 
   if (!userId) {
     return res.status(400).json({ error: 'User ID is required' });
   }
+
+  const isHost = tier === 'host';
 
   try {
     const session = await stripe.checkout.sessions.create({
@@ -24,20 +26,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           price_data: {
             currency: 'usd',
             product_data: {
-              name: 'Range Anxiety PRO',
-              description: 'Unlock all features and remove ads forever.',
+              name: isHost ? 'Range Anxiety HOST TIER' : 'Range Anxiety PRO',
+              description: isHost 
+                ? 'Host group rides, see live riders on map, and unlock all PRO features.' 
+                : 'Unlock all features and remove ads forever.',
             },
-            unit_amount: 499, // $4.99 one-time
+            unit_amount: isHost ? 999 : 499,
           },
           quantity: 1,
         },
       ],
-      mode: 'payment',
+      mode: isHost ? 'subscription' : 'payment',
       success_url: `${req.headers.origin}/?payment=success`,
       cancel_url: `${req.headers.origin}/?payment=cancel`,
       customer_email: email,
       metadata: {
         userId,
+        tier: isHost ? 'host' : 'pro',
       },
     });
 

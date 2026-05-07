@@ -5,11 +5,28 @@ import { toPng } from 'html-to-image'
 import { auth, db } from './firebase'
 import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'firebase/auth'
 import type { User } from 'firebase/auth'
-import { doc, getDoc, setDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore'
+import { doc, getDoc, setDoc, collection, addDoc, serverTimestamp, onSnapshot, query, where, deleteDoc, getDocs } from 'firebase/firestore'
 import AdBanner from './components/AdBanner'
 import TermsOfService from './components/TermsOfService'
 
 const LIBRARIES: ("places")[] = ["places"];
+
+interface GroupRide {
+  id: string;
+  name: string;
+  isPublic: boolean;
+  pin: string;
+  creatorId: string;
+  origin: string;
+}
+
+interface Participant {
+  userId: string;
+  name: string;
+  lat: number;
+  lng: number;
+  lastUpdatedAt: number;
+}
 
 interface BikeSpecs {
   voltage: number | '';
@@ -129,6 +146,8 @@ function App() {
 
   const [user, setUser] = useState<User | null>(null);
   const [isPro, setIsPro] = useState(false);
+  const [isHostTier, setIsHostTier] = useState(false);
+  const [hostTierExpiresAt, setHostTierExpiresAt] = useState<number | null>(null);
   const [authEmail, setAuthEmail] = useState('');
   const [authPass, setAuthPass] = useState('');
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -143,6 +162,59 @@ function App() {
   const [showToSPage, setShowToSPage] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
 
+  // Group Rides State
+  const [activeRide, setActiveRide] = useState<GroupRide | null>(null);
+  const [rideParticipants, setRideParticipants] = useState<Participant[]>([]);
+  const [newRideName, setNewRideNameLocal] = useState('');
+  const [joinPin, setJoinPin] = useState('');
+  const [isPublicRide, setIsPublicRide] = useState(true);
+  const [lastUploadedLocation, setLastUploadedLocation] = useState<google.maps.LatLngLiteral | null>(null);
+
+  // Sync Participants
+  useEffect(() => {
+    if (!activeRide) return;
+    const q = collection(db, `group_rides/${activeRide.id}/participants`);
+    const unsubscribe = onSnapshot(q, (snap) => {
+      const parts: Participant[] = [];
+      snap.forEach(doc => parts.push(doc.data() as Participant));
+      setRideParticipants(parts);
+    });
+    return () => unsubscribe();
+  }, [activeRide]);
+
+  // Upload Location every 15s
+  useEffect(() => {
+    if (!activeRide || !user) return;
+
+    const interval = setInterval(() => {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(async (pos) => {
+          const newLoc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+          
+          // Optimization: Only upload if moved > 10 meters (roughly 0.0001 degrees)
+          const hasMoved = !lastUploadedLocation || 
+            Math.abs(newLoc.lat - lastUploadedLocation.lat) > 0.0001 || 
+            Math.abs(newLoc.lng - lastUploadedLocation.lng) > 0.0001;
+
+          if (hasMoved) {
+            try {
+              await setDoc(doc(db, `group_rides/${activeRide.id}/participants`, user.uid), {
+                userId: user.uid,
+                name: user.email?.split('@')[0] || "Rider",
+                lat: newLoc.lat,
+                lng: newLoc.lng,
+                lastUpdatedAt: Date.now()
+              }, { merge: true });
+              setLastUploadedLocation(newLoc);
+            } catch (e) { console.error("Location upload failed:", e); }
+          }
+        });
+      }
+    }, 15000);
+
+    return () => clearInterval(interval);
+  }, [activeRide, user, lastUploadedLocation]);
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
@@ -150,15 +222,21 @@ function App() {
         try {
           const userDoc = await getDoc(doc(db, "users", currentUser.uid));
           if (userDoc.exists()) {
-            setIsPro(userDoc.data().isPro || false);
-            if (userDoc.data().bikes) setSavedBikes(userDoc.data().bikes);
+            const data = userDoc.data();
+            setIsPro(data.isPro || false);
+            setIsHostTier(data.isHostTier || false);
+            setHostTierExpiresAt(data.hostTierExpiresAt?.toMillis() || null);
+            if (data.bikes) setSavedBikes(data.bikes);
           } else {
             await setDoc(doc(db, "users", currentUser.uid), { email: currentUser.email, isPro: false, createdAt: new Date() });
             setIsPro(false);
+            setIsHostTier(false);
           }
         } catch (e) { console.error("Firestore error:", e); }
       } else {
         setIsPro(false);
+        setIsHostTier(false);
+        setHostTierExpiresAt(null);
         const local = localStorage.getItem('ebike-saved-bikes');
         if (local) setSavedBikes(JSON.parse(local));
       }
@@ -195,16 +273,88 @@ function App() {
 
   const handleSignOut = () => signOut(auth);
 
-  const handleUpgrade = async () => {
+  const handleUpgrade = async (tier: 'pro' | 'host' = 'pro') => {
     if (!user) { setShowAuthModal(true); return; }
     try {
-      const resp = await axios.post('/api/create-checkout-session', { userId: user.uid, email: user.email });
+      const resp = await axios.post('/api/create-checkout-session', { userId: user.uid, email: user.email, tier });
       if (resp.data.url) { window.location.href = resp.data.url; }
       else { throw new Error("No checkout URL returned."); }
     } catch (err: any) {
       console.error("Upgrade error:", err);
       setError(`Checkout Error: ${err.response?.data?.error || err.message}`);
     }
+  };
+
+  const createRide = async () => {
+    if (!user || !isHostTier) return;
+    if (!newRideName) { setError("Please name your ride."); return; }
+    
+    const pin = Math.floor(1000 + Math.random() * 9000).toString();
+    const rideData = {
+      name: newRideName,
+      isPublic: isPublicRide,
+      pin,
+      creatorId: user.uid,
+      createdAt: serverTimestamp(),
+      origin: trip.origin || "Current Location",
+      status: 'active'
+    };
+
+    try {
+      const rideRef = await addDoc(collection(db, "group_rides"), rideData);
+      setActiveRide({ id: rideRef.id, ...rideData } as any);
+      setNewRideNameLocal('');
+      // Automatically join as participant
+      await setDoc(doc(db, `group_rides/${rideRef.id}/participants`, user.uid), {
+        userId: user.uid,
+        name: user.email?.split('@')[0] || "Rider",
+        lat: center.lat,
+        lng: center.lng,
+        lastUpdatedAt: Date.now()
+      });
+    } catch (e) { console.error("Create ride failed:", e); setError("Failed to create ride."); }
+  };
+
+  const joinRide = async (rideId?: string) => {
+    if (!user || !isHostTier) return;
+
+    try {
+      let rideDoc;
+      if (rideId) {
+        rideDoc = await getDoc(doc(db, "group_rides", rideId));
+      } else {
+        if (!joinPin) return;
+        const q = query(collection(db, "group_rides"), where("pin", "==", joinPin), where("status", "==", "active"));
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+          rideDoc = snap.docs[0];
+        }
+      }
+
+      if (rideDoc && rideDoc.exists()) {
+        const data = rideDoc.data();
+        setActiveRide({ id: rideDoc.id, ...data } as any);
+        await setDoc(doc(db, `group_rides/${rideDoc.id}/participants`, user.uid), {
+          userId: user.uid,
+          name: user.email?.split('@')[0] || "Rider",
+          lat: center.lat,
+          lng: center.lng,
+          lastUpdatedAt: Date.now()
+        });
+        setJoinPin('');
+      } else {
+        setError("Ride not found or invalid PIN.");
+      }
+    } catch (e) { console.error("Join ride failed:", e); setError("Failed to join ride."); }
+  };
+
+  const leaveRide = async () => {
+    if (!user || !activeRide) return;
+    try {
+      await deleteDoc(doc(db, `group_rides/${activeRide.id}/participants`, user.uid));
+      setActiveRide(null);
+      setRideParticipants([]);
+    } catch (e) { console.error("Leave ride failed:", e); }
   };
 
   const saveCurrentBike = async () => {
@@ -614,9 +764,59 @@ function App() {
 
           <div style={{ marginTop: '1rem' }}>
             <AdBanner isPro={isPro} />
-            {!isPro && <button onClick={handleUpgrade} style={{ width: '100%', marginTop: '0.5rem', background: 'none', border: 'none', color: '#ff6600', fontSize: '0.7rem', cursor: 'pointer', textDecoration: 'underline' }}>Go PRO / Remove Ads</button>}
+            {!isPro && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
+                <button onClick={() => handleUpgrade('pro')} style={{ width: '100%', background: 'none', border: 'none', color: '#ff6600', fontSize: '0.7rem', cursor: 'pointer', textDecoration: 'underline' }}>Go PRO / Remove Ads ($4.99)</button>
+                <button onClick={() => handleUpgrade('host')} style={{ width: '100%', padding: '0.6rem', background: 'linear-gradient(45deg, #ff6600, #ff9900)', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '0.75rem', cursor: 'pointer' }}>Unlock Group Rides & Host Tier ($9.99/mo)</button>
+              </div>
+            )}
+            {isPro && !isHostTier && (
+               <button onClick={() => handleUpgrade('host')} style={{ width: '100%', marginTop: '0.5rem', padding: '0.6rem', background: 'linear-gradient(45deg, #ff6600, #ff9900)', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '0.75rem', cursor: 'pointer' }}>Upgrade to Host Tier ($9.99/mo)</button>
+            )}
           </div>
           
+          <section className="form-group" style={{ marginTop: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '1.5rem' }}>
+            <label style={{ color: '#ff6600', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+               👥 Group Ride Tracker
+               {!isHostTier && <span style={{ fontSize: '0.6rem', background: '#333', padding: '2px 6px', borderRadius: '4px' }}>HOST TIER</span>}
+            </label>
+            
+            {!isHostTier ? (
+              <div style={{ background: 'rgba(255,102,0,0.05)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(255,102,0,0.2)', marginTop: '0.5rem' }}>
+                 <p style={{ fontSize: '0.7rem', color: '#ccc', margin: 0 }}>Join or Host group rides to see your friends on the map in real-time.</p>
+                 <button onClick={() => handleUpgrade('host')} style={{ width: '100%', marginTop: '0.8rem', padding: '0.5rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer' }}>Upgrade to Join</button>
+              </div>
+            ) : (
+              <div style={{ marginTop: '0.5rem' }}>
+                 {!activeRide ? (
+                   <>
+                     <div className="form-group">
+                       <label style={{ fontSize: '0.65rem' }}>Host a New Ride</label>
+                       <div style={{ display: 'flex', gap: '0.5rem' }}>
+                         <input type="text" placeholder="Ride Name" value={newRideName} onChange={e => setNewRideNameLocal(e.target.value)} />
+                         <button onClick={createRide} style={{ padding: '0.4rem 0.8rem', backgroundColor: '#ff6600', border: 'none', borderRadius: '4px', cursor: 'pointer', color: 'white' }}>Host</button>
+                       </div>
+                     </div>
+                     <div className="form-group">
+                       <label style={{ fontSize: '0.65rem' }}>Join by ID/PIN</label>
+                       <div style={{ display: 'flex', gap: '0.5rem' }}>
+                         <input type="text" placeholder="PIN Code" value={joinPin} onChange={e => setJoinPin(e.target.value)} />
+                         <button onClick={() => joinRide()} style={{ padding: '0.4rem 0.8rem', backgroundColor: '#444', border: 'none', borderRadius: '4px', cursor: 'pointer', color: 'white' }}>Join</button>
+                       </div>
+                     </div>
+                   </>
+                 ) : (
+                   <div style={{ background: 'rgba(52,168,83,0.1)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(52,168,83,0.3)' }}>
+                      <p style={{ margin: 0, fontWeight: 'bold', color: '#34a853' }}>LIVE: {activeRide.name}</p>
+                      <p style={{ margin: '0.2rem 0', fontSize: '0.7rem', color: '#888' }}>PIN: <span style={{ color: 'white', fontWeight: 'bold' }}>{activeRide.pin}</span></p>
+                      <p style={{ margin: '0.5rem 0', fontSize: '0.7rem' }}>👥 {rideParticipants.length} riders active</p>
+                      <button onClick={leaveRide} style={{ width: '100%', marginTop: '0.5rem', padding: '0.4rem', backgroundColor: '#d93025', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Leave Ride</button>
+                   </div>
+                 )}
+              </div>
+            )}
+          </section>
+
           <button 
             className="calculate-btn" 
             onClick={() => { handleCalculate(); setShowMobileMenu(false); }} 
@@ -658,6 +858,24 @@ function App() {
                 />
               )}
               {response && <DirectionsRenderer options={{ directions: response }} />}
+              
+              {/* Ride Participants */}
+              {rideParticipants.filter(p => p.userId !== user?.uid).map(p => (
+                <Marker 
+                  key={p.userId} 
+                  position={{ lat: p.lat, lng: p.lng }} 
+                  label={{ text: p.name, color: 'white', className: 'rider-label' }}
+                  icon={{
+                    path: google.maps.SymbolPath.CIRCLE,
+                    fillColor: '#ff6600',
+                    fillOpacity: 1,
+                    strokeColor: 'white',
+                    strokeWeight: 2,
+                    scale: 8
+                  }}
+                />
+              ))}
+
               {pois.map(poi => (<Marker key={poi.id} position={poi.position} title={poi.name} onClick={() => setSelectedPoi(poi)} />))}
               {selectedPoi && (
                 <InfoWindow position={selectedPoi.position} onCloseClick={() => setSelectedPoi(null)}>

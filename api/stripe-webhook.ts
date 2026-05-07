@@ -51,14 +51,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object as Stripe.Checkout.Session;
     const userId = session.metadata?.userId;
+    const tier = session.metadata?.tier;
 
     if (userId) {
       try {
-        await admin.firestore().collection('users').doc(userId).set({
+        const updateData: any = {
           isPro: true,
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        }, { merge: true });
-        console.log(`User ${userId} upgraded to PRO`);
+        };
+
+        if (tier === 'host') {
+          updateData.isHostTier = true;
+          // Set expiration to 30 days from now
+          const expiresAt = new Date();
+          expiresAt.setDate(expiresAt.getDate() + 30);
+          updateData.hostTierExpiresAt = admin.firestore.Timestamp.fromDate(expiresAt);
+        }
+
+        await admin.firestore().collection('users').doc(userId).set(updateData, { merge: true });
+        console.log(`User ${userId} upgraded to ${tier === 'host' ? 'HOST' : 'PRO'}`);
       } catch (e) {
         console.error('Error updating user pro status:', e);
         return res.status(500).send('Database Error');
