@@ -778,7 +778,7 @@ function App() {
           <section className="form-group" style={{ marginTop: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '1.5rem' }}>
             <label style={{ color: '#ff6600', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                👥 Group Ride Tracker
-               {!isHostTier && <span style={{ fontSize: '0.6rem', background: '#333', padding: '2px 6px', borderRadius: '4px' }}>HOST TIER</span>}
+               {!isHostTier && <span style={{ fontSize: '0.6rem', background: '#333', padding: '2px 6px', borderRadius: '4px' }}>{isPro ? 'PRO' : 'HOST TIER'}</span>}
                {isHostTier && hostTierExpiresAt && (
                  <span style={{ fontSize: '0.55rem', color: '#888', marginLeft: 'auto' }}>
                    Expires: {new Date(hostTierExpiresAt).toLocaleDateString()}
@@ -786,26 +786,33 @@ function App() {
                )}
             </label>
             
-            {!isHostTier ? (
+            {!isPro ? (
               <div style={{ background: 'rgba(255,102,0,0.05)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(255,102,0,0.2)', marginTop: '0.5rem' }}>
-                 <p style={{ fontSize: '0.7rem', color: '#ccc', margin: 0 }}>Join or Host group rides to see your friends on the map in real-time.</p>
-                 <button onClick={() => handleUpgrade('host')} style={{ width: '100%', marginTop: '0.8rem', padding: '0.5rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer' }}>Upgrade to Join</button>
+                 <p style={{ fontSize: '0.7rem', color: '#ccc', margin: 0 }}>Upgrade to PRO or HOST to join real-time group rides.</p>
+                 <button onClick={() => handleUpgrade('pro')} style={{ width: '100%', marginTop: '0.8rem', padding: '0.5rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer' }}>Upgrade</button>
               </div>
             ) : (
               <div style={{ marginTop: '0.5rem' }}>
                  {!activeRide ? (
                    <>
-                     <div className="form-group">
-                       <label style={{ fontSize: '0.65rem' }}>Host a New Ride</label>
-                       <div style={{ display: 'flex', gap: '0.5rem' }}>
-                         <input type="text" placeholder="Ride Name" value={newRideName} onChange={e => setNewRideNameLocal(e.target.value)} />
-                         <button onClick={createRide} style={{ padding: '0.4rem 0.8rem', backgroundColor: '#ff6600', border: 'none', borderRadius: '4px', cursor: 'pointer', color: 'white' }}>Host</button>
+                     {isHostTier ? (
+                       <div className="form-group">
+                         <label style={{ fontSize: '0.65rem' }}>Host a New Ride</label>
+                         <div style={{ display: 'flex', gap: '0.5rem' }}>
+                           <input type="text" placeholder="Ride Name" value={newRideName} onChange={e => setNewRideNameLocal(e.target.value)} />
+                           <button onClick={createRide} style={{ padding: '0.4rem 0.8rem', backgroundColor: '#ff6600', border: 'none', borderRadius: '4px', cursor: 'pointer', color: 'white' }}>Host</button>
+                         </div>
+                         <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.4rem', fontSize: '0.65rem', textTransform: 'none' }}>
+                           <input type="checkbox" checked={isPublicRide} onChange={e => setIsPublicRide(e.target.checked)} style={{ width: 'auto' }} />
+                           Visible on public map
+                         </label>
                        </div>
-                       <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.4rem', fontSize: '0.65rem', textTransform: 'none' }}>
-                         <input type="checkbox" checked={isPublicRide} onChange={e => setIsPublicRide(e.target.checked)} style={{ width: 'auto' }} />
-                         Visible on public map
-                       </label>
-                     </div>
+                     ) : (
+                       <div style={{ padding: '0.5rem', border: '1px dashed #444', borderRadius: '8px', marginBottom: '1rem' }}>
+                          <p style={{ fontSize: '0.6rem', color: '#888', margin: 0 }}>You are a PRO user. You can join rides, but only HOSTS can create them.</p>
+                          <button onClick={() => handleUpgrade('host')} style={{ background: 'none', border: 'none', color: '#ff6600', fontSize: '0.65rem', cursor: 'pointer', padding: 0, textDecoration: 'underline', marginTop: '0.2rem' }}>Upgrade to Host</button>
+                       </div>
+                     )}
                      <div className="form-group">
                        <label style={{ fontSize: '0.65rem' }}>Join by ID/PIN</label>
                        <div style={{ display: 'flex', gap: '0.5rem' }}>
