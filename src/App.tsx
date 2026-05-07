@@ -307,7 +307,9 @@ function App() {
     };
 
     try {
+      console.log("Attempting to create ride with data:", rideData);
       const rideRef = await addDoc(collection(db, "group_rides"), rideData);
+      console.log("Ride created successfully. ID:", rideRef.id);
       setActiveRide({ id: rideRef.id, ...rideData } as any);
       setGroupRideName('');
       // Automatically join as participant
@@ -318,7 +320,10 @@ function App() {
         lng: center.lng,
         lastUpdatedAt: Date.now()
       });
-    } catch (e) { console.error("Create ride failed:", e); setError("Failed to create ride."); }
+    } catch (e: any) { 
+      console.error("FULL FIREBASE ERROR:", e); 
+      setError(`Create ride failed: ${e.message || "Unknown error"}`); 
+    }
   };
 
   const joinRide = async (rideId?: string) => {
