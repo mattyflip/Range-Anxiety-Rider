@@ -787,46 +787,33 @@ function App() {
     try {
       setIsLoading(true);
       
-      // Use opacity instead of visibility/display to keep it in the render tree
       const el = shareCardRef.current;
       el.style.opacity = '1';
       
-      // Wait for a few frames to ensure the browser has painted the now-opaque element
-      await new Promise(resolve => setTimeout(resolve, 600));
+      // Wait for rendering
+      await new Promise(resolve => setTimeout(resolve, 800));
       
-      // Explicitly define 9:16 dimensions (540x960) for the poster
-      const width = 540;
-      const height = 960;
-
       const dataUrl = await toPng(el, { 
         cacheBust: true,
-        backgroundColor: '#121212',
-        width: width,
-        height: height,
+        backgroundColor: '#0f0f0f',
         style: {
           opacity: '1',
           visibility: 'visible',
-          display: 'flex',
-          flexDirection: 'column',
-          width: '540px',
-          height: '960px'
         }
       });
       
       el.style.opacity = '0';
       
-      if (!dataUrl || dataUrl.length < 100) {
-        throw new Error("Generated image is empty");
-      }
+      if (!dataUrl) throw new Error("Generated image is empty");
 
       const link = document.createElement('a');
-      link.download = `range-anxiety-${Date.now()}.png`;
+      link.download = `range-anxiety-analytics.png`;
       link.href = dataUrl;
       link.click();
       setIsLoading(false);
     } catch (err) {
       console.error('Error saving image:', err);
-      alert('Failed to save image. The browser might be blocking the capture. Please try again or take a screenshot.');
+      alert('Failed to save image. Please try again.');
       setIsLoading(false);
       if (shareCardRef.current) shareCardRef.current.style.opacity = '0';
     }
