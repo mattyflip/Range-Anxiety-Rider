@@ -177,6 +177,7 @@ function App() {
   const [joinPin, setJoinPin] = useState('');
   const [isPublicRide, setIsPublicRide] = useState(true);
   const [lastUploadedLocation, setLastUploadedLocation] = useState<google.maps.LatLngLiteral | null>(null);
+  const lastUploadedLocRef = useRef<google.maps.LatLngLiteral | null>(null);
 
   // Sync Public Rides
   useEffect(() => {
@@ -220,19 +221,23 @@ function App() {
     return () => unsubscribe();
   }, [activeRide]);
 
-  // Upload Location every 15s
+  // Upload Location every 15s - ONLY ACTIVE DURING A RIDE
   useEffect(() => {
-    if (!activeRide || !user) return;
+    if (!activeRide || !user) {
+      lastUploadedLocRef.current = null;
+      return;
+    }
 
-    const interval = setInterval(() => {
+    const updateLocation = async () => {
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(async (pos) => {
           const newLoc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+          const lastLoc = lastUploadedLocRef.current;
           
           // Optimization: Only upload if moved > 10 meters (roughly 0.0001 degrees)
-          const hasMoved = !lastUploadedLocation || 
-            Math.abs(newLoc.lat - lastUploadedLocation.lat) > 0.0001 || 
-            Math.abs(newLoc.lng - lastUploadedLocation.lng) > 0.0001;
+          const hasMoved = !lastLoc || 
+            Math.abs(newLoc.lat - lastLoc.lat) > 0.0001 || 
+            Math.abs(newLoc.lng - lastLoc.lng) > 0.0001;
 
           if (hasMoved) {
             try {
@@ -243,15 +248,20 @@ function App() {
                 lng: newLoc.lng,
                 lastUpdatedAt: Date.now()
               }, { merge: true });
+              lastUploadedLocRef.current = newLoc;
               setLastUploadedLocation(newLoc);
             } catch (e) { console.error("Location upload failed:", e); }
           }
         });
       }
-    }, 15000);
+    };
 
+    // Run once immediately
+    updateLocation();
+
+    const interval = setInterval(updateLocation, 15000);
     return () => clearInterval(interval);
-  }, [activeRide, user, lastUploadedLocation, username]);
+  }, [activeRide?.id, user?.uid, username]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -276,6 +286,8 @@ function App() {
         setIsPro(false);
         setIsHostTier(false);
         setHostTierExpiresAt(null);
+        setActiveRide(null);
+        setRideParticipants([]);
         const local = localStorage.getItem('ebike-saved-bikes');
         if (local) setSavedBikes(JSON.parse(local));
       }
