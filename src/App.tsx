@@ -118,6 +118,8 @@ function App() {
   const mapRef = useRef<google.maps.Map | null>(null);
   const shareCardRef = useRef<HTMLDivElement>(null);
 
+  const [unitSystem, setUnitSystem] = useState<'imperial' | 'metric'>('imperial');
+
   const [specs, setSpecs] = useState<BikeSpecs>({ voltage: 48, capacityAh: 15, motorWatts: 750, bikeWeightLbs: 65 });
   const [riderWeightLbs, setRiderWeightLbs] = useState<number | ''>(200);
   
@@ -140,6 +142,7 @@ function App() {
   const [startBattery, setStartBattery] = useState<number | ''>(100);
   const [startVoltage, setStartVoltage] = useState<number | ''>(54.6);
   const [response, setResponse] = useState<google.maps.DirectionsResult | null>(null);        
+  const [selectedRouteIndex, setSelectedRouteIndex] = useState(0);
   const [metrics, setMetrics] = useState<RouteMetrics | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -533,7 +536,11 @@ function App() {
   };
 
   const directionsCallback = (result: google.maps.DirectionsResult | null, status: google.maps.DirectionsStatus) => {
-    if (status === 'OK' && result) { setResponse(result); calculateMetrics(result); }
+    if (status === 'OK' && result) { 
+      setResponse(result); 
+      setSelectedRouteIndex(0);
+      calculateMetrics(result, 0); 
+    }
     else { console.error('Directions error:', status); setError(`Google Maps Directions Error: ${status}`); setIsLoading(false); }
   };
 
@@ -548,14 +555,12 @@ function App() {
     return (bearing + 360) % 360;
   };
 
-  const calculateMetrics = async (result: google.maps.DirectionsResult) => {
+  const calculateMetrics = async (result: google.maps.DirectionsResult, routeIndex: number = 0) => {
     try {
       let totalDistMeters = 0;
-      let totalDurationSec = 0;
-      const route = result.routes[0];
+      const route = result.routes[routeIndex];
       route.legs.forEach(leg => {
         totalDistMeters += (leg.distance?.value || 0);
-        totalDurationSec += (leg.duration?.value || 0);
       });
 
       const distMiles = totalDistMeters / 1609.34;
@@ -579,11 +584,17 @@ function App() {
         headwindMph = windSpeed * Math.cos((angleDiff * Math.PI) / 180);
       } catch (e) { console.warn("Weather API failed", e); }
 
-      // --- PHYSICS-BASED MODEL ---
-      const bikeWeight = Number(specs.bikeWeightLbs) || 60;
-      const riderWeight = Number(riderWeightLbs) || 200;
-      const massKg = (bikeWeight + riderWeight) * 0.453592;
-      const velocityMps = (Number(targetSpeedMph) || 15) * 0.44704;
+      // --- PHYSICS-BASED MODEL (Internally uses Imperial/SI) ---
+      const isMetric = unitSystem === 'metric';
+      
+      // Convert inputs to Imperial if they are provided in Metric
+      const bikeWeightLbs = isMetric ? (Number(specs.bikeWeightLbs) * 2.20462) : Number(specs.bikeWeightLbs);
+      const riderWeightLbsActual = isMetric ? (Number(riderWeightLbs) * 2.20462) : Number(riderWeightLbs);
+      const targetSpeedMphActual = isMetric ? (Number(targetSpeedMph) * 0.621371) : Number(targetSpeedMph);
+      const tempF = isMetric ? (Number(ambientTempF) * 9/5 + 32) : Number(ambientTempF);
+
+      const massKg = (bikeWeightLbs + riderWeightLbsActual) * 0.453592;
+      const velocityMps = targetSpeedMphActual * 0.44704;
       
       let Crr = tireType === 'road' ? 0.007 : 0.015;
       if (tirePressurePsi !== '' && tirePressurePsi < 35) {
@@ -591,7 +602,6 @@ function App() {
       }
       const ForceRolling = Crr * massKg * 9.81;
 
-      const tempF = Number(ambientTempF) || 70;
       const tempC = (tempF - 32) * 5 / 9;
       const rho = 1.225 * (288.15 / (273.15 + tempC));
       const CdA = 0.55;
@@ -602,7 +612,6 @@ function App() {
       let thermalEfficiency = 1.0;
       if (tempF < 60) thermalEfficiency -= (60 - tempF) * 0.003;
       
-      // --- MODE SYSTEM ---
       let motorEfficiency = 0.80;
       let modeStyleMultiplier = 1.0;
       let humanPowerWatts = 0;
@@ -611,7 +620,6 @@ function App() {
         if (mode === 'eco') { motorEfficiency = 0.85; modeStyleMultiplier = 0.95; }
         else if (mode === 'sport') { motorEfficiency = 0.75; modeStyleMultiplier = 1.25; }
       } else {
-        // PAS Logic: Rider contributes power. Higher PAS = lower rider effort.
         humanPowerWatts = Math.max(0, 150 - (pasLevel - 1) * 37.5);
         motorEfficiency = 0.82;
       }
@@ -628,9 +636,8 @@ function App() {
       const styleMultiplier = ridingStyle === 'aggressive' ? 1.2 : 1.0;
       const estimatedWh = (distMiles * WhPerMileFlat * styleMultiplier * modeStyleMultiplier) + WhClimb;
       
-      const BATTERY_HEALTH_FACTOR = 0.92;
       const totalWhRaw = (capacityInputMode === 'ah') ? (Number(specs.voltage) * Number(specs.capacityAh)) : Number(specs.capacityAh);
-      const totalWhUsable = totalWhRaw * BATTERY_HEALTH_FACTOR;
+      const totalWhUsable = totalWhRaw * 0.92;
       
       const minV = getBatteryLevels(Number(specs.voltage)).min;
       const maxV = getBatteryLevels(Number(specs.voltage)).max;
@@ -639,12 +646,11 @@ function App() {
         ? (totalWhUsable * (Number(startBattery) / 100))
         : (totalWhUsable * ((Number(startVoltage) - minV) / (maxV - minV)));
 
-      const batteryLeftWh = startWh - estimatedWh;
-      const batteryPercentRemaining = (batteryLeftWh / totalWhUsable) * 100;
+      const batteryPercentRemaining = ((startWh - estimatedWh) / totalWhUsable) * 100;
 
       setMetrics({
         distanceMiles: distMiles,
-        durationMin: distMiles / (Number(targetSpeedMph) || 15) * 60,
+        durationMin: distMiles / (targetSpeedMphActual || 15) * 60,
         elevationGainFeet: gainFeet,
         estimatedWh,
         batteryPercentUsed: Math.max(0, batteryPercentRemaining),
@@ -753,6 +759,14 @@ function App() {
         <aside className={`sidebar ${showMobileMenu ? 'mobile-visible' : ''}`}>
           {error && <div style={{ background: 'rgba(217,48,37,0.1)', color: '#d93025', padding: '0.8rem', borderRadius: '8px', marginBottom: '1rem', fontSize: '0.8rem' }}>{error}</div>}
           
+          <div className="form-group">
+            <label style={{ color: 'var(--accent-color)', fontSize: '0.65rem' }}>Unit System</label>
+            <div className="mode-toggle">
+              <button className={unitSystem === 'imperial' ? 'active' : ''} onClick={() => setUnitSystem('imperial')}>Imperial (mi/lb)</button>
+              <button className={unitSystem === 'metric' ? 'active' : ''} onClick={() => setUnitSystem('metric')}>Metric (km/kg)</button>
+            </div>
+          </div>
+
           <section className="form-group" style={{ position: 'relative' }}>
             <label>Search Bike Model</label>
             <input type="text" placeholder="e.g. Onyx, Sur-Ron..." value={bikeSearchQuery} onFocus={() => setShowBikeResults(true)} onChange={(e) => { setBikeSearchQuery(e.target.value); setShowBikeResults(true); }} />
@@ -804,16 +818,16 @@ function App() {
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>        
             <section className="form-group"><label>Motor (W)</label><input type="number" value={specs.motorWatts} onChange={(e) => handleSpecChange('motorWatts', e.target.value)} /></section>
-            <section className="form-group"><label>Bike Wt (lbs)</label><input type="number" value={specs.bikeWeightLbs} onChange={(e) => handleSpecChange('bikeWeightLbs', e.target.value)} /></section>
+            <section className="form-group"><label>Bike Wt ({unitSystem === 'imperial' ? 'lbs' : 'kg'})</label><input type="number" value={specs.bikeWeightLbs} onChange={(e) => handleSpecChange('bikeWeightLbs', e.target.value)} /></section>
           </div>
 
-          <section className="form-group"><label>Rider Weight (lbs)</label><input type="number" value={riderWeightLbs} onChange={(e) => setRiderWeightLbs(parseFloat(e.target.value) || '')} /></section>
+          <section className="form-group"><label>Rider Weight ({unitSystem === 'imperial' ? 'lbs' : 'kg'})</label><input type="number" value={riderWeightLbs} onChange={(e) => setRiderWeightLbs(parseFloat(e.target.value) || '')} /></section>
 
           <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)', marginBottom: '1rem' }}>
             <label style={{ color: 'var(--accent-color)', fontSize: '0.65rem' }}>Advanced Environment</label>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '0.5rem' }}>
                <section className="form-group">
-                 <label>Temp (°F)</label>
+                 <label>Temp ({unitSystem === 'imperial' ? '°F' : '°C'})</label>
                  <input type="number" value={ambientTempF} onChange={(e) => setAmbientTempF(parseFloat(e.target.value) || '')} />
                </section>
                <section className="form-group">
@@ -868,7 +882,7 @@ function App() {
             <input type="number" value={batteryInputMode === 'percent' ? startBattery : startVoltage} onChange={(e) => batteryInputMode === 'percent' ? setStartBattery(parseFloat(e.target.value) || '') : setStartVoltage(parseFloat(e.target.value) || '')} />
           </section>
 
-          <section className="form-group"><label>Target Speed (mph)</label><input type="number" value={targetSpeedMph} onChange={(e) => setTargetSpeedMph(parseFloat(e.target.value) || '')} /></section>
+          <section className="form-group"><label>Target Speed ({unitSystem === 'imperial' ? 'mph' : 'km/h'})</label><input type="number" value={targetSpeedMph} onChange={(e) => setTargetSpeedMph(parseFloat(e.target.value) || '')} /></section>
 
           <section className="form-group">
             <label>Trip Type</label>
@@ -897,6 +911,27 @@ function App() {
           {metrics && (
             <div className="card metrics-card" style={{ marginTop: '1rem', borderLeft: '4px solid #ff6600', background: 'rgba(40,40,40,0.9)' }}>
               <h3 style={{ fontSize: '0.9rem', color: '#ff6600' }}>ESTIMATED METRICS</h3>
+
+              {response && response.routes.length > 1 && (
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={{ fontSize: '0.65rem', color: '#888' }}>SELECT ROUTE</label>
+                  <div className="mode-toggle" style={{ marginTop: '0.4rem' }}>
+                    {response.routes.map((_, idx) => (
+                      <button 
+                        key={idx} 
+                        className={selectedRouteIndex === idx ? 'active' : ''} 
+                        onClick={() => {
+                          setSelectedRouteIndex(idx);
+                          calculateMetrics(response, idx);
+                        }}
+                      >
+                        Route {idx + 1}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <p style={{ fontSize: '1.4rem', fontWeight: 'bold', color: 'white' }}>Battery Left: {metrics.batteryPercentUsed.toFixed(1)}%</p>
               <p style={{ fontSize: '0.8rem', color: '#b0b0b0' }}>Est. End Voltage: {(getBatteryLevels(Number(specs.voltage)).min + (metrics.batteryPercentUsed / 100) * (getBatteryLevels(Number(specs.voltage)).max - getBatteryLevels(Number(specs.voltage)).min)).toFixed(1)}V</p>
               
@@ -907,22 +942,37 @@ function App() {
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginBottom: '0.4rem' }}>
                   <span style={{ color: '#888' }}>Distance:</span>
-                  <span style={{ color: 'white' }}>{metrics.distanceMiles.toFixed(1)} mi</span>
+                  <span style={{ color: 'white' }}>
+                    {unitSystem === 'imperial' 
+                      ? `${metrics.distanceMiles.toFixed(1)} mi` 
+                      : `${(metrics.distanceMiles * 1.60934).toFixed(1)} km`}
+                  </span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginBottom: '0.4rem' }}>
                   <span style={{ color: '#888' }}>Elevation Gain:</span>
-                  <span style={{ color: 'white' }}>{metrics.elevationGainFeet.toFixed(0)} ft</span>
+                  <span style={{ color: 'white' }}>
+                    {unitSystem === 'imperial' 
+                      ? `${metrics.elevationGainFeet.toFixed(0)} ft` 
+                      : `${(metrics.elevationGainFeet * 0.3048).toFixed(0)} m`}
+                  </span>
                 </div>
                 {metrics.windConditions && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#34a853' }}>
                     <span>🌬️ Wind:</span>
-                    <span>{metrics.windConditions.speed.toFixed(1)} mph ({metrics.windConditions.headwindComponent > 0 ? 'Headwind' : 'Tailwind'})</span>
+                    <span>
+                      {unitSystem === 'imperial' 
+                        ? `${metrics.windConditions.speed.toFixed(1)} mph` 
+                        : `${(metrics.windConditions.speed * 1.60934).toFixed(1)} km/h`} 
+                      ({metrics.windConditions.headwindComponent > 0 ? 'Headwind' : 'Tailwind'})
+                    </span>
                   </div>
                 )}
               </div>
 
               <div style={{ marginTop: '0.5rem', fontSize: '0.7rem', color: '#777', textAlign: 'center' }}>
-                Wh/mile: {(metrics.estimatedWh / metrics.distanceMiles).toFixed(1)}
+                {unitSystem === 'imperial' 
+                  ? `Wh/mile: ${(metrics.estimatedWh / metrics.distanceMiles).toFixed(1)}` 
+                  : `Wh/km: ${(metrics.estimatedWh / (metrics.distanceMiles * 1.60934)).toFixed(1)}`}
               </div>
 
               <button onClick={() => {
@@ -1073,11 +1123,12 @@ function App() {
                       ...(isRoundTrip && isCustomReturn ? trip.returnWaypoints.map(wp => ({ location: wp, stopover: true })) : [])
                     ].filter(wp => wp.location.trim() !== ""),
                     travelMode: google.maps.TravelMode.BICYCLING,
+                    provideRouteAlternatives: true
                   }}
                   callback={directionsCallback}
                 />
               )}
-              {response && <DirectionsRenderer options={{ directions: response }} />}
+              {response && <DirectionsRenderer options={{ directions: response, routeIndex: selectedRouteIndex }} />}
               
               <button 
                 onClick={recenterMap}
