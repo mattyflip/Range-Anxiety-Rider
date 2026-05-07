@@ -1065,9 +1065,14 @@ function App() {
               }} style={{ width: '100%', marginTop: '1rem', padding: '0.6rem', backgroundColor: '#34a853', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer' }}>🚀 Open Maps</button>
               
               <button onClick={() => {
+                  if (!isPro && !isHostTier) {
+                    alert("The Share Card feature is only available for PRO users.");
+                    handleUpgrade('pro');
+                    return;
+                  }
                   ReactGA.event({ category: "Engagement", action: "Open Share Preview" });
                   setShowSharePreview(true);
-              }} style={{ width: '100%', marginTop: '0.5rem', padding: '0.6rem', backgroundColor: '#444', color: 'white', border: 'none', borderRadius: '4px', fontSize: '0.8rem', cursor: 'pointer' }}>Save Image</button>
+              }} style={{ width: '100%', marginTop: '0.5rem', padding: '0.6rem', backgroundColor: '#444', color: 'white', border: 'none', borderRadius: '4px', fontSize: '0.8rem', cursor: 'pointer' }}>Save Image (PRO)</button>
             </div>
           )}
 
