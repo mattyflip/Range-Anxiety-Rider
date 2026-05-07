@@ -32,6 +32,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 : 'Unlock all features and remove ads forever.',
             },
             unit_amount: isHost ? 999 : 499,
+            ...(isHost && { recurring: { interval: 'month' } }),
           },
           quantity: 1,
         },
