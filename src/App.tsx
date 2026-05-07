@@ -146,6 +146,7 @@ function App() {
   const [metrics, setMetrics] = useState<RouteMetrics | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [rideError, setRideError] = useState<string | null>(null);
   const [pois, setPois] = useState<POI[]>([]);
   const [poiCategory, setPoiCategory] = useState<string | null>(null);
   const [selectedPoi, setSelectedPoi] = useState<POI | null>(null);
@@ -392,18 +393,19 @@ function App() {
   };
 
   const createRide = async () => {
+    setRideError(null);
     if (!user) { setShowAuthModal(true); return; }
-    if (!isHostTier) { setError("Only HOST TIER users can create rides."); return; }
+    if (!isHostTier) { setRideError("Only HOST TIER users can create rides."); return; }
     
     // Enforce single active ride
     const activeCheckQ = query(collection(db, "group_rides"), where("creatorId", "==", user.uid), where("status", "==", "active"));
     const activeSnap = await getDocs(activeCheckQ);
     if (!activeSnap.empty) {
-      setError("You already have an active ride. Please end it before starting a new one.");
+      setRideError("You already have an active ride. Please end it before starting a new one.");
       return;
     }
 
-    if (!groupRideName) { setError("Please name your ride."); return; }
+    if (!groupRideName) { setRideError("Please name your ride."); return; }
     
     try {
       const pin = Math.floor(1000 + Math.random() * 9000).toString();
@@ -430,13 +432,14 @@ function App() {
         lastUpdatedAt: Date.now()
       });
     } catch (e: any) { 
-      setError(`Create ride failed: ${e.message}`); 
+      setRideError(`Create ride failed: ${e.message}`); 
     }
   };
 
   const joinRide = async (rideId?: string) => {
+    setRideError(null);
     if (!user) { setShowAuthModal(true); return; }
-    if (!isPro) { setError("You must be at least a PRO user to join group rides."); return; }
+    if (!isPro) { setRideError("You must be at least a PRO user to join group rides."); return; }
 
     try {
       let rideDoc;
@@ -463,9 +466,9 @@ function App() {
         });
         setJoinPin('');
       } else {
-        setError("Ride not found or invalid PIN.");
+        setRideError("Ride not found or invalid PIN.");
       }
-    } catch (e) { console.error("Join ride failed:", e); setError("Failed to join ride."); }
+    } catch (e) { console.error("Join ride failed:", e); setRideError("Failed to join ride."); }
   };
 
   const leaveRide = async () => {
@@ -1029,9 +1032,11 @@ function App() {
             )}
           </div>
           
-          <section className="form-group" style={{ marginTop: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '1.5rem' }}>
-            <label style={{ color: '#ff6600', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-               👥 Group Ride Tracker
+            {rideError && <div style={{ background: 'rgba(217,48,37,0.1)', color: '#d93025', padding: '0.8rem', borderRadius: '8px', marginBottom: '1rem', fontSize: '0.8rem' }}>{rideError}</div>}
+            
+            <section className="form-group" style={{ marginTop: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '1.5rem' }}>
+              <label style={{ color: '#ff6600', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                 👥 Group Ride Tracker
                {!isHostTier && <span style={{ fontSize: '0.6rem', background: '#333', padding: '2px 6px', borderRadius: '4px' }}>{isPro ? 'PRO' : 'HOST TIER'}</span>}
                {isHostTier && hostTierExpiresAt && (
                  <span style={{ fontSize: '0.55rem', color: '#888', marginLeft: 'auto' }}>
