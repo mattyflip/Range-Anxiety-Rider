@@ -377,7 +377,7 @@ function App() {
   };
 
   const endAllPublicRides = async () => {
-    if (!user || user.email !== 'mattyflip@gmail.com') return;
+    if (!user || user.email !== 'mattyfliptv@gmail.com') return;
     if (!window.confirm("Are you sure you want to end ALL public group rides?")) return;
     
     try {
@@ -1079,7 +1079,7 @@ function App() {
                        <div className="form-group" style={{ marginTop: '1rem' }}>
                          <label style={{ fontSize: '0.65rem', color: 'var(--accent-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                            📡 Nearby Public Rides
-                           {user?.email === 'mattyflip@gmail.com' && (
+                           {user?.email === 'mattyfliptv@gmail.com' && (
                              <button onClick={endAllPublicRides} style={{ background: 'none', border: 'none', color: '#d93025', fontSize: '0.6rem', cursor: 'pointer', textDecoration: 'underline' }}>End All</button>
                            )}
                          </label>
