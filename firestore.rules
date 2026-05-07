@@ -1,0 +1,54 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to check if user is signed in
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Helper to check if the user owns the document (for user profiles)
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    // --- Users Collection ---
+    match /users/{userId} {
+      allow read: if isSignedIn(); // Users can see profiles (for group rides)
+      allow write: if isOwner(userId); // Only the user can edit their own profile
+    }
+
+    // --- Group Rides Collection ---
+    match /group_rides/{rideId} {
+      // Anyone signed in can read (to find public rides)
+      allow read: if isSignedIn();
+      
+      // Only signed in users can create a ride
+      allow create: if isSignedIn();
+      
+      // Only the creator (Host) can update or delete the ride
+      allow update, delete: if isSignedIn() && request.auth.uid == resource.data.creatorId;
+      
+      // Nested Participants
+      match /participants/{participantId} {
+        allow read: if isSignedIn();
+        // A user can only write their own participant data
+        allow write: if isSignedIn() && request.auth.uid == participantId;
+        // The host can remove any participant
+        allow delete: if isSignedIn() && (request.auth.uid == participantId || request.auth.uid == get(/databases/$(database)/documents/group_rides/$(rideId)).data.creatorId);
+      }
+    }
+
+    // --- Marketing Emails & Submissions ---
+    match /marketing_emails/{docId} {
+      allow create: if true; // Allow signup
+      allow read, update, delete: if false; // Admin only (managed via console)
+    }
+    
+    match /bike_submissions/{docId} {
+      allow create: if isSignedIn();
+      allow read, update, delete: if false; // Admin only
+    }
+  }
+}
