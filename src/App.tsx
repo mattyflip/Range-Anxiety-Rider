@@ -12,7 +12,7 @@ import TermsOfService from './components/TermsOfService'
 import InstallTutorial from './components/InstallTutorial'
 import heroLogo from './assets/logo-no-bg.png'
 
-const LIBRARIES: ("places")[] = ["places"];
+const LIBRARIES: ("places" | "geometry")[] = ["places", "geometry"];
 
 interface GroupRide {
   id: string;

@@ -11,38 +11,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).end();
   }
 
-  // Support both GET and POST for flexibility
-  const path = req.method === 'POST' ? req.body.path : req.query.path;
+  const { path, encodedPath, samples = 100 } = req.method === 'POST' ? req.body : req.query;
   const GOOGLE_API_KEY = process.env.GOOGLE_MAPS_API_KEY || process.env.VITE_GOOGLE_MAPS_API_KEY;
 
   if (!GOOGLE_API_KEY) {
-    console.error('Elevation API error: Google Maps API Key missing in environment');
     return res.status(500).json({ error: 'Server configuration error: Missing API Key' });
   }
 
-  if (!path || !Array.isArray(path) || path.length === 0) {
-    return res.status(400).json({ error: 'A valid path array is required' });
+  let params: any = { key: GOOGLE_API_KEY };
+
+  if (encodedPath) {
+    params.path = `enc:${encodedPath}`;
+    params.samples = samples;
+  } else if (path && Array.isArray(path) && path.length > 0) {
+    // Fallback to locations if no encoded path provided
+    const maxPoints = 250; 
+    const sampledPath = path.length <= maxPoints 
+      ? path 
+      : path.filter((_, i) => i % Math.ceil(path.length / maxPoints) === 0);
+    params.locations = sampledPath.map(p => `${p.lat},${p.lng}`).join('|');
+  } else {
+    return res.status(400).json({ error: 'A valid path or encodedPath is required' });
   }
 
-  // Convert array of {lat, lng} to pipe-separated string
-  // Google Elevation API limit is 512 locations per request
-  const maxPoints = 250; 
-  const sampledPath = path.length <= maxPoints 
-    ? path 
-    : path.filter((_, i) => i % Math.ceil(path.length / maxPoints) === 0);
-  
-  const pathString = sampledPath.map(p => `${p.lat},${p.lng}`).join('|');
-
   try {
-    const response = await axios.get('https://maps.googleapis.com/maps/api/elevation/json', {
-      params: {
-        locations: pathString,
-        key: GOOGLE_API_KEY
-      }
-    });
+    const response = await axios.get('https://maps.googleapis.com/maps/api/elevation/json', { params });
 
     if (response.data.status !== 'OK') {
-      console.error('Google Elevation API error status:', response.data.status, response.data.error_message);
       return res.status(400).json({ 
         error: `Google API Error: ${response.data.status}`, 
         message: response.data.error_message 
@@ -51,7 +46,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const results = response.data.results;
     if (!results || results.length === 0) {
-      return res.status(200).json({ gain: 0, message: 'No elevation data found for this path' });
+      return res.status(200).json({ gain: 0, message: 'No elevation data found' });
     }
 
     let gain = 0;
@@ -65,7 +60,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     return res.status(200).json({ gain: gainFeet });
   } catch (error: any) {
-    console.error('Elevation API error:', error.response?.data || error.message);
     return res.status(500).json({ 
       error: 'Failed to fetch elevation data', 
       details: error.response?.data || error.message 
