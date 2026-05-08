@@ -1306,56 +1306,6 @@ function App() {
                 />
               )}
               
-              <button 
-                onClick={recenterMap}
-                style={{
-                  position: 'absolute',
-                  bottom: '2rem',
-                  right: '1rem',
-                  zIndex: 10,
-                  width: '50px',
-                  height: '50px',
-                  borderRadius: '50%',
-                  backgroundColor: '#ff6600',
-                  color: 'white',
-                  border: 'none',
-                  boxShadow: '0 4px 15px rgba(0,0,0,0.5)',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '1.5rem'
-                }}
-                title="Recenter Map"
-              >
-                🎯
-              </button>
-
-              <button 
-                className="mobile-toggle-btn-floating"
-                onClick={() => setShowMobileMenu(!showMobileMenu)}
-                style={{
-                  position: 'fixed',
-                  bottom: '6.5rem',
-                  right: '1rem',
-                  zIndex: 20001,
-                  padding: '0.8rem 1.2rem',
-                  borderRadius: '30px',
-                  backgroundColor: '#ff6600',
-                  color: 'white',
-                  border: 'none',
-                  boxShadow: '0 8px 25px rgba(255,102,0,0.4)',
-                  cursor: 'pointer',
-                  fontWeight: 'bold',
-                  fontSize: '0.8rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-              >
-                {showMobileMenu ? 'Show Map' : 'Trip Settings'}
-              </button>
-              
               {/* Public Rides Discovery */}
               {publicRides.filter(r => r.id !== activeRide?.id).map(ride => (
                 <Marker 
@@ -1837,6 +1787,51 @@ function App() {
             </>
           )}
         </div>
+      </div>
+      {/* Floating UI Controls (Persistent) */}
+      <div className="persistent-controls" style={{ position: 'fixed', bottom: '2rem', right: '1rem', zIndex: 20002, display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center' }}>
+          <button 
+            className="mobile-toggle-btn-floating"
+            onClick={() => setShowMobileMenu(!showMobileMenu)}
+            style={{
+              padding: '0.8rem 1.2rem',
+              borderRadius: '30px',
+              backgroundColor: '#ff6600',
+              color: 'white',
+              border: 'none',
+              boxShadow: '0 8px 25px rgba(255,102,0,0.4)',
+              cursor: 'pointer',
+              fontWeight: 'bold',
+              fontSize: '0.8rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            {showMobileMenu ? 'Show Map' : 'Trip Settings'}
+          </button>
+
+          <button 
+            onClick={recenterMap}
+            style={{
+              width: '50px',
+              height: '50px',
+              borderRadius: '50%',
+              backgroundColor: '#ff6600',
+              color: 'white',
+              border: 'none',
+              boxShadow: '0 8px 25px rgba(255,102,0,0.4)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '1.5rem'
+            }}
+            title="Recenter Map"
+          >
+            🎯
+          </button>
       </div>
     </div>
   )
