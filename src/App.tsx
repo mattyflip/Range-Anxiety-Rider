@@ -619,8 +619,14 @@ function App() {
       let gainFeet = 0;
       try { 
         const elevResp = await axios.post('/api/elevation', { path }); 
-        gainFeet = elevResp.data.gain; 
-      } catch (e) { console.warn("Elevation API failed", e); }
+        if (elevResp.data && typeof elevResp.data.gain === 'number') {
+          gainFeet = elevResp.data.gain; 
+        } else {
+          console.warn("Elevation API returned unexpected data:", elevResp.data);
+        }
+      } catch (e: any) { 
+        console.error("Elevation API call failed:", e.response?.data || e.message); 
+      }
 
       let headwindMph = 0;
       let windSpeed = 0;
