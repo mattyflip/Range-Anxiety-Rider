@@ -54,6 +54,7 @@ interface RouteMetrics {
   distanceMiles: number;
   durationMin: number;
   elevationGainFeet: number;
+  elevationLossFeet: number;
   estimatedWh: number;
   batteryPercentUsed: number;
   recommendedSpeedMph: number;

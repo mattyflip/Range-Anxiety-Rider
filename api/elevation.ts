@@ -50,15 +50,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     let gain = 0;
+    let loss = 0;
     for (let i = 1; i < results.length; i++) {
       const diff = results[i].elevation - results[i-1].elevation;
       if (diff > 0) gain += diff;
+      else if (diff < 0) loss += Math.abs(diff);
     }
 
     // Convert meters to feet
     const gainFeet = gain * 3.28084;
+    const lossFeet = loss * 3.28084;
 
-    return res.status(200).json({ gain: gainFeet });
+    return res.status(200).json({ gain: gainFeet, loss: lossFeet });
   } catch (error: any) {
     return res.status(500).json({ 
       error: 'Failed to fetch elevation data', 
