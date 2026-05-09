@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { db, auth, storage } from '../firebase'
-import { doc, collection, query, where, onSnapshot, updateDoc, arrayRemove, orderBy } from 'firebase/firestore'
+import { doc, collection, query, where, onSnapshot, updateDoc, arrayRemove, orderBy, getDoc, getDocs } from 'firebase/firestore'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { signOut } from 'firebase/auth'
 import NavBar from '../components/NavBar'
@@ -84,7 +84,7 @@ const Profile: React.FC = () => {
       } else {
         // Fallback 1: Search by original username field (case-sensitive)
         const qOrig = query(usersRef, where("username", "==", target));
-        getDocs(qOrig).then(origSnap => {
+        getDocs(qOrig).then((origSnap: any) => {
           if (!origSnap.empty) {
             const data = origSnap.docs[0].data();
             setProfileData({ ...data, id: origSnap.docs[0].id });
@@ -93,7 +93,7 @@ const Profile: React.FC = () => {
           } else {
             // Fallback 2: Check if username parameter is actually a UID
             const docRef = doc(db, "users", target);
-            getDoc(docRef).then(uSnap => {
+            getDoc(docRef).then((uSnap: any) => {
               if (uSnap.exists()) {
                 const data = uSnap.data();
                 setProfileData({ ...data, id: uSnap.id });
