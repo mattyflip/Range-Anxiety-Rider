@@ -74,42 +74,38 @@ const Profile: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file || !user || !profileData || user.uid !== profileData.id) return;
     
-    // Check file size (limit to 2MB)
-    if (file.size > 2 * 1024 * 1024) {
-      alert("Image is too large. Please select a photo under 2MB.");
+    // Check file size (limit to 800KB for Firestore stability)
+    if (file.size > 800 * 1024) {
+      alert("Image is too large for the free tier. Please select a photo under 800KB.");
       return;
     }
 
     setIsUploading(true);
-    try {
-      console.log("Using bucket:", storage.app.options.storageBucket);
-      console.log("Starting upload for user:", user.uid);
-      const imageRef = ref(storage, `profiles/${user.uid}`);
-      
-      await uploadBytes(imageRef, file);
-      console.log("Bytes uploaded successfully.");
-      
-      const imageUrl = await getDownloadURL(imageRef);
-      console.log("Download URL retrieved:", imageUrl);
-      
-      const finalUrl = `${imageUrl}${imageUrl.includes('?') ? '&' : '?'}t=${Date.now()}`;
-      
-      // Update Firestore
-      await updateDoc(doc(db, "users", user.uid), { 
-        profilePic: finalUrl 
-      });
-      console.log("Firestore document updated with new URL.");
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const base64String = event.target?.result as string;
+      try {
+        // Save the image directly to Firestore as a text string (Base64)
+        // This bypasses the Storage bucket and CORS issues entirely
+        await updateDoc(doc(db, "users", user.uid), { 
+          profilePic: base64String 
+        });
 
-      // Manually update local state to guarantee a re-render even if listener is slow
-      setProfileData((prev: any) => ({ ...prev, profilePic: finalUrl }));
-
-      alert("Profile picture updated successfully!");
-    } catch (err: any) { 
-      console.error("Upload process failed at step:", err);
-      alert(`Upload failed: ${err.message}`);
-    } finally { 
-      setIsUploading(false); 
-    }
+        // Update local state for instant feedback
+        setProfileData((prev: any) => ({ ...prev, profilePic: base64String }));
+        alert("Profile picture updated successfully!");
+      } catch (err: any) { 
+        console.error("Database update failed:", err);
+        alert(`Failed to save image: ${err.message}`);
+      } finally { 
+        setIsUploading(false); 
+      }
+    };
+    reader.onerror = () => {
+      alert("Failed to read the file. Please try another image.");
+      setIsUploading(false);
+    };
+    reader.readAsDataURL(file);
   };
 
   const removeBike = async (bike: any) => {
