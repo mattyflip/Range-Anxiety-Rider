@@ -824,13 +824,20 @@ function MapHome() {
       const dataUrl = await toPng(el, { cacheBust: true, backgroundColor: "#121212", pixelRatio: 2 });
       el.style.opacity = '0';
 
+      // Convert dataUrl to a Blob for more reliable uploading
+      const response = await fetch(dataUrl);
+      const blob = await response.blob();
+
       const imageRef = ref(storage, `posts/${user.uid}/${Date.now()}.png`);
-      await uploadString(imageRef, dataUrl, 'data_url');
+      await uploadBytes(imageRef, blob);
       const imageUrl = await getDownloadURL(imageRef);
+
+      const userSnap = await getDoc(doc(db, "users", user.uid));
+      const currentUsername = userSnap.exists() ? userSnap.data().username : (user.email?.split('@')[0] || "Rider");
 
       await addDoc(collection(db, "posts"), {
         authorId: user.uid,
-        authorUsername: username || user.email?.split('@')[0] || "Rider",
+        authorUsername: currentUsername || "Rider",
         imageUrl,
         caption: `Rode from ${trip.origin || 'Current Location'} to ${trip.destination}. ${metrics.distanceMiles.toFixed(1)} miles with ${metrics.batteryPercentUsed.toFixed(1)}% battery remaining!`,
         likes: [],
@@ -840,9 +847,9 @@ function MapHome() {
       alert("Successfully posted to the community feed!");
       setIsLoading(false);
       setShowSharePreview(false);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Sharing error:', err);
-      setError("Failed to post to community feed.");
+      alert(`Failed to post: ${err.message}. Ensure your Storage CORS is configured.`);
       setIsLoading(false);
     }
   };
