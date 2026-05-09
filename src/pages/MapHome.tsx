@@ -550,7 +550,7 @@ function MapHome() {
       setStartVoltage(getBatteryLevels(Number(bike.specs.voltage)).max);
     }
     // Simple heuristic to set control type
-    if (Number(bike.specs.voltage) >= 60 || bike.name.includes("Onyx") || bike.name.includes("Sur-Ron") || bike.name.includes("Talaria")) {
+    if (Number(bike.specs.voltage) >= 60 || (bike.name && (bike.name.includes("Onyx") || bike.name.includes("Sur-Ron") || bike.name.includes("Talaria")))) {
       setControlType('switch');
     } else {
       setControlType('pas');
@@ -843,12 +843,20 @@ function MapHome() {
       const dataUrl = await toPng(el, { cacheBust: true, backgroundColor: "#121212", pixelRatio: 1.5 });
       el.style.opacity = '0';
 
-      // Save the post directly to Firestore using the Base64 dataUrl
+      // Professional Storage upload for high-res images (Blaze Plan)
+      const response = await fetch(dataUrl);
+      const blob = await response.blob();
+
+      const imageRef = ref(storage, `trips/${user.uid}/${Date.now()}.png`);
+      await uploadBytes(imageRef, blob);
+      const imageUrl = await getDownloadURL(imageRef);
+
+      // Save the post with the Storage URL (text), not the image data
       await addDoc(collection(db, "posts"), {
         authorId: user.uid,
         authorUsername: userData.username,
         authorProfilePic: userData.profilePic,
-        imageUrl: dataUrl, // Store Base64 string
+        imageUrl, // Now a small URL string
         caption: `Rode from ${trip.origin || 'Current Location'} to ${trip.destination}. ${metrics.distanceMiles.toFixed(1)} miles with ${metrics.batteryPercentUsed.toFixed(1)}% battery remaining!`,
         likes: [],
         createdAt: serverTimestamp()
@@ -859,7 +867,7 @@ function MapHome() {
       setShowSharePreview(false);
     } catch (err: any) {
       console.error('Sharing error:', err);
-      alert(`Failed to post: ${err.message}. Ensure your Firestore Database is created.`);
+      alert(`Failed to post: ${err.message}. Check your Cloud Shell CORS settings.`);
       setIsLoading(false);
     }
   };
