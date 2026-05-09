@@ -72,6 +72,13 @@ const Feed: React.FC = () => {
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // Check file size (limit to 800KB for Firestore stability)
+    if (file.size > 800 * 1024) {
+      alert("Image is too large. Please select a photo under 800KB or take a screenshot of it.");
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = (event) => {
       setSelectedImage(event.target?.result as string);
@@ -80,7 +87,7 @@ const Feed: React.FC = () => {
   };
 
   const handleCreatePost = async () => {
-    if (!user || !selectedImage || !newCaption) return;
+    if (!user || !selectedImage) return;
     setIsPosting(true);
     try {
       const userSnap = await getDoc(doc(db, "users", user.uid));
@@ -92,7 +99,7 @@ const Feed: React.FC = () => {
         authorId: user.uid,
         authorUsername: currentUsername || "Rider",
         imageUrl: selectedImage, // Base64 string
-        caption: newCaption,
+        caption: newCaption || "", // Caption is now optional
         likes: [],
         createdAt: serverTimestamp()
       });
@@ -147,11 +154,16 @@ const Feed: React.FC = () => {
                 ) : (
                   <span style={{ color: '#666' }}>Tap to select photo</span>
                 )}
-                <input type="file" hidden accept="image/*" onChange={handleImageSelect} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }} />
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  onChange={handleImageSelect} 
+                  style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer', zIndex: 5 }} 
+                />
               </div>
 
               <textarea 
-                placeholder="Write a caption..."
+                placeholder="Write a caption (optional)..."
                 value={newCaption}
                 onChange={e => setNewCaption(e.target.value)}
                 style={{ width: '100%', background: '#222', border: '1px solid #444', borderRadius: '8px', color: 'white', padding: '1rem', marginTop: '1.5rem', height: '100px', fontFamily: 'inherit' }}
@@ -166,8 +178,8 @@ const Feed: React.FC = () => {
                 </button>
                 <button 
                   onClick={handleCreatePost}
-                  disabled={isPosting || !selectedImage || !newCaption}
-                  style={{ flex: 2, padding: '1rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', opacity: (isPosting || !selectedImage || !newCaption) ? 0.5 : 1 }}
+                  disabled={isPosting || !selectedImage}
+                  style={{ flex: 2, padding: '1rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', opacity: (isPosting || !selectedImage) ? 0.5 : 1 }}
                 >
                   {isPosting ? 'Posting...' : 'Post to Community'}
                 </button>

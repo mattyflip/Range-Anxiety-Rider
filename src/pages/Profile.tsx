@@ -159,10 +159,17 @@ const Profile: React.FC = () => {
                   position: 'absolute', bottom: 0, right: 0, 
                   background: '#ff6600', width: '32px', height: '32px', 
                   borderRadius: '50%', display: 'flex', alignItems: 'center', 
-                  justifyContent: 'center', cursor: 'pointer', border: '2px solid #121212' 
+                  justifyContent: 'center', cursor: 'pointer', border: '2px solid #121212',
+                  overflow: 'hidden'
                 }}>
                   <span style={{ fontSize: '1rem' }}>📷</span>
-                  <input type="file" hidden accept="image/*" onChange={handleImageUpload} disabled={isUploading} />
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    onChange={handleImageUpload} 
+                    disabled={isUploading} 
+                    style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }}
+                  />
                 </label>
               )}
             </div>
