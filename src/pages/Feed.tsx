@@ -22,7 +22,6 @@ const Feed: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
   const [userData, setUserData] = useState<any>(null);
-  const [isPro, setIsPro] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showInstallTutorial, setShowInstallTutorial] = useState(false);
 
