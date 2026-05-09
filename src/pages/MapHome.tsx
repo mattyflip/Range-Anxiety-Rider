@@ -225,7 +225,7 @@ function MapHome() {
   const [ridingStyle, setRidingStyle] = useState<'relaxed' | 'aggressive'>('relaxed');        
   const [isRoundTrip, setIsRoundTrip] = useState(false);
   const [isCustomReturn, setIsCustomReturn] = useState(false);
-  const [targetSpeedMph, setTargetSpeedMph] = useState<number | ''>(15);
+  const [targetSpeedMph, setTargetSpeedMph] = useState<number | ''>(20);
   const [batteryInputMode, setBatteryInputMode] = useState<'percent' | 'voltage'>('percent'); 
   const [capacityInputMode, setCapacityInputMode] = useState<'ah' | 'wh'>('ah');
   const [startBattery, setStartBattery] = useState<number | ''>(100);
@@ -985,8 +985,18 @@ function MapHome() {
           <div className="form-group">
             <label style={{ color: 'var(--accent-color)', fontSize: '0.65rem' }}>Unit System</label>
             <div className="mode-toggle">
-              <button className={unitSystem === 'imperial' ? 'active' : ''} onClick={() => setUnitSystem('imperial')}>Imperial (mi/lb)</button>
-              <button className={unitSystem === 'metric' ? 'active' : ''} onClick={() => setUnitSystem('metric')}>Metric (km/kg)</button>
+              <button className={unitSystem === 'imperial' ? 'active' : ''} onClick={() => {
+                if (unitSystem === 'metric' && targetSpeedMph !== '') {
+                  setTargetSpeedMph(parseFloat((targetSpeedMph * 0.621371).toFixed(1)));
+                }
+                setUnitSystem('imperial');
+              }}>Imperial (mi/lb)</button>
+              <button className={unitSystem === 'metric' ? 'active' : ''} onClick={() => {
+                if (unitSystem === 'imperial' && targetSpeedMph !== '') {
+                  setTargetSpeedMph(parseFloat((targetSpeedMph * 1.60934).toFixed(1)));
+                }
+                setUnitSystem('metric');
+              }}>Metric (km/kg)</button>
             </div>
           </div>
 
@@ -1105,7 +1115,7 @@ function MapHome() {
           )}
 
           <section className="form-group">
-            <label>Start Battery</label>
+            <label>Current Battery Level</label>
             <div className="mode-toggle" style={{ marginBottom: '0.5rem' }}>
               <button className={batteryInputMode === 'percent' ? 'active' : ''} onClick={() => setBatteryInputMode('percent')}>%</button>
               <button className={batteryInputMode === 'voltage' ? 'active' : ''} onClick={() => setBatteryInputMode('voltage')}>V</button>
@@ -1113,7 +1123,7 @@ function MapHome() {
             <input type="number" value={batteryInputMode === 'percent' ? startBattery : startVoltage} onChange={(e) => batteryInputMode === 'percent' ? setStartBattery(parseFloat(e.target.value) || '') : setStartVoltage(parseFloat(e.target.value) || '')} />
           </section>
 
-          <section className="form-group"><label>Target Speed ({unitSystem === 'imperial' ? 'mph' : 'km/h'})</label><input type="number" value={targetSpeedMph} onChange={(e) => setTargetSpeedMph(parseFloat(e.target.value) || '')} /></section>
+          <section className="form-group"><label>Average Speed ({unitSystem === 'imperial' ? 'mph' : 'km/h'})</label><input type="number" value={targetSpeedMph} onChange={(e) => setTargetSpeedMph(parseFloat(e.target.value) || '')} /></section>
 
           <section className="form-group">
             <label>Trip Type</label>
