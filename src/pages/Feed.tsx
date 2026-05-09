@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { db, auth } from '../firebase'
+import { db, auth, storage } from '../firebase'
 import { collection, query, orderBy, onSnapshot, doc, getDoc, updateDoc, arrayUnion, arrayRemove, addDoc, serverTimestamp } from 'firebase/firestore'
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import NavBar from '../components/NavBar'
 import InstallTutorial from '../components/InstallTutorial'
 import AuthModal from '../components/AuthModal'
 import UniversalSearch from '../components/UniversalSearch'
 import Cropper from 'react-easy-crop'
 import { getCroppedImg } from '../utils/imageUtils'
+import CommentModal from '../components/CommentModal'
 
 interface Post {
   id: string;
@@ -16,6 +18,7 @@ interface Post {
   imageUrl: string;
   caption: string;
   likes: string[];
+  commentsEnabled?: boolean;
   createdAt: any;
 }
 
@@ -31,6 +34,10 @@ const Feed: React.FC = () => {
   const [newCaption, setNewCaption] = useState('');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isPosting, setIsPosting] = useState(false);
+  const [allowComments, setAllowComments] = useState(true);
+
+  // Comment Modal state
+  const [activeCommentPost, setActiveCommentPost] = useState<Post | null>(null);
 
   // Cropper states
   const [crop, setCrop] = useState({ x: 0, y: 0 });
@@ -124,13 +131,22 @@ const Feed: React.FC = () => {
 
     setIsPosting(true);
     try {
+      // Professional Storage upload for high-res images
+      const response = await fetch(selectedImage);
+      const blob = await response.blob();
+
+      const imageRef = ref(storage, `posts/${user.uid}/${Date.now()}.png`);
+      await uploadBytes(imageRef, blob);
+      const imageUrl = await getDownloadURL(imageRef);
+
       await addDoc(collection(db, "posts"), {
         authorId: user.uid,
         authorUsername: userData.username,
         authorProfilePic: userData.profilePic,
-        imageUrl: selectedImage,
+        imageUrl,
         caption: newCaption || "",
         likes: [],
+        commentsEnabled: allowComments,
         createdAt: serverTimestamp()
       });
 
@@ -229,6 +245,17 @@ const Feed: React.FC = () => {
                     style={{ width: '100%', background: '#222', border: '1px solid #444', borderRadius: '8px', color: 'white', padding: '1rem', marginTop: '1.5rem', height: '100px', fontFamily: 'inherit' }}
                   />
 
+                  <div style={{ marginTop: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                    <input 
+                      type="checkbox" 
+                      id="allow-comments" 
+                      checked={allowComments} 
+                      onChange={e => setAllowComments(e.target.checked)}
+                      style={{ width: 'auto' }}
+                    />
+                    <label htmlFor="allow-comments" style={{ margin: 0, textTransform: 'none', fontSize: '0.9rem', color: '#ccc' }}>Allow community comments</label>
+                  </div>
+
                   <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
                     <button 
                       onClick={() => setShowCreatePost(false)}
@@ -285,21 +312,41 @@ const Feed: React.FC = () => {
                 </div>
                 
                 <div style={{ padding: '1.2rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-                    <button 
-                      onClick={() => handleLike(post)}
-                      style={{ 
-                        background: 'none', 
-                        border: 'none', 
-                        color: post.likes.includes(user?.uid) ? '#ff6600' : 'white', 
-                        fontSize: '1.5rem', 
-                        cursor: 'pointer',
-                        padding: 0
-                      }}
-                    >
-                      {post.likes.includes(user?.uid) ? '🧡' : '🤍'}
-                    </button>
-                    <span style={{ color: '#888', fontSize: '0.9rem' }}>{post.likes.length} likes</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', marginBottom: '1rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <button 
+                        onClick={() => handleLike(post)}
+                        style={{ 
+                          background: 'none', 
+                          border: 'none', 
+                          color: post.likes.includes(user?.uid) ? '#ff6600' : 'white', 
+                          fontSize: '1.5rem', 
+                          cursor: 'pointer',
+                          padding: 0
+                        }}
+                      >
+                        {post.likes.includes(user?.uid) ? '🧡' : '🤍'}
+                      </button>
+                      <span style={{ color: '#888', fontSize: '0.9rem' }}>{post.likes.length}</span>
+                    </div>
+
+                    {(post.commentsEnabled !== false) && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <button 
+                          onClick={() => setActiveCommentPost(post)}
+                          style={{ 
+                            background: 'none', 
+                            border: 'none', 
+                            color: 'white', 
+                            fontSize: '1.5rem', 
+                            cursor: 'pointer',
+                            padding: 0
+                          }}
+                        >
+                          💬
+                        </button>
+                      </div>
+                    )}
                   </div>
                   
                   <p style={{ color: '#ccc', margin: 0, fontSize: '0.95rem', lineHeight: '1.4' }}>
@@ -316,6 +363,14 @@ const Feed: React.FC = () => {
           </div>
         )}
       </main>
+
+      {activeCommentPost && (
+        <CommentModal 
+          postId={activeCommentPost.id} 
+          user={user} 
+          onClose={() => setActiveCommentPost(null)} 
+        />
+      )}
 
       {showInstallTutorial && <InstallTutorial onClose={() => setShowInstallTutorial(false)} />}
       {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}

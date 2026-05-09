@@ -1,5 +1,6 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
+import UniversalSearch from './UniversalSearch'
 
 interface NavBarProps {
   user: any;
@@ -30,6 +31,7 @@ const NavBar: React.FC<NavBarProps> = ({ user, onShowInstall }) => {
         <nav style={{ display: 'flex', gap: '1.2rem', alignItems: 'center' }}>
           <Link to="/" style={{ color: '#888', textDecoration: 'none', fontSize: '0.85rem', fontWeight: 700, textTransform: 'uppercase' }}>Map</Link>
           <Link to="/feed" style={{ color: '#888', textDecoration: 'none', fontSize: '0.85rem', fontWeight: 700, textTransform: 'uppercase' }}>Feed</Link>
+          <Link to="/forum" style={{ color: '#888', textDecoration: 'none', fontSize: '0.85rem', fontWeight: 700, textTransform: 'uppercase' }}>Forum</Link>
           <Link to={user ? `/profile/${user.displayName || user.uid}` : '/profile/me'} style={{ color: '#888', textDecoration: 'none', fontSize: '0.85rem', fontWeight: 700, textTransform: 'uppercase' }}>Profile</Link>
         </nav>
 

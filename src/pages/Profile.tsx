@@ -9,6 +9,7 @@ import InstallTutorial from '../components/InstallTutorial'
 import AuthModal from '../components/AuthModal'
 import Cropper from 'react-easy-crop'
 import { getCroppedImg } from '../utils/imageUtils'
+import CommentModal from '../components/CommentModal'
 
 interface Post {
   id: string;
@@ -18,6 +19,7 @@ interface Post {
   imageUrl: string;
   caption: string;
   likes: string[];
+  commentsEnabled?: boolean;
   createdAt: any;
 }
 
@@ -34,6 +36,9 @@ const Profile: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [editBio, setEditBio] = useState('');
   const [isUploading, setIsUploading] = useState(false);
+
+  // Comment Modal state
+  const [activeCommentPost, setActiveCommentPost] = useState<Post | null>(null);
 
   // Cropper states
   const [crop, setCrop] = useState({ x: 0, y: 0 });
@@ -84,7 +89,6 @@ const Profile: React.FC = () => {
             setEditBio(data.bio || '');
             fetchUserPosts(uSnap.id);
           }
-          setLoading(false);
         });
       }
       setLoading(false);
@@ -105,9 +109,6 @@ const Profile: React.FC = () => {
       setUserPosts(posts);
     }, (error) => {
       console.error("User posts snapshot error:", error);
-      if (error.message.includes("index")) {
-         console.warn("CRITICAL: A Firestore Index is required for profile posts to work. Check the console for the link.");
-      }
     });
   };
 
@@ -368,10 +369,18 @@ const Profile: React.FC = () => {
               {userPosts.length === 0 ? (
                 <div style={{ color: '#444', fontSize: '0.9rem', textAlign: 'center', padding: '2rem' }}>No trips shared yet.</div>
               ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
                   {userPosts.map(post => (
-                    <div key={post.id} style={{ width: '100%', aspectRatio: '1/1', background: '#1a1a1a', borderRadius: '12px', overflow: 'hidden', border: '1px solid #333' }}>
-                      <img src={post.imageUrl} alt="Post" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <div key={post.id} style={{ background: '#1a1a1a', borderRadius: '16px', border: '1px solid #333', overflow: 'hidden' }}>
+                      <div style={{ width: '100%', aspectRatio: '1/1', overflow: 'hidden', cursor: 'pointer' }} onClick={() => setActiveCommentPost(post)}>
+                        <img src={post.imageUrl} alt="Post" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      </div>
+                      <div style={{ padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ color: 'white', fontSize: '0.8rem', fontWeight: 'bold' }}>{post.likes.length} Likes</div>
+                        {(post.commentsEnabled !== false) && (
+                          <button onClick={() => setActiveCommentPost(post)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem' }}>💬</button>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -404,6 +413,14 @@ const Profile: React.FC = () => {
              </button>
           </div>
         </div>
+      )}
+
+      {activeCommentPost && (
+        <CommentModal 
+          postId={activeCommentPost.id} 
+          user={user} 
+          onClose={() => setActiveCommentPost(null)} 
+        />
       )}
 
       {showInstallTutorial && <InstallTutorial onClose={() => setShowInstallTutorial(false)} />}

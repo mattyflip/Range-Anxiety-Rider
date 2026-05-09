@@ -160,7 +160,9 @@ function MapHome() {
   const [pois, setPois] = useState<POI[]>([]);
   const [poiCategory, setPoiCategory] = useState<string | null>(null);
   const [selectedPoi, setSelectedPoi] = useState<POI | null>(null);
+  
   const [showSharePreview, setShowSharePreview] = useState(false);
+  const [commentsEnabled, setCommentsEnabled] = useState(true);
 
   const [user, setUser] = useState<User | null>(null);
   const [userData, setUserData] = useState<any>(null);
@@ -859,6 +861,7 @@ function MapHome() {
         imageUrl, // Now a small URL string
         caption: `Rode from ${trip.origin || 'Current Location'} to ${trip.destination}. ${metrics.distanceMiles.toFixed(1)} miles with ${metrics.batteryPercentUsed.toFixed(1)}% battery remaining!`,
         likes: [],
+        commentsEnabled: commentsEnabled,
         createdAt: serverTimestamp()
       });
 
@@ -1646,6 +1649,16 @@ function MapHome() {
             >
               {isLoading ? 'Processing...' : 'Post to Community Feed'}
             </button>
+            <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '0.8rem', justifyContent: 'center', width: '100%' }}>
+              <input 
+                type="checkbox" 
+                id="allow-comments-map" 
+                checked={commentsEnabled} 
+                onChange={e => setCommentsEnabled(e.target.checked)}
+                style={{ width: 'auto' }}
+              />
+              <label htmlFor="allow-comments-map" style={{ margin: 0, textTransform: 'none', fontSize: '0.85rem', color: '#ccc' }}>Allow community comments</label>
+            </div>
             <p style={{ width: '100%', textAlign: 'center', fontSize: '0.6rem', color: '#666', marginTop: '10px' }}>
                * Private Download saves locally only. Nothing is saved to our servers unless you click "Post to Community Feed".
             </p>
