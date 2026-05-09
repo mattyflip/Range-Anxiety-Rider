@@ -406,6 +406,14 @@ function MapHome() {
             setIsHostTier(data.isHostTier || false);
             setHostTierExpiresAt(data.hostTierExpiresAt?.toMillis() || null);
             setUsername(data.username || '');
+            
+            // Auto-sync lowercase username for search functionality
+            if (data.username && !data.usernameLowercase) {
+              updateDoc(doc(db, "users", currentUser.uid), {
+                usernameLowercase: data.username.toLowerCase()
+              }).catch(e => console.error("Lowercase sync failed", e));
+            }
+
             if (data.bikes) setSavedBikes(data.bikes);
           } else {
             const newUser = { email: currentUser.email, isPro: false, createdAt: new Date(), uid: currentUser.uid };

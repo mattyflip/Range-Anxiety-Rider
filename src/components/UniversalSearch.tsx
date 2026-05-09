@@ -25,18 +25,29 @@ const UniversalSearch: React.FC = () => {
 
   const performSearch = async () => {
     setIsSearching(true)
+    setShowResults(true) // Ensure box shows immediately
     try {
       const lowerSearch = searchTerm.toLowerCase()
-      
-      // Search Users by username (case-insensitive via lowercase field)
       const usersRef = collection(db, "users")
-      const userQuery = query(usersRef, where("usernameLowercase", ">=", lowerSearch), where("usernameLowercase", "<=", lowerSearch + '\uf8ff'), limit(5))
-      const userSnap = await getDocs(userQuery)
-      const foundUsers = userSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+      
+      // Parallel Search: Search both original and lowercase fields to catch all users
+      const qLower = query(usersRef, where("usernameLowercase", ">=", lowerSearch), where("usernameLowercase", "<=", lowerSearch + '\uf8ff'), limit(10))
+      const qOrig = query(usersRef, where("username", ">=", searchTerm), where("username", "<=", searchTerm + '\uf8ff'), limit(10))
+
+      const [snapLower, snapOrig] = await Promise.all([
+        getDocs(qLower).catch(() => ({ docs: [] })), 
+        getDocs(qOrig).catch(() => ({ docs: [] }))
+      ])
+
+      // Deduplicate results by user ID
+      const usersMap = new Map()
+      snapLower.docs.forEach(doc => usersMap.set(doc.id, { id: doc.id, ...doc.data() }))
+      snapOrig.docs.forEach(doc => usersMap.set(doc.id, { id: doc.id, ...doc.data() }))
+      const foundUsers = Array.from(usersMap.values()).slice(0, 5)
 
       // Search Posts by caption (contains location or bike info usually)
       const postsRef = collection(db, "posts")
-      const postQuery = query(postsRef, limit(20)) // Firestore doesn't support full-text search natively well, so we sample and filter client-side for this prototype
+      const postQuery = query(postsRef, limit(20))
       const postSnap = await getDocs(postQuery)
       const foundPosts = postSnap.docs
         .map(doc => ({ id: doc.id, ...doc.data() }))
@@ -44,7 +55,6 @@ const UniversalSearch: React.FC = () => {
         .slice(0, 5)
 
       setResults({ users: foundUsers, posts: foundPosts })
-      setShowResults(true)
     } catch (e) {
       console.error("Search failed", e)
     } finally {
