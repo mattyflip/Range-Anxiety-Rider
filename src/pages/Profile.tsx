@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { db, auth, storage } from '../firebase'
-import { doc, getDoc, collection, query, where, onSnapshot, updateDoc, arrayRemove } from 'firebase/firestore'
+import { doc, collection, query, where, onSnapshot, updateDoc, arrayRemove } from 'firebase/firestore'
 import { ref, uploadString, getDownloadURL } from 'firebase/storage'
 import NavBar from '../components/NavBar'
 import InstallTutorial from '../components/InstallTutorial'
@@ -24,7 +24,7 @@ const Profile: React.FC = () => {
     const unsub = auth.onAuthStateChanged(u => {
       setUser(u);
       if (u) {
-        getDoc(doc(db, "users", u.uid)).then(snap => {
+        onSnapshot(doc(db, "users", u.uid), (snap) => {
           if (snap.exists()) setIsPro(snap.data().isPro || false);
         });
       }
@@ -33,34 +33,35 @@ const Profile: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    const fetchProfile = async () => {
-      setLoading(true);
-      try {
-        const usersRef = collection(db, "users");
-        const q = query(usersRef, where("username", "==", username));
-        const unsubscribe = onSnapshot(q, (snap) => {
-          if (!snap.empty) {
-            const data = snap.docs[0].data();
-            setProfileData({ ...data, id: snap.docs[0].id });
+    if (!username) return;
+    setLoading(true);
+    let unsubscribe: () => void;
+
+    // Search for user by username
+    const usersRef = collection(db, "users");
+    const q = query(usersRef, where("username", "==", username));
+
+    unsubscribe = onSnapshot(q, (snap) => {
+      if (!snap.empty) {
+        const data = snap.docs[0].data();
+        setProfileData({ ...data, id: snap.docs[0].id });
+        setEditBio(data.bio || '');
+        setLoading(false);
+      } else {
+        // Fallback: Check if username parameter is actually a UID
+        const docRef = doc(db, "users", username);
+        onSnapshot(docRef, (uSnap) => {
+          if (uSnap.exists()) {
+            const data = uSnap.data();
+            setProfileData({ ...data, id: uSnap.id });
             setEditBio(data.bio || '');
-          } else {
-            getDoc(doc(db, "users", username!)).then(uSnap => {
-              if (uSnap.exists()) {
-                const data = uSnap.data();
-                setProfileData({ ...data, id: uSnap.id });
-                setEditBio(data.bio || '');
-              }
-            });
           }
           setLoading(false);
         });
-        return unsubscribe;
-      } catch (e) {
-        console.error("Profile fetch error:", e);
-        setLoading(false);
       }
-    };
-    if (username) fetchProfile();
+    });
+
+    return () => { if (unsubscribe) unsubscribe(); };
   }, [username]);
 
   const handleUpdateBio = async () => {
@@ -73,7 +74,7 @@ const Profile: React.FC = () => {
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !user || user.uid !== profileData.id) return;
+    if (!file || !user || !profileData || user.uid !== profileData.id) return;
     
     setIsUploading(true);
     const reader = new FileReader();
@@ -83,7 +84,10 @@ const Profile: React.FC = () => {
         const imageRef = ref(storage, `profiles/${user.uid}`);
         await uploadString(imageRef, dataUrl, 'data_url');
         const imageUrl = await getDownloadURL(imageRef);
-        await updateDoc(doc(db, "users", user.uid), { profilePic: imageUrl });
+        // Add timestamp to force browser to refresh the image
+        await updateDoc(doc(db, "users", user.uid), { 
+          profilePic: `${imageUrl}&t=${Date.now()}` 
+        });
       } catch (err) { console.error("Upload error:", err); }
       finally { setIsUploading(false); }
     };
@@ -128,7 +132,14 @@ const Profile: React.FC = () => {
                 border: '2px solid #ff6600',
                 overflow: 'hidden'
               }}>
-                {profileData.profilePic ? <img src={profileData.profilePic} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : '🚲'}
+                {profileData.profilePic ? (
+                  <img 
+                    src={profileData.profilePic} 
+                    alt="Profile" 
+                    key={profileData.profilePic} // Use key to force re-render
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                  />
+                ) : '🚲'}
               </div>
               {isOwner && (
                 <label style={{ 
