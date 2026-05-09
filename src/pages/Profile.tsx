@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { db, auth, storage } from '../firebase'
 import { doc, collection, query, where, onSnapshot, updateDoc, arrayRemove } from 'firebase/firestore'
-import { ref, uploadString, getDownloadURL } from 'firebase/storage'
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import NavBar from '../components/NavBar'
 import InstallTutorial from '../components/InstallTutorial'
 import AuthModal from '../components/AuthModal'
@@ -37,7 +37,6 @@ const Profile: React.FC = () => {
     setLoading(true);
     let unsubscribe: () => void;
 
-    // Search for user by username
     const usersRef = collection(db, "users");
     const q = query(usersRef, where("username", "==", username));
 
@@ -48,7 +47,6 @@ const Profile: React.FC = () => {
         setEditBio(data.bio || '');
         setLoading(false);
       } else {
-        // Fallback: Check if username parameter is actually a UID
         const docRef = doc(db, "users", username);
         onSnapshot(docRef, (uSnap) => {
           if (uSnap.exists()) {
@@ -65,7 +63,7 @@ const Profile: React.FC = () => {
   }, [username]);
 
   const handleUpdateBio = async () => {
-    if (!user || user.uid !== profileData.id) return;
+    if (!user || !profileData || user.uid !== profileData.id) return;
     try {
       await updateDoc(doc(db, "users", user.uid), { bio: editBio });
       setIsEditing(false);
@@ -76,26 +74,38 @@ const Profile: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file || !user || !profileData || user.uid !== profileData.id) return;
     
+    // Check file size (limit to 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      alert("Image is too large. Please select a photo under 2MB.");
+      return;
+    }
+
     setIsUploading(true);
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      const dataUrl = event.target?.result as string;
-      try {
-        const imageRef = ref(storage, `profiles/${user.uid}`);
-        await uploadString(imageRef, dataUrl, 'data_url');
-        const imageUrl = await getDownloadURL(imageRef);
-        // Add timestamp to force browser to refresh the image
-        await updateDoc(doc(db, "users", user.uid), { 
-          profilePic: `${imageUrl}&t=${Date.now()}` 
-        });
-      } catch (err) { console.error("Upload error:", err); }
-      finally { setIsUploading(false); }
-    };
-    reader.readAsDataURL(file);
+    try {
+      const imageRef = ref(storage, `profiles/${user.uid}`);
+      
+      // Upload the raw file blob directly for better reliability
+      await uploadBytes(imageRef, file);
+      const imageUrl = await getDownloadURL(imageRef);
+      
+      // Update Firestore with cache-busting timestamp to force browser refresh
+      const finalUrl = `${imageUrl}${imageUrl.includes('?') ? '&' : '?'}t=${Date.now()}`;
+      
+      await updateDoc(doc(db, "users", user.uid), { 
+        profilePic: finalUrl 
+      });
+
+      alert("Profile picture updated successfully!");
+    } catch (err: any) { 
+      console.error("Full upload error object:", err);
+      alert(`Upload failed: ${err.message || "Unknown error"}. Check if Firebase Storage is enabled in your project.`);
+    } finally { 
+      setIsUploading(false); 
+    }
   };
 
   const removeBike = async (bike: any) => {
-    if (!user || user.uid !== profileData.id) return;
+    if (!user || !profileData || user.uid !== profileData.id) return;
     try {
       await updateDoc(doc(db, "users", user.uid), {
         bikes: arrayRemove(bike)
