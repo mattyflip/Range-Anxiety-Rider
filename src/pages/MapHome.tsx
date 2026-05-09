@@ -317,18 +317,22 @@ function MapHome() {
           const userDoc = await getDoc(doc(db, "users", currentUser.uid));
           if (userDoc.exists()) {
             const data = userDoc.data();
+            setUserData(data);
             setIsPro(data.isPro || false);
             setIsHostTier(data.isHostTier || false);
             setHostTierExpiresAt(data.hostTierExpiresAt?.toMillis() || null);
             setUsername(data.username || '');
             if (data.bikes) setSavedBikes(data.bikes);
           } else {
-            await setDoc(doc(db, "users", currentUser.uid), { email: currentUser.email, isPro: false, createdAt: new Date(), uid: currentUser.uid });
+            const newUser = { email: currentUser.email, isPro: false, createdAt: new Date(), uid: currentUser.uid };
+            await setDoc(doc(db, "users", currentUser.uid), newUser);
+            setUserData(newUser);
             setIsPro(false);
             setIsHostTier(false);
           }
         } catch (e) { console.error("Firestore error:", e); }
       } else {
+        setUserData(null);
         setIsPro(false);
         setIsHostTier(false);
         setHostTierExpiresAt(null);
@@ -815,6 +819,13 @@ function MapHome() {
 
   const shareToCommunity = async () => {
     if (!shareCardRef.current || !metrics || !user) return;
+    
+    // Enforce profile completeness
+    if (!userData?.username || !userData?.profilePic) {
+      alert("Please complete your profile (set a username and upload a profile picture) before sharing to the community!");
+      return;
+    }
+
     try {
       setIsLoading(true);
       const el = shareCardRef.current;
@@ -825,14 +836,11 @@ function MapHome() {
       const dataUrl = await toPng(el, { cacheBust: true, backgroundColor: "#121212", pixelRatio: 1.5 });
       el.style.opacity = '0';
 
-      const userSnap = await getDoc(doc(db, "users", user.uid));
-      const currentUsername = userSnap.exists() ? userSnap.data().username : (user.email?.split('@')[0] || "Rider");
-
       // Save the post directly to Firestore using the Base64 dataUrl
-      // This avoids the need for a paid Firebase Storage plan
       await addDoc(collection(db, "posts"), {
         authorId: user.uid,
-        authorUsername: currentUsername || "Rider",
+        authorUsername: userData.username,
+        authorProfilePic: userData.profilePic,
         imageUrl: dataUrl, // Store Base64 string
         caption: `Rode from ${trip.origin || 'Current Location'} to ${trip.destination}. ${metrics.distanceMiles.toFixed(1)} miles with ${metrics.batteryPercentUsed.toFixed(1)}% battery remaining!`,
         likes: [],
@@ -857,8 +865,6 @@ function MapHome() {
     <div className="container">
       <NavBar 
         user={user} 
-        isPro={isPro} 
-        onShowAuth={() => setShowAuthModal(true)} 
         onShowInstall={() => setShowInstallTutorial(true)} 
       />
 
@@ -1818,6 +1824,12 @@ function MapHome() {
             🎯
           </button>
       </div>
+
+      {showInstallTutorial && <InstallTutorial onClose={() => setShowInstallTutorial(false)} />}
+      
+      {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
+
+      {showToSPage && <TermsOfService onClose={() => setShowToSPage(false)} />}
     </div>
   )
 }
