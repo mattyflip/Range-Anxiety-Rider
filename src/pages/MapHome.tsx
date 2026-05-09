@@ -4,7 +4,7 @@ import { GoogleMap, useJsApiLoader, DirectionsService, DirectionsRenderer, Marke
 import axios from 'axios'
 import { toPng } from 'html-to-image'
 import { auth, db, storage } from '../firebase'
-import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'firebase/auth'
+import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth'
 import type { User } from 'firebase/auth'
 import { doc, getDoc, setDoc, collection, addDoc, serverTimestamp, onSnapshot, query, where, deleteDoc, getDocs, updateDoc, arrayUnion } from 'firebase/firestore'
 import { ref, uploadString, getDownloadURL } from 'firebase/storage'
@@ -116,7 +116,7 @@ interface POI {
 
 const center = { lat: 40.7128, lng: -74.0060 };
 
-function App() {
+function MapHome() {
   const { isLoaded, loadError } = useJsApiLoader({
     id: 'google-map-script',
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "",
@@ -165,10 +165,7 @@ function App() {
   const [isHostTier, setIsHostTier] = useState(false);
   const [hostTierExpiresAt, setHostTierExpiresAt] = useState<number | null>(null);
   const [username, setUsername] = useState('');
-  const [authEmail, setAuthEmail] = useState('');
-  const [authPass, setAuthPass] = useState('');
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [isRegistering, setIsRegistering] = useState(false);
 
   const [bikeSearchQuery, setBikeSearchQuery] = useState("");
   const [showBikeResults, setShowBikeResults] = useState(false);
@@ -178,7 +175,6 @@ function App() {
   const [usernameInput, setUsernameInput] = useState('');
   const [showUsernameEdit, setShowUsernameEdit] = useState(false);
 
-  const [agreedToToS, setAgreedToToS] = useState(false);
   const [showToSPage, setShowToSPage] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showInstallTutorial, setShowInstallTutorial] = useState(false);
@@ -327,7 +323,7 @@ function App() {
             setUsername(data.username || '');
             if (data.bikes) setSavedBikes(data.bikes);
           } else {
-            await setDoc(doc(db, "users", currentUser.uid), { email: currentUser.email, isPro: false, createdAt: new Date() });
+            await setDoc(doc(db, "users", currentUser.uid), { email: currentUser.email, isPro: false, createdAt: new Date(), uid: currentUser.uid });
             setIsPro(false);
             setIsHostTier(false);
           }
@@ -344,31 +340,6 @@ function App() {
     });
     return () => unsubscribe();
   }, []);
-
-  const handleAuth = async () => {
-    setError(null);
-    try {
-      if (isRegistering) {
-        if (!agreedToToS) {
-          setError("You must agree to the Terms of Service to create an account.");
-          return;
-        }
-        const userCredential = await createUserWithEmailAndPassword(auth, authEmail, authPass);
-        try {
-          await setDoc(doc(db, "marketing_emails", userCredential.user.uid), {
-            email: authEmail,
-            subscribedAt: serverTimestamp(),
-            source: "account_creation"
-          });
-        } catch (e) { console.error("Marketing email log failed:", e); }
-      } else {
-        await signInWithEmailAndPassword(auth, authEmail, authPass);
-      }
-      setShowAuthModal(false); setAuthEmail(''); setAuthPass(''); setAgreedToToS(false);
-    } catch (err: any) { console.error("Auth error:", err); setError(err.message); }
-  };
-
-  const handleSignOut = () => signOut(auth);
 
   const updateUsername = async (newVal: string) => {
     setUsername(newVal);
@@ -1467,34 +1438,7 @@ function App() {
       
       {showInstallTutorial && <InstallTutorial onClose={() => setShowInstallTutorial(false)} />}
       
-      {showAuthModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(10px)' }}>
-          <div className="card" style={{ width: '350px', background: '#1e1e1e', padding: '2rem', borderRadius: '12px', border: '1px solid #333' }}>
-            <h2 style={{ color: '#ff6600', marginBottom: '1.5rem', textAlign: 'center' }}>{isRegistering ? 'Create Account' : 'Sign In'}</h2>
-            <div className="form-group"><label>Email</label><input type="email" value={authEmail} onChange={e => setAuthEmail(e.target.value)} /></div>
-            <div className="form-group"><label>Password</label><input type="password" value={authPass} onChange={e => setAuthPass(e.target.value)} /></div>
-            
-            {isRegistering && (
-              <div className="form-group" style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginTop: '1rem' }}>
-                <input 
-                  type="checkbox" 
-                  id="tos-check" 
-                  checked={agreedToToS} 
-                  onChange={e => setAgreedToToS(e.target.checked)} 
-                  style={{ width: 'auto', marginTop: '4px' }}
-                />
-                <label htmlFor="tos-check" style={{ fontSize: '0.75rem', textTransform: 'none', lineHeight: '1.4' }}>
-                  I agree to the <button type="button" onClick={() => setShowToSPage(true)} style={{ background: 'none', border: 'none', color: '#ff6600', padding: 0, textDecoration: 'underline', cursor: 'pointer', fontSize: '0.75rem' }}>Terms of Service</button> and to receive marketing updates from Ebike King NJ.
-                </label>
-              </div>
-            )}
-
-            <button className="calculate-btn" style={{ width: '100%', padding: '0.8rem', marginTop: '1rem' }} onClick={handleAuth}>{isRegistering ? 'Register' : 'Login'}</button>
-            <p style={{ marginTop: '1rem', textAlign: 'center', fontSize: '0.8rem', color: '#888' }}>{isRegistering ? 'Already have an account?' : 'Need an account?'} <button onClick={() => setIsRegistering(!isRegistering)} style={{ background: 'none', border: 'none', color: '#ff6600', cursor: 'pointer', textDecoration: 'underline' }}>{isRegistering ? 'Sign In' : 'Register Now'}</button></p>
-            <button onClick={() => setShowAuthModal(false)} style={{ width: '100%', marginTop: '1.5rem', background: 'none', border: 'none', color: '#666', cursor: 'pointer' }}>Cancel</button>
-          </div>
-        </div>
-      )}
+      {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
 
       {showToSPage && <TermsOfService onClose={() => setShowToSPage(false)} />}
 
@@ -1876,4 +1820,4 @@ function App() {
   )
 }
 
-export default App
+export default MapHome
