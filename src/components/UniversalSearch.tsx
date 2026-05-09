@@ -30,16 +30,20 @@ const UniversalSearch: React.FC = () => {
       const lowerSearch = searchTerm.toLowerCase()
       const usersRef = collection(db, "users")
       
-      // Single, robust query against the lowercase field for guaranteed case-insensitivity
-      const q = query(
-        usersRef, 
-        where("usernameLowercase", ">=", lowerSearch), 
-        where("usernameLowercase", "<=", lowerSearch + '\uf8ff'), 
-        limit(10)
-      )
+      // Parallel Search: Search both original and lowercase fields to catch all users (legacy & new)
+      const qLower = query(usersRef, where("usernameLowercase", ">=", lowerSearch), where("usernameLowercase", "<=", lowerSearch + '\uf8ff'), limit(10))
+      const qOrig = query(usersRef, where("username", ">=", searchTerm), where("username", "<=", searchTerm + '\uf8ff'), limit(10))
 
-      const snap = await getDocs(q)
-      const foundUsers = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+      const [snapLower, snapOrig] = await Promise.all([
+        getDocs(qLower).catch(() => ({ docs: [] })), 
+        getDocs(qOrig).catch(() => ({ docs: [] }))
+      ])
+
+      // Deduplicate results by user ID
+      const usersMap = new Map()
+      snapLower.docs.forEach(doc => usersMap.set(doc.id, { id: doc.id, ...doc.data() }))
+      snapOrig.docs.forEach(doc => usersMap.set(doc.id, { id: doc.id, ...doc.data() }))
+      const foundUsers = Array.from(usersMap.values()).slice(0, 5)
 
       // Search Posts by caption
       const postsRef = collection(db, "posts")

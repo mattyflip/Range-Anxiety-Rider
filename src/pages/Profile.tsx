@@ -69,9 +69,11 @@ const Profile: React.FC = () => {
     setLoading(true);
     let unsubscribe: () => void;
 
-    // Search for user by username
+    // Search for user by username (Case-Insensitive via lowercase field)
     const usersRef = collection(db, "users");
-    const q = query(usersRef, where("username", "==", target));
+    const lowerTarget = target.toLowerCase();
+    
+    const q = query(usersRef, where("usernameLowercase", "==", lowerTarget));
 
     unsubscribe = onSnapshot(q, (snap) => {
       if (!snap.empty) {
@@ -80,14 +82,25 @@ const Profile: React.FC = () => {
         setEditBio(data.bio || '');
         fetchUserPosts(snap.docs[0].id);
       } else {
-        // Fallback: Check if username parameter is actually a UID
-        const docRef = doc(db, "users", target);
-        onSnapshot(docRef, (uSnap) => {
-          if (uSnap.exists()) {
-            const data = uSnap.data();
-            setProfileData({ ...data, id: uSnap.id });
+        // Fallback 1: Search by original username field (case-sensitive)
+        const qOrig = query(usersRef, where("username", "==", target));
+        getDocs(qOrig).then(origSnap => {
+          if (!origSnap.empty) {
+            const data = origSnap.docs[0].data();
+            setProfileData({ ...data, id: origSnap.docs[0].id });
             setEditBio(data.bio || '');
-            fetchUserPosts(uSnap.id);
+            fetchUserPosts(origSnap.docs[0].id);
+          } else {
+            // Fallback 2: Check if username parameter is actually a UID
+            const docRef = doc(db, "users", target);
+            getDoc(docRef).then(uSnap => {
+              if (uSnap.exists()) {
+                const data = uSnap.data();
+                setProfileData({ ...data, id: uSnap.id });
+                setEditBio(data.bio || '');
+                fetchUserPosts(uSnap.id);
+              }
+            });
           }
         });
       }
