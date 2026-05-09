@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
-import { db, auth } from '../firebase'
+import { db, auth, storage } from '../firebase'
 import { doc, collection, query, where, onSnapshot, updateDoc, arrayRemove } from 'firebase/firestore'
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import NavBar from '../components/NavBar'
 import InstallTutorial from '../components/InstallTutorial'
 import AuthModal from '../components/AuthModal'
@@ -73,38 +74,34 @@ const Profile: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file || !user || !profileData || user.uid !== profileData.id) return;
     
-    // Check file size (limit to 800KB for Firestore stability)
-    if (file.size > 800 * 1024) {
-      alert("Image is too large for the free tier. Please select a photo under 800KB.");
+    // Blaze Plan High-res limit (10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      alert("Image is too large. Please select a photo under 10MB.");
       return;
     }
 
     setIsUploading(true);
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      const base64String = event.target?.result as string;
-      try {
-        // Save the image directly to Firestore as a text string (Base64)
-        // This bypasses the Storage bucket and CORS issues entirely
-        await updateDoc(doc(db, "users", user.uid), { 
-          profilePic: base64String 
-        });
+    try {
+      const imageRef = ref(storage, `profiles/${user.uid}`);
+      
+      // Professional Byte Upload
+      await uploadBytes(imageRef, file);
+      const imageUrl = await getDownloadURL(imageRef);
+      
+      // Update Firestore with cache-busting timestamp
+      const finalUrl = `${imageUrl}${imageUrl.includes('?') ? '&' : '?'}t=${Date.now()}`;
+      
+      await updateDoc(doc(db, "users", user.uid), { 
+        profilePic: finalUrl 
+      });
 
-        // Update local state for instant feedback
-        setProfileData((prev: any) => ({ ...prev, profilePic: base64String }));
-        alert("Profile picture updated successfully!");
-      } catch (err: any) { 
-        console.error("Database update failed:", err);
-        alert(`Failed to save image: ${err.message}`);
-      } finally { 
-        setIsUploading(false); 
-      }
-    };
-    reader.onerror = () => {
-      alert("Failed to read the file. Please try another image.");
-      setIsUploading(false);
-    };
-    reader.readAsDataURL(file);
+      alert("Profile picture updated!");
+    } catch (err: any) { 
+      console.error("Storage upload failed:", err);
+      alert(`Upload failed: ${err.message}. Check if Storage is enabled and CORS is configured.`);
+    } finally { 
+      setIsUploading(false); 
+    }
   };
 
   const removeBike = async (bike: any) => {
@@ -149,7 +146,7 @@ const Profile: React.FC = () => {
                   <img 
                     src={profileData.profilePic} 
                     alt="Profile" 
-                    key={profileData.profilePic} // Use key to force re-render
+                    key={profileData.profilePic} 
                     style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
                   />
                 ) : '🚲'}

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
-import { db, auth } from '../firebase'
+import { db, auth, storage } from '../firebase'
 import { collection, query, orderBy, onSnapshot, doc, getDoc, updateDoc, arrayUnion, arrayRemove, addDoc, serverTimestamp } from 'firebase/firestore'
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import NavBar from '../components/NavBar'
 import InstallTutorial from '../components/InstallTutorial'
 import AuthModal from '../components/AuthModal'
@@ -73,9 +74,9 @@ const Feed: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Check file size (limit to 800KB for Firestore stability)
-    if (file.size > 800 * 1024) {
-      alert("Image is too large. Please select a photo under 800KB or take a screenshot of it.");
+    // High-res Blaze limit (10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      alert("Image is too large. Please select a photo under 10MB.");
       return;
     }
 
@@ -90,16 +91,22 @@ const Feed: React.FC = () => {
     if (!user || !selectedImage) return;
     setIsPosting(true);
     try {
+      // Professional Storage upload for high-res images
+      const response = await fetch(selectedImage);
+      const blob = await response.blob();
+
+      const imageRef = ref(storage, `posts/${user.uid}/${Date.now()}.png`);
+      await uploadBytes(imageRef, blob);
+      const imageUrl = await getDownloadURL(imageRef);
+
       const userSnap = await getDoc(doc(db, "users", user.uid));
       const currentUsername = userSnap.exists() ? userSnap.data().username : (user.email?.split('@')[0] || "Rider");
 
-      // Save the post directly to Firestore using the Base64 dataUrl
-      // This avoids the need for a paid Firebase Storage plan
       await addDoc(collection(db, "posts"), {
         authorId: user.uid,
         authorUsername: currentUsername || "Rider",
-        imageUrl: selectedImage, // Base64 string
-        caption: newCaption || "", // Caption is now optional
+        imageUrl,
+        caption: newCaption || "",
         likes: [],
         createdAt: serverTimestamp()
       });
@@ -107,10 +114,10 @@ const Feed: React.FC = () => {
       setNewCaption('');
       setSelectedImage(null);
       setShowCreatePost(false);
-      alert("Post created successfully!");
+      alert("Post shared with the community!");
     } catch (e: any) {
       console.error("Post creation failed", e);
-      alert(`Failed to post: ${e.message}`);
+      alert(`Failed to share: ${e.message}. Check Storage CORS settings.`);
     } finally {
       setIsPosting(false);
     }
