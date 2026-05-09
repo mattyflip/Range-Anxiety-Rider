@@ -8,8 +8,6 @@ interface NavBarProps {
 }
 
 const NavBar: React.FC<NavBarProps> = ({ user, onShowInstall }) => {
-  const navigate = useNavigate();
-
   return (
     <header style={{ 
       display: 'flex', 

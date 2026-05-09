@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { db, auth, storage } from '../firebase'
-import { doc, collection, query, where, onSnapshot, updateDoc, arrayRemove, getDoc } from 'firebase/firestore'
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
+import { db, auth } from '../firebase'
+import { doc, collection, query, where, onSnapshot, updateDoc, arrayRemove } from 'firebase/firestore'
 import { signOut } from 'firebase/auth'
 import NavBar from '../components/NavBar'
 import InstallTutorial from '../components/InstallTutorial'
@@ -14,7 +13,6 @@ const Profile: React.FC = () => {
   const [profileData, setProfileData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
-  const [isPro, setIsPro] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showInstallTutorial, setShowInstallTutorial] = useState(false);
 
@@ -25,22 +23,13 @@ const Profile: React.FC = () => {
   useEffect(() => {
     const unsub = auth.onAuthStateChanged(u => {
       setUser(u);
-      if (u) {
-        onSnapshot(doc(db, "users", u.uid), (snap) => {
-          if (snap.exists()) setIsPro(snap.data().isPro || false);
-        });
-      }
     });
     return () => unsub();
   }, []);
 
   useEffect(() => {
-    // If no username provided, try to redirect to own profile or show sign in
     if (!username || username === 'me') {
-      if (user) {
-         // Logic to find own username would go here, for now use UID
-         // fetchProfile will handle UID fallback
-      } else {
+      if (!user) {
         setLoading(false);
         return;
       }

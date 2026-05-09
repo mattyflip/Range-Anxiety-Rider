@@ -137,8 +137,6 @@ const Feed: React.FC = () => {
     <div className="container" style={{ minHeight: '100vh', background: '#121212' }}>
       <NavBar 
         user={user} 
-        isPro={isPro} 
-        onShowAuth={() => setShowAuthModal(true)} 
         onShowInstall={() => setShowInstallTutorial(true)} 
       />
 
