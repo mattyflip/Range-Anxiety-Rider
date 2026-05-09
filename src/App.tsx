@@ -652,8 +652,29 @@ function App() {
         headwindMph = windSpeed * Math.cos((angleDiff * Math.PI) / 180);
       } catch (e) { console.warn("Weather API failed", e); }
 
-      // ... PHYSICS-BASED MODEL logic ...
-      // (massKg, velocityMps, Crr, ForceRolling, ForceDrag, etc.)
+      // --- PHYSICS-BASED MODEL (Internally uses Imperial/SI) ---
+      const isMetric = unitSystem === 'metric';
+      
+      // Convert inputs to Imperial if they are provided in Metric
+      const bikeWeightLbs = isMetric ? (Number(specs.bikeWeightLbs) * 2.20462) : Number(specs.bikeWeightLbs);
+      const riderWeightLbsActual = isMetric ? (Number(riderWeightLbs) * 2.20462) : Number(riderWeightLbs);
+      const targetSpeedMphActual = isMetric ? (Number(targetSpeedMph) * 0.621371) : Number(targetSpeedMph);
+      const tempF = isMetric ? (Number(ambientTempF) * 9/5 + 32) : Number(ambientTempF);
+
+      const massKg = (bikeWeightLbs + riderWeightLbsActual) * 0.453592;
+      const velocityMps = targetSpeedMphActual * 0.44704;
+      
+      let Crr = tireType === 'road' ? 0.007 : 0.015;
+      if (tirePressurePsi !== '' && tirePressurePsi < 35) {
+        Crr += (35 - tirePressurePsi) / 5 * 0.002;
+      }
+      const ForceRolling = Crr * massKg * 9.81;
+
+      const tempC = (tempF - 32) * 5 / 9;
+      const rho = 1.225 * (288.15 / (273.15 + tempC));
+      const CdA = 0.55;
+      const relativeVelocityMps = Math.max(0.1, velocityMps + (headwindMph * 0.44704));
+      const ForceDrag = 0.5 * rho * CdA * Math.pow(relativeVelocityMps, 2);
 
       const gainMeters = gainFeet * 0.3048;
       let thermalEfficiency = 1.0;
