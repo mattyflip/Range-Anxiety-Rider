@@ -1629,7 +1629,7 @@ function MapHome() {
               disabled={isLoading}
               style={{ flex: 1, padding: '14px', backgroundColor: '#444', color: 'white', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em' }}
             >
-              {isLoading ? '...' : 'Download PNG'}
+              {isLoading ? '...' : 'Private Download'}
             </button>
             <button 
               onClick={shareToCommunity} 
@@ -1638,6 +1638,9 @@ function MapHome() {
             >
               {isLoading ? 'Processing...' : 'Post to Community Feed'}
             </button>
+            <p style={{ width: '100%', textAlign: 'center', fontSize: '0.6rem', color: '#666', marginTop: '10px' }}>
+               * Private Download saves locally only. Nothing is saved to our servers unless you click "Post to Community Feed".
+            </p>
           </div>
         </div>
       )}

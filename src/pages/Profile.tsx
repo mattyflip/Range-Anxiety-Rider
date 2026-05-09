@@ -94,12 +94,20 @@ const Profile: React.FC = () => {
   }, [username, user?.uid]);
 
   const fetchUserPosts = (userId: string) => {
+    console.log("Fetching posts for user ID:", userId);
     const postsRef = collection(db, "posts");
     const q = query(postsRef, where("authorId", "==", userId), orderBy("createdAt", "desc"));
-    onSnapshot(q, (snap) => {
+    
+    return onSnapshot(q, (snap) => {
       const posts: Post[] = [];
       snap.forEach(docSnap => posts.push({ id: docSnap.id, ...docSnap.data() } as Post));
+      console.log("Found posts:", posts.length);
       setUserPosts(posts);
+    }, (error) => {
+      console.error("User posts snapshot error:", error);
+      if (error.message.includes("index")) {
+         console.warn("CRITICAL: A Firestore Index is required for profile posts to work. Check the console for the link.");
+      }
     });
   };
 
