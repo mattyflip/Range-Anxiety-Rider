@@ -3,11 +3,12 @@ import ReactGA from "react-ga4"
 import { GoogleMap, useJsApiLoader, DirectionsService, DirectionsRenderer, Marker, InfoWindow, Polyline } from '@react-google-maps/api'
 import axios from 'axios'
 import { toPng } from 'html-to-image'
-import { auth, db } from './firebase'
+import { auth, db, storage } from '../firebase'
 import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'firebase/auth'
 import type { User } from 'firebase/auth'
 import { doc, getDoc, setDoc, collection, addDoc, serverTimestamp, onSnapshot, query, where, deleteDoc, getDocs, updateDoc, arrayUnion } from 'firebase/firestore'
-import AdBanner from './components/AdBanner'
+import { ref, uploadString, getDownloadURL } from 'firebase/storage'
+import AdBanner from '../components/AdBanner'
 import TermsOfService from '../components/TermsOfService'
 import InstallTutorial from '../components/InstallTutorial'
 import NavBar from '../components/NavBar'
@@ -841,6 +842,40 @@ function App() {
     }
   };
 
+  const shareToCommunity = async () => {
+    if (!shareCardRef.current || !metrics || !user) return;
+    try {
+      setIsLoading(true);
+      const el = shareCardRef.current;
+      el.style.opacity = '1';
+      await new Promise(resolve => setTimeout(resolve, 800));
+
+      const dataUrl = await toPng(el, { cacheBust: true, backgroundColor: "#121212", pixelRatio: 2 });
+      el.style.opacity = '0';
+
+      const imageRef = ref(storage, `posts/${user.uid}/${Date.now()}.png`);
+      await uploadString(imageRef, dataUrl, 'data_url');
+      const imageUrl = await getDownloadURL(imageRef);
+
+      await addDoc(collection(db, "posts"), {
+        authorId: user.uid,
+        authorUsername: username || user.email?.split('@')[0] || "Rider",
+        imageUrl,
+        caption: `Rode from ${trip.origin || 'Current Location'} to ${trip.destination}. ${metrics.distanceMiles.toFixed(1)} miles with ${metrics.batteryPercentUsed.toFixed(1)}% battery remaining!`,
+        likes: [],
+        createdAt: serverTimestamp()
+      });
+
+      alert("Successfully posted to the community feed!");
+      setIsLoading(false);
+      setShowSharePreview(false);
+    } catch (err) {
+      console.error('Sharing error:', err);
+      setError("Failed to post to community feed.");
+      setIsLoading(false);
+    }
+  };
+
   const filteredBikes = [...STANDARD_BIKES, ...savedBikes].filter(b => 
     b.name.toLowerCase().includes(bikeSearchQuery.toLowerCase())
   );
@@ -1643,7 +1678,7 @@ function App() {
             </div>
           </div>
 
-          <div style={{ marginTop: "30px", display: "flex", gap: "15px", width: "100%", maxWidth: "600px" }}>
+          <div style={{ marginTop: "30px", display: "flex", flexWrap: 'wrap', gap: "15px", width: "100%", maxWidth: "600px" }}>
             <button 
               onClick={() => setShowSharePreview(false)} 
               style={{ flex: 1, padding: '14px', backgroundColor: '#333', color: 'white', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em' }}
@@ -1656,9 +1691,16 @@ function App() {
                 setShowSharePreview(false);
               }} 
               disabled={isLoading}
-              style={{ flex: 2, padding: '14px', backgroundColor: '#ff6600', color: 'white', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', boxShadow: '0 0 20px rgba(255,102,0,0.4)' }}
+              style={{ flex: 1, padding: '14px', backgroundColor: '#444', color: 'white', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em' }}
             >
-              {isLoading ? 'Processing...' : 'Export Dashboard PNG'}
+              {isLoading ? '...' : 'Download PNG'}
+            </button>
+            <button 
+              onClick={shareToCommunity} 
+              disabled={isLoading}
+              style={{ width: '100%', padding: '14px', backgroundColor: '#ff6600', color: 'white', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', boxShadow: '0 0 20px rgba(255,102,0,0.4)' }}
+            >
+              {isLoading ? 'Processing...' : 'Post to Community Feed'}
             </button>
           </div>
         </div>
