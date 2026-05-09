@@ -8,9 +8,10 @@ import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndP
 import type { User } from 'firebase/auth'
 import { doc, getDoc, setDoc, collection, addDoc, serverTimestamp, onSnapshot, query, where, deleteDoc, getDocs, updateDoc, arrayUnion } from 'firebase/firestore'
 import AdBanner from './components/AdBanner'
-import TermsOfService from './components/TermsOfService'
-import InstallTutorial from './components/InstallTutorial'
-import heroLogo from './assets/logo-no-bg.png'
+import TermsOfService from '../components/TermsOfService'
+import InstallTutorial from '../components/InstallTutorial'
+import NavBar from '../components/NavBar'
+import heroLogo from '../assets/logo-no-bg.png'
 
 const LIBRARIES: ("places" | "geometry")[] = ["places", "geometry"];
 
