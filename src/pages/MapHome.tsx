@@ -266,6 +266,7 @@ function MapHome() {
   const [authInitialized, setAuthInitialized] = useState(false);
   const [mapSnapshot, setMapSnapshot] = useState<string | null>(null);
   const [pendingBikeAutoSelect, setPendingBikeAutoSelect] = useState(false);
+  const [settingsDirty, setSettingsDirty] = useState(true);
 
   // Group Rides State
   const [activeRide, setActiveRide] = useState<GroupRide | null>(null);
@@ -988,10 +989,22 @@ function MapHome() {
     } catch (e: any) { console.error("Calculation error", e); setError("Failed to calculate metrics."); setIsLoading(false); }
   };
 
+  // Dirty Settings Tracking
+  useEffect(() => {
+    setSettingsDirty(true);
+  }, [
+    trip.origin, trip.destination, trip.waypoints, trip.returnWaypoints,
+    specs.voltage, specs.capacityAh, specs.motorWatts, specs.bikeWeightLbs,
+    riderWeightLbs, targetSpeedMph, ambientTempF, tireType, tirePressurePsi,
+    controlType, mode, pasLevel, ridingStyle, isRoundTrip, isCustomReturn,
+    startBattery, startVoltage
+  ]);
+
   const handleCalculate = () => { 
     if (!trip.origin || !trip.destination) return; 
     ReactGA.event({ category: "Engagement", action: "Calculate Route", label: `${trip.origin} to ${trip.destination}` });
     setIsLoading(true); setResponse(null); setMetrics(null); setError(null); setPois([]); 
+    setSettingsDirty(false); 
   };
   const useCurrentLocation = () => { if (navigator.geolocation) { navigator.geolocation.getCurrentPosition((pos) => { setTrip(prev => ({ ...prev, origin: `${pos.coords.latitude},${pos.coords.longitude}` })); }); } };
 
@@ -1617,15 +1630,6 @@ function MapHome() {
               </div>
             )}
           </section>
-
-          <button 
-            className="calculate-btn" 
-            onClick={() => { handleCalculate(); setShowMobileMenu(false); }} 
-            disabled={isLoading}
-            style={{ width: '100%', marginTop: '1rem', padding: '1rem', borderRadius: '12px' }}
-          >
-            {isLoading ? 'Calculating...' : 'Find Route'}
-          </button>
         </aside>
 
         <main>
@@ -2112,7 +2116,14 @@ function MapHome() {
       }}>
           <button 
             className="mobile-toggle-btn-floating"
-            onClick={() => setShowMobileMenu(!showMobileMenu)}
+            onClick={() => {
+              if (showMobileMenu && trip.origin && trip.destination && settingsDirty) {
+                handleCalculate();
+                setShowMobileMenu(false);
+              } else {
+                setShowMobileMenu(!showMobileMenu);
+              }
+            }}
             style={{
               padding: '0.8rem 1.2rem',
               borderRadius: '25px',
@@ -2129,7 +2140,10 @@ function MapHome() {
               textTransform: 'uppercase'
             }}
           >
-            {showMobileMenu ? '🗺️ Map' : (metrics ? '📊 Trip Metrics' : '🏁 Start Here')}
+            {showMobileMenu 
+              ? (trip.origin && trip.destination && settingsDirty ? '🚀 Find Route' : '🗺️ Map') 
+              : (metrics && !settingsDirty ? '📊 Trip Metrics' : '🏁 Start Here')
+            }
           </button>
 
           <button 
