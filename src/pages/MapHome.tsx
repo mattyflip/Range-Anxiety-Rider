@@ -2129,7 +2129,7 @@ function MapHome() {
               textTransform: 'uppercase'
             }}
           >
-            {showMobileMenu ? '✕ Close' : (metrics ? '📊 Stats' : '⚙️ Settings')}
+            {showMobileMenu ? '🗺️ Map' : (metrics ? '📊 Trip Metrics' : '🏁 Start Here')}
           </button>
 
           <button 
