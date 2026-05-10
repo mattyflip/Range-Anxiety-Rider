@@ -1255,7 +1255,7 @@ function MapHome() {
 
           <section className="form-group">
             <label>Origin</label>
-            <div style={{ display: 'flex', gap: '0.5rem' }}><input type="text" name="origin" value={trip.origin} onChange={handleInputChange} /><button onClick={useCurrentLocation} style={{ padding: '0 0.8rem', cursor: 'pointer' }}>Loc</button></div>
+            <div style={{ display: 'flex', gap: '0.5rem' }}><input type="text" name="origin" value={trip.origin} onChange={handleInputChange} /><button onClick={useCurrentLocation} style={{ padding: '0 0.8rem', cursor: 'pointer', fontSize: '1.2rem', background: 'none', border: 'none' }} title="Use Current Location">📍</button></div>
           </section>
           
           <div style={{ textAlign: 'center', margin: '-0.5rem 0 0.5rem 0' }}>
