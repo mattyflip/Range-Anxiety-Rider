@@ -1,10 +1,18 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
+import { auth } from '../firebase'
 import NavBar from '../components/NavBar'
 
 const About: React.FC = () => {
+  const [user, setUser] = useState<any>(null);
+
+  useEffect(() => {
+    const unsub = auth.onAuthStateChanged((u) => setUser(u));
+    return () => unsub();
+  }, []);
+
   return (
     <div className="container" style={{ minHeight: '100vh', background: '#121212', color: 'white' }}>
-      <NavBar onShowInstall={() => {}} />
+      <NavBar user={user} onShowInstall={() => {}} />
 
       <main style={{ maxWidth: '800px', margin: '0 auto', padding: '4rem 1rem' }}>
         <header style={{ textAlign: 'center', marginBottom: '4rem' }}>
