@@ -96,10 +96,10 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
               <label style={{ display: 'block', color: '#888', fontSize: '0.7rem', marginBottom: '0.3rem' }}>Home State / Region</label>
               <select value={homeRegion} onChange={e => setHomeRegion(e.target.value)} style={{ width: '100%', padding: '0.6rem', background: '#222', border: '1px solid #444', borderRadius: '4px', color: 'white' }}>
                 <optgroup label="US States">
-                  {US_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+                  {US_STATES.map((s: string) => <option key={s} value={s}>{s}</option>)}
                 </optgroup>
                 <optgroup label="International">
-                  {OTHER_REGIONS.map(r => <option key={r} value={r}>{r}</option>)}
+                  {OTHER_REGIONS.map((r: string) => <option key={r} value={r}>{r}</option>)}
                 </optgroup>
               </select>
             </div>

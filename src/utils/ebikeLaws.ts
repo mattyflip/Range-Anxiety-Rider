@@ -71,6 +71,10 @@ export const US_STATES = [
   "South Dakota", "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Washington", "West Virginia", "Wisconsin", "Wyoming"
 ];
 
+export const OTHER_REGIONS = [
+  "United Kingdom", "European Union", "Canada", "Australia", "Other"
+];
+
 export const STATE_COORDINATES: Record<string, { lat: number, lng: number }> = {
   "Alabama": { lat: 32.3182, lng: -86.9023 },
   "Alaska": { lat: 63.5888, lng: -154.4931 },
