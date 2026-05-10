@@ -117,15 +117,22 @@ const Profile: React.FC = () => {
   }, [username, user?.uid]);
 
   const fetchUserPosts = (userId: string) => {
-    console.log("Fetching posts for user ID:", userId);
     const postsRef = collection(db, "posts");
-    const q = query(postsRef, where("authorId", "==", userId), orderBy("createdAt", "desc"));
+    // Remove orderBy to avoid requiring a composite index; sort client-side instead
+    const q = query(postsRef, where("authorId", "==", userId));
     
     return onSnapshot(q, (snap) => {
       const posts: Post[] = [];
       snap.forEach(docSnap => posts.push({ id: docSnap.id, ...docSnap.data() } as Post));
-      console.log("Found posts:", posts.length);
-      setUserPosts(posts);
+      
+      // Client-side sort by createdAt desc
+      const sorted = posts.sort((a, b) => {
+        const timeA = a.createdAt?.toMillis() || 0;
+        const timeB = b.createdAt?.toMillis() || 0;
+        return timeB - timeA;
+      });
+
+      setUserPosts(sorted);
     }, (error) => {
       console.error("User posts snapshot error:", error);
     });
