@@ -1056,7 +1056,12 @@ function MapHome() {
     }
   };
 
-  const addPOIAsWaypoint = (poi: POI) => { setTrip(prev => ({ ...prev, waypoints: [...prev.waypoints, poi.address] })); setResponse(null); setMetrics(null); };
+  const addPOIAsWaypoint = (poi: POI) => { 
+    setTrip(prev => ({ ...prev, waypoints: [...prev.waypoints, poi.address] })); 
+    setResponse(null); 
+    setMetrics(null); 
+    setIsLoading(true); // Trigger recalculation immediately
+  };
 
   const recenterMap = () => {
     if (mapRef.current) {
@@ -1646,9 +1651,10 @@ function MapHome() {
                     origin: trip.origin,
                     destination: isRoundTrip ? trip.origin : trip.destination,
                     waypoints: [
+                      ...trip.waypoints.map(wp => ({ location: wp, stopover: true })),
                       ...(isRoundTrip ? [{ location: trip.destination, stopover: true }] : []),
                       ...(isRoundTrip && isCustomReturn ? trip.returnWaypoints.map(wp => ({ location: wp, stopover: true })) : [])
-                    ].filter(wp => wp.location.trim() !== ""),
+                    ].filter(wp => wp.location && wp.location.trim() !== ""),
                     travelMode: google.maps.TravelMode.BICYCLING,
                     provideRouteAlternatives: true
                   }}
