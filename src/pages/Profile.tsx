@@ -39,6 +39,7 @@ const Profile: React.FC = () => {
 
   // Comment Modal state
   const [activeCommentPost, setActiveCommentPost] = useState<Post | null>(null);
+  const [selectedFullPost, setSelectedFullPost] = useState<Post | null>(null);
 
   // Cropper states
   const [crop, setCrop] = useState({ x: 0, y: 0 });
@@ -408,16 +409,16 @@ const Profile: React.FC = () => {
               {userPosts.length === 0 ? (
                 <div style={{ color: '#444', fontSize: '0.9rem', textAlign: 'center', padding: '2rem' }}>No trips shared yet.</div>
               ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   {userPosts.map(post => (
                     <div key={post.id} style={{ background: '#1a1a1a', borderRadius: '16px', border: '1px solid #333', overflow: 'hidden' }}>
-                      <div style={{ width: '100%', aspectRatio: '1/1', overflow: 'hidden', cursor: 'pointer' }} onClick={() => setActiveCommentPost(post)}>
+                      <div style={{ width: '100%', aspectRatio: '1/1', overflow: 'hidden', cursor: 'pointer' }} onClick={() => setSelectedFullPost(post)}>
                         <img src={post.imageUrl} alt="Post" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       </div>
-                      <div style={{ padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div style={{ color: 'white', fontSize: '0.8rem', fontWeight: 'bold' }}>{post.likes.length} Likes</div>
+                      <div style={{ padding: '0.8rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ color: 'white', fontSize: '0.75rem', fontWeight: 'bold' }}>{post.likes.length} Likes</div>
                         {(post.commentsEnabled !== false) && (
-                          <button onClick={() => setActiveCommentPost(post)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem' }}>💬</button>
+                          <button onClick={() => setActiveCommentPost(post)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem' }}>💬</button>
                         )}
                       </div>
                     </div>
@@ -430,6 +431,34 @@ const Profile: React.FC = () => {
           <div style={{ color: 'white', textAlign: 'center' }}>User not found.</div>
         )}
       </main>
+
+      {/* Full Screen Post Modal */}
+      {selectedFullPost && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.98)', zIndex: 4000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+          <button 
+            onClick={() => setSelectedFullPost(null)}
+            style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', background: 'none', border: 'none', color: 'white', fontSize: '2rem', cursor: 'pointer', zIndex: 4001 }}
+          >
+            ✕
+          </button>
+          
+          <div style={{ width: '100%', maxWidth: '600px', padding: '1rem' }}>
+             <img src={selectedFullPost.imageUrl} alt="Full View" style={{ width: '100%', borderRadius: '24px', boxShadow: '0 20px 50px rgba(0,0,0,0.8)' }} />
+             <div style={{ marginTop: '1.5rem', padding: '0 1rem' }}>
+                <p style={{ color: '#ccc', fontSize: '1.1rem', lineHeight: '1.6' }}>
+                  <span style={{ fontWeight: 'bold', color: 'white', marginRight: '0.5rem' }}>{selectedFullPost.authorUsername}</span>
+                  {selectedFullPost.caption}
+                </p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '1rem' }}>
+                   <span style={{ color: '#ff6600', fontWeight: 'bold' }}>🧡 {selectedFullPost.likes.length} Likes</span>
+                   {(selectedFullPost.commentsEnabled !== false) && (
+                     <button onClick={() => { setActiveCommentPost(selectedFullPost); setSelectedFullPost(null); }} style={{ background: '#333', border: 'none', color: 'white', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>View Comments</button>
+                   )}
+                </div>
+             </div>
+          </div>
+        </div>
+      )}
 
       {/* Global Cropper Modal */}
       {tempImage && (
