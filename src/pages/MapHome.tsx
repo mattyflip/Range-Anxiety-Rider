@@ -1338,7 +1338,7 @@ function MapHome() {
                 {!showUsernameEdit ? (
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '0.4rem' }}>
                     <span style={{ fontSize: '0.9rem', color: 'white', fontWeight: 'bold' }}>{username || 'Anonymous Rider'}</span>
-                    <button onClick={() => { setUsernameInput(username); setShowUsernameEdit(true); }} style={{ background: 'none', border: 'none', color: '#ff6600', fontSize: '0.7rem', cursor: 'pointer', textDecoration: 'underline' }}>Edit</button>
+                    <button onClick={() => { setUsernameInput(username); setShowUsernameEdit(true); }} style={{ background: 'none', border: 'none', color: '#ff6600', fontSize: '1rem', cursor: 'pointer' }} title="Edit Username">✏️</button>
                   </div>
                 ) : (
                   <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.4rem' }}>

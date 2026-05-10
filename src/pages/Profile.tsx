@@ -594,15 +594,17 @@ const Profile: React.FC = () => {
                 <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', marginTop: '0.5rem' }}>
                   <button 
                     onClick={() => { setAdminEditingNickname(true); setAdminEditValue(profileData.adminNickname || ''); }}
-                    style={{ background: 'none', border: 'none', color: '#ffcc00', fontSize: '0.65rem', fontWeight: 'bold', cursor: 'pointer', textDecoration: 'underline' }}
+                    style={{ background: 'none', border: 'none', color: '#ffcc00', fontSize: '1rem', cursor: 'pointer' }}
+                    title="Edit Nickname"
                   >
-                    EDIT NICKNAME
+                    ✏️
                   </button>
                   <button 
                     onClick={() => { setAdminEditingUsername(true); setAdminEditValue(profileData.username || ''); }}
-                    style={{ background: 'none', border: 'none', color: '#ffcc00', fontSize: '0.65rem', fontWeight: 'bold', cursor: 'pointer', textDecoration: 'underline' }}
+                    style={{ background: 'none', border: 'none', color: '#ffcc00', fontSize: '1rem', cursor: 'pointer' }}
+                    title="Edit Username"
                   >
-                    EDIT USERNAME
+                    ✏️
                   </button>
                 </div>
               )}
@@ -631,7 +633,7 @@ const Profile: React.FC = () => {
               ) : (
                 <>
                   <p style={{ color: '#888', marginTop: '0.5rem' }}>{profileData.bio || 'No bio yet.'}</p>
-                  {isOwner && <button onClick={() => setIsEditing(true)} style={{ background: 'none', border: 'none', color: '#ff6600', fontSize: '0.8rem', cursor: 'pointer', textDecoration: 'underline' }}>Edit Bio</button>}
+                  {isOwner && <button onClick={() => setIsEditing(true)} style={{ background: 'none', border: 'none', color: '#ff6600', fontSize: '1rem', cursor: 'pointer' }} title="Edit Bio">✏️</button>}
                 </>
               )}
               
@@ -771,15 +773,17 @@ const Profile: React.FC = () => {
                             <div style={{ display: 'flex', gap: '0.4rem', borderLeft: '1px solid #333', paddingLeft: '0.5rem' }}>
                               <button 
                                 onClick={(e) => { e.stopPropagation(); setAdminEditingPost(post); setAdminEditValue(post.caption); }}
-                                style={{ background: 'none', border: 'none', color: '#ffcc00', cursor: 'pointer', fontSize: '0.65rem', fontWeight: 'bold' }}
+                                style={{ background: 'none', border: 'none', color: '#ffcc00', cursor: 'pointer', fontSize: '1rem' }}
+                                title="Edit Post"
                               >
-                                EDIT
+                                ✏️
                               </button>
                               <button 
                                 onClick={(e) => { e.stopPropagation(); handleDeletePost(post); }}
-                                style={{ background: 'none', border: 'none', color: '#ff4444', cursor: 'pointer', fontSize: '0.65rem', fontWeight: 'bold' }}
+                                style={{ background: 'none', border: 'none', color: '#ff4444', cursor: 'pointer', fontSize: '1rem' }}
+                                title="Delete Post"
                               >
-                                DELETE
+                                🗑️
                               </button>
                             </div>
                           )}
