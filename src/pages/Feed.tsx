@@ -68,11 +68,28 @@ const Feed: React.FC = () => {
       snap.forEach(docSnap => {
         fetchedPosts.push({ id: docSnap.id, ...docSnap.data() } as Post);
       });
-      setPosts(fetchedPosts);
+
+      // CURATED FEED LOGIC: 
+      // Prioritize followed users, then sort by date
+      const sorted = fetchedPosts.sort((a, b) => {
+        const following = userData?.following || [];
+        const aFollowed = following.includes(a.authorId);
+        const bFollowed = following.includes(b.authorId);
+
+        if (aFollowed && !bFollowed) return -1;
+        if (!aFollowed && bFollowed) return 1;
+
+        // Both followed or both not followed: Sort by date
+        const timeA = a.createdAt?.toMillis() || 0;
+        const timeB = b.createdAt?.toMillis() || 0;
+        return timeB - timeA;
+      });
+
+      setPosts(sorted);
       setLoading(false);
     });
     return () => unsubscribe();
-  }, []);
+  }, [userData?.following]);
 
   const handleLike = async (post: Post) => {
     if (!user) {

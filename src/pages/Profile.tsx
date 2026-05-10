@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { db, auth, storage } from '../firebase'
-import { doc, collection, query, where, onSnapshot, updateDoc, arrayRemove, getDoc, getDocs, addDoc, serverTimestamp, deleteDoc } from 'firebase/firestore'
+import { doc, collection, query, where, onSnapshot, updateDoc, arrayRemove, getDoc, getDocs, addDoc, serverTimestamp, deleteDoc, arrayUnion } from 'firebase/firestore'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { signOut } from 'firebase/auth'
 import NavBar from '../components/NavBar'
@@ -50,6 +50,7 @@ const Profile: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [editBio, setEditBio] = useState('');
   const [isUploading, setIsUploading] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(false);
 
   // Review states
   const [showReviewModal, setShowReviewModal] = useState(false);
@@ -108,6 +109,11 @@ const Profile: React.FC = () => {
         setProfileData({ ...data, id: snap.docs[0].id });
         setEditBio(data.bio || '');
         
+        // Check if current user is following this profile
+        if (user && data.followers) {
+          setIsFollowing(data.followers.includes(user.uid));
+        }
+
         // Start listening to posts for this specific user
         if (postsUnsub) postsUnsub();
         postsUnsub = fetchUserPosts(snap.docs[0].id);
@@ -123,6 +129,10 @@ const Profile: React.FC = () => {
             setProfileData({ ...data, id: origSnap.docs[0].id });
             setEditBio(data.bio || '');
             
+            if (user && data.followers) {
+              setIsFollowing(data.followers.includes(user.uid));
+            }
+
             if (postsUnsub) postsUnsub();
             postsUnsub = fetchUserPosts(origSnap.docs[0].id);
             fetchUserReviews(origSnap.docs[0].id);
@@ -135,6 +145,10 @@ const Profile: React.FC = () => {
                 setProfileData({ ...data, id: uSnap.id });
                 setEditBio(data.bio || '');
                 
+                if (user && data.followers) {
+                  setIsFollowing(data.followers.includes(user.uid));
+                }
+
                 if (postsUnsub) postsUnsub();
                 postsUnsub = fetchUserPosts(uSnap.id);
                 fetchUserReviews(uSnap.id);
@@ -151,6 +165,29 @@ const Profile: React.FC = () => {
       if (postsUnsub) postsUnsub();
     };
   }, [username, user?.uid]);
+
+  const toggleFollow = async () => {
+    if (!user || !profileData) return;
+    const targetUserId = profileData.id;
+    const currentUserId = user.uid;
+
+    try {
+      if (isFollowing) {
+        // Unfollow
+        await updateDoc(doc(db, "users", targetUserId), { followers: arrayRemove(currentUserId) });
+        await updateDoc(doc(db, "users", currentUserId), { following: arrayRemove(targetUserId) });
+        setIsFollowing(false);
+      } else {
+        // Follow
+        await updateDoc(doc(db, "users", targetUserId), { followers: arrayUnion(currentUserId) });
+        await updateDoc(doc(db, "users", currentUserId), { following: arrayUnion(targetUserId) });
+        setIsFollowing(true);
+      }
+    } catch (e) {
+      console.error("Follow toggle failed", e);
+      alert("Failed to update follow status.");
+    }
+  };
 
   const fetchUserReviews = (userId: string) => {
     const q = query(collection(db, "rider_reviews"), where("targetUserId", "==", userId));
@@ -477,12 +514,30 @@ const Profile: React.FC = () => {
               </div>
 
               {user && !isOwner && (
-                <button 
-                  onClick={() => setShowReviewModal(true)}
-                  style={{ marginTop: '2rem', background: '#ff6600', color: 'white', border: 'none', padding: '0.8rem 2rem', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', fontSize: '1rem' }}
-                >
-                  ⭐ Rate Rider
-                </button>
+                <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', marginTop: '2rem' }}>
+                  <button 
+                    onClick={toggleFollow}
+                    style={{ 
+                      background: isFollowing ? 'rgba(255,255,255,0.1)' : '#ff6600', 
+                      color: 'white', 
+                      border: isFollowing ? '1px solid #333' : 'none', 
+                      padding: '0.8rem 2rem', 
+                      borderRadius: '12px', 
+                      fontWeight: 'bold', 
+                      cursor: 'pointer', 
+                      fontSize: '1rem',
+                      minWidth: '140px'
+                    }}
+                  >
+                    {isFollowing ? '✓ Following' : 'Follow'}
+                  </button>
+                  <button 
+                    onClick={() => setShowReviewModal(true)}
+                    style={{ background: '#333', color: 'white', border: 'none', padding: '0.8rem 2rem', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', fontSize: '1rem' }}
+                  >
+                    ⭐ Rate Rider
+                  </button>
+                </div>
               )}
 
               {isOwner && (
