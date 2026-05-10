@@ -268,6 +268,7 @@ function MapHome() {
   const [publicRides, setPublicRides] = useState<GroupRide[]>([]);
   const [selectedPublicRide, setSelectedPublicRide] = useState<GroupRide | null>(null);
   const [rideParticipants, setRideParticipants] = useState<Participant[]>([]);
+  const [joinRequests, setJoinRequests] = useState<any[]>([]);
   const [groupRideName, setGroupRideName] = useState('');
   const [joinPin, setJoinPin] = useState('');
   const [isPublicRide, setIsPublicRide] = useState(true);
@@ -342,8 +343,37 @@ function MapHome() {
       }
     });
 
-    return () => { unsubscribe(); rideUnsub(); };
+    // Host Only: Listen for Join Requests
+    let requestsUnsub: (() => void) | undefined;
+    if (user.uid === activeRide.creatorId) {
+      const qReq = collection(db, `group_rides/${activeRide.id}/requests`);
+      requestsUnsub = onSnapshot(qReq, (snap) => {
+        const reqs: any[] = [];
+        snap.forEach(docSnap => reqs.push({ id: docSnap.id, ...docSnap.data() }));
+        setJoinRequests(reqs);
+      });
+    }
+
+    return () => { unsubscribe(); rideUnsub(); if (requestsUnsub) requestsUnsub(); };
   }, [activeRide?.id, user?.uid, response]);
+
+  const handleJoinRequest = async (request: any, action: 'accept' | 'decline') => {
+    if (!activeRide) return;
+    try {
+      if (action === 'accept') {
+        // Move to participants
+        await setDoc(doc(db, `group_rides/${activeRide.id}/participants`, request.userId), {
+          userId: request.userId,
+          name: request.name,
+          lat: request.lat || center.lat,
+          lng: request.lng || center.lng,
+          lastUpdatedAt: Date.now()
+        });
+      }
+      // Delete request in both cases
+      await deleteDoc(doc(db, `group_rides/${activeRide.id}/requests`, request.id));
+    } catch (e) { console.error("Join request handling failed", e); }
+  };
 
   // Upload Location every 15s - ONLY ACTIVE DURING A RIDE
   useEffect(() => {
@@ -572,33 +602,46 @@ function MapHome() {
 
     try {
       let rideDoc;
-      if (rideId) {
-        rideDoc = await getDoc(doc(db, "group_rides", rideId));
+      let targetRideId = rideId;
+      if (targetRideId) {
+        rideDoc = await getDoc(doc(db, "group_rides", targetRideId));
       } else {
         if (!joinPin) return;
         const q = query(collection(db, "group_rides"), where("pin", "==", joinPin), where("status", "==", "active"));
         const snap = await getDocs(q);
         if (!snap.empty) {
           rideDoc = snap.docs[0];
+          targetRideId = rideDoc.id;
         }
       }
 
-      if (rideDoc && rideDoc.exists()) {
+      if (rideDoc && rideDoc.exists() && targetRideId) {
         const data = rideDoc.data();
-        ReactGA.event({ category: "Engagement", action: "Join Group Ride", label: data.name });
-        setActiveRide({ id: rideDoc.id, ...data } as any);
-        await setDoc(doc(db, `group_rides/${rideDoc.id}/participants`, user.uid), {
+        
+        // Check if already a participant
+        const partSnap = await getDoc(doc(db, `group_rides/${targetRideId}/participants`, user.uid));
+        if (partSnap.exists()) {
+           setActiveRide({ id: targetRideId, ...data } as any);
+           setJoinPin('');
+           return;
+        }
+
+        // Submit Join Request with Rating Info
+        await setDoc(doc(db, `group_rides/${targetRideId}/requests`, user.uid), {
           userId: user.uid,
-          name: user.email?.split('@')[0] || "Rider",
+          name: username || user.email?.split('@')[0] || "Rider",
+          rating: userData?.averageRating || 0,
           lat: center.lat,
           lng: center.lng,
-          lastUpdatedAt: Date.now()
+          requestedAt: Date.now()
         });
+
+        alert("Join request sent to the host! You'll be added once they approve you.");
         setJoinPin('');
       } else {
         setRideError("Ride not found or invalid PIN.");
       }
-    } catch (e) { console.error("Join ride failed:", e); setRideError("Failed to join ride."); }
+    } catch (e) { console.error("Join request failed:", e); setRideError("Failed to send join request."); }
   };
 
   const setLeader = async (participantId: string) => {
@@ -1401,6 +1444,37 @@ function MapHome() {
                           </div>
                         ))}
                       </div>
+
+                      {user?.uid === activeRide.creatorId && joinRequests.length > 0 && (
+                        <div style={{ marginTop: '1.5rem', borderTop: '1px solid #333', paddingTop: '1rem' }}>
+                          <label style={{ fontSize: '0.65rem', color: '#ffcc00', textTransform: 'uppercase', marginBottom: '0.5rem', display: 'block' }}>Pending Riders ({joinRequests.length})</label>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                            {joinRequests.map(req => (
+                              <div key={req.id} style={{ background: 'rgba(255,204,0,0.05)', padding: '0.8rem', borderRadius: '12px', border: '1px solid rgba(255,204,0,0.2)' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                  <div>
+                                    <div style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'white' }}>{req.name}</div>
+                                    <div style={{ fontSize: '0.7rem', color: '#ffcc00', marginTop: '0.2rem' }}>
+                                      {'★'.repeat(Math.round(req.rating || 0))}{'☆'.repeat(5 - Math.round(req.rating || 0))}
+                                      <span style={{ marginLeft: '0.4rem', color: '#888' }}>({(req.rating || 0).toFixed(1)})</span>
+                                    </div>
+                                    <button 
+                                      onClick={() => window.open(`/profile/${req.name.replace(/\s+/g, '_')}`, '_blank')}
+                                      style={{ background: 'none', border: 'none', color: '#ff6600', fontSize: '0.65rem', padding: 0, textDecoration: 'underline', marginTop: '0.4rem', cursor: 'pointer' }}
+                                    >
+                                      View Profile
+                                    </button>
+                                  </div>
+                                  <div style={{ display: 'flex', gap: '0.4rem' }}>
+                                    <button onClick={() => handleJoinRequest(req, 'accept')} style={{ background: '#34a853', color: 'white', border: 'none', padding: '0.4rem 0.6rem', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 'bold', cursor: 'pointer' }}>Accept</button>
+                                    <button onClick={() => handleJoinRequest(req, 'decline')} style={{ background: '#444', color: 'white', border: 'none', padding: '0.4rem 0.6rem', borderRadius: '6px', fontSize: '0.7rem', cursor: 'pointer' }}>No</button>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
                       <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
                         <button onClick={leaveRide} style={{ flex: 1, padding: '0.4rem', backgroundColor: '#444', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem' }}>Leave</button>

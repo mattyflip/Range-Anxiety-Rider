@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { db, auth, storage } from '../firebase'
-import { doc, collection, query, where, onSnapshot, updateDoc, arrayRemove, getDoc, getDocs } from 'firebase/firestore'
+import { doc, collection, query, where, onSnapshot, updateDoc, arrayRemove, getDoc, getDocs, addDoc, serverTimestamp, deleteDoc } from 'firebase/firestore'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { signOut } from 'firebase/auth'
 import NavBar from '../components/NavBar'
@@ -23,6 +23,16 @@ interface Post {
   createdAt: any;
 }
 
+interface Review {
+  id: string;
+  reviewerId: string;
+  reviewerUsername: string;
+  reviewerProfilePic?: string;
+  rating: number;
+  comment: string;
+  createdAt: any;
+}
+
 const Profile: React.FC = () => {
   const { username } = useParams<{ username: string }>();
   const navigate = useNavigate();
@@ -32,10 +42,17 @@ const Profile: React.FC = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showInstallTutorial, setShowInstallTutorial] = useState(false);
   const [userPosts, setUserPosts] = useState<Post[]>([]);
+  const [userReviews, setUserReviews] = useState<Review[]>([]);
 
   const [isEditing, setIsEditing] = useState(false);
   const [editBio, setEditBio] = useState('');
   const [isUploading, setIsUploading] = useState(false);
+
+  // Review states
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [newRating, setNewRating] = useState(5);
+  const [newReviewComment, setNewReviewComment] = useState('');
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
 
   // Comment Modal state
   const [activeCommentPost, setActiveCommentPost] = useState<Post | null>(null);
@@ -91,6 +108,9 @@ const Profile: React.FC = () => {
         // Start listening to posts for this specific user
         if (postsUnsub) postsUnsub();
         postsUnsub = fetchUserPosts(snap.docs[0].id);
+
+        // Start listening to reviews for this user
+        fetchUserReviews(snap.docs[0].id);
       } else {
         // Fallback 1: Search by original username field (case-sensitive, both versions)
         const qOrig = query(usersRef, where("username", "in", [normalizedTarget, spaceTarget, target]));
@@ -102,6 +122,7 @@ const Profile: React.FC = () => {
             
             if (postsUnsub) postsUnsub();
             postsUnsub = fetchUserPosts(origSnap.docs[0].id);
+            fetchUserReviews(origSnap.docs[0].id);
           } else {
             // Fallback 2: Check if target is actually a UID
             const docRef = doc(db, "users", target);
@@ -113,6 +134,7 @@ const Profile: React.FC = () => {
                 
                 if (postsUnsub) postsUnsub();
                 postsUnsub = fetchUserPosts(uSnap.id);
+                fetchUserReviews(uSnap.id);
               }
             });
           }
@@ -126,6 +148,56 @@ const Profile: React.FC = () => {
       if (postsUnsub) postsUnsub();
     };
   }, [username, user?.uid]);
+
+  const fetchUserReviews = (userId: string) => {
+    const q = query(collection(db, "rider_reviews"), where("targetUserId", "==", userId), orderBy("createdAt", "desc"));
+    return onSnapshot(q, (snap) => {
+      const reviews: Review[] = [];
+      snap.forEach(docSnap => reviews.push({ id: docSnap.id, ...docSnap.data() } as Review));
+      setUserReviews(reviews);
+    });
+  };
+
+  const handleSubmitReview = async () => {
+    if (!user || !profileData || isSubmittingReview || !newReviewComment.trim()) return;
+    
+    setIsSubmittingReview(true);
+    try {
+      const userSnap = await getDoc(doc(db, "users", user.uid));
+      const reviewerData = userSnap.exists() ? userSnap.data() : {};
+
+      await addDoc(collection(db, "rider_reviews"), {
+        targetUserId: profileData.id,
+        reviewerId: user.uid,
+        reviewerUsername: reviewerData.username || "Anonymous",
+        reviewerProfilePic: reviewerData.profilePic || "",
+        rating: newRating,
+        comment: newReviewComment,
+        createdAt: serverTimestamp()
+      });
+
+      // Update cached stats on target user profile
+      const currentAvg = profileData.averageRating || 0;
+      const currentCount = profileData.ratingCount || 0;
+      const newCount = currentCount + 1;
+      const newAvg = ((currentAvg * currentCount) + newRating) / newCount;
+
+      await updateDoc(doc(db, "users", profileData.id), {
+        averageRating: newAvg,
+        ratingCount: newCount
+      });
+
+      setNewReviewComment('');
+      setNewRating(5);
+      setShowReviewModal(false);
+      alert("Review submitted! Thank you for helping keep the community safe.");
+    } catch (e) {
+      console.error("Review submission failed", e);
+      alert("Failed to submit review. Please try again.");
+    } finally {
+      setIsSubmittingReview(false);
+    }
+  };
 
   const fetchUserPosts = (userId: string) => {
     const postsRef = collection(db, "posts");
@@ -311,6 +383,14 @@ const Profile: React.FC = () => {
 
               <h1 style={{ color: 'white', margin: 0 }}>{profileData.username || 'Anonymous Rider'}</h1>
               
+              {/* Average Rating Display */}
+              <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                <div style={{ color: '#ffcc00', fontSize: '1.2rem' }}>
+                  {'★'.repeat(Math.round(profileData.averageRating || 0))}{'☆'.repeat(5 - Math.round(profileData.averageRating || 0))}
+                </div>
+                <span style={{ color: '#888', fontSize: '0.85rem' }}>({(profileData.averageRating || 0).toFixed(1)} / {profileData.ratingCount || 0} reviews)</span>
+              </div>
+              
               {isEditing ? (
                 <div style={{ marginTop: '1rem' }}>
                   <textarea 
@@ -341,6 +421,15 @@ const Profile: React.FC = () => {
                   <div style={{ color: '#666', fontSize: '0.7rem', textTransform: 'uppercase' }}>Following</div>
                 </div>
               </div>
+
+              {user && !isOwner && (
+                <button 
+                  onClick={() => setShowReviewModal(true)}
+                  style={{ marginTop: '2rem', background: '#ff6600', color: 'white', border: 'none', padding: '0.8rem 2rem', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', fontSize: '1rem' }}
+                >
+                  ⭐ Rate Rider
+                </button>
+              )}
 
               {isOwner && (
                 <button 
@@ -444,11 +533,82 @@ const Profile: React.FC = () => {
                 </div>
               )}
             </section>
+            <section style={{ marginTop: '4rem', paddingBottom: '6rem' }}>
+              <h3 style={{ color: '#ff6600', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '0.1em', marginBottom: '1.5rem' }}>Community Reviews</h3>
+              {userReviews.length === 0 ? (
+                <div style={{ color: '#444', fontSize: '0.9rem', textAlign: 'center', padding: '2rem', background: '#1a1a1a', borderRadius: '16px' }}>No reviews yet. Be the first to rate this rider!</div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  {userReviews.map(review => (
+                    <div key={review.id} style={{ background: '#1a1a1a', padding: '1.2rem', borderRadius: '16px', border: '1px solid #333' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.8rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                          <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#333', overflow: 'hidden' }}>
+                            {review.reviewerProfilePic ? <img src={review.reviewerProfilePic} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : '🚲'}
+                          </div>
+                          <span style={{ fontWeight: 'bold', color: 'white', fontSize: '0.9rem' }}>{review.reviewerUsername}</span>
+                        </div>
+                        <div style={{ color: '#ffcc00' }}>
+                          {'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}
+                        </div>
+                      </div>
+                      <p style={{ color: '#ccc', margin: 0, fontSize: '0.95rem', lineHeight: '1.5' }}>{review.comment}</p>
+                      <div style={{ fontSize: '0.7rem', color: '#444', marginTop: '0.8rem' }}>{review.createdAt?.toDate().toLocaleDateString()}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
           </>
         ) : (
           <div style={{ color: 'white', textAlign: 'center' }}>User not found.</div>
         )}
       </main>
+
+      {/* Rate Rider Modal */}
+      {showReviewModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.9)', zIndex: 5000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+          <div style={{ background: '#1a1a1a', width: '100%', maxWidth: '450px', padding: '2rem', borderRadius: '24px', border: '1px solid #333' }}>
+            <h2 style={{ color: 'white', marginTop: 0 }}>Rate {profileData.username}</h2>
+            <p style={{ color: '#888', fontSize: '0.9rem' }}>Shared your experience with this rider. Reviews cannot be edited by the receiver.</p>
+            
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', fontSize: '2.5rem', margin: '2rem 0' }}>
+              {[1,2,3,4,5].map(star => (
+                <span 
+                  key={star} 
+                  onClick={() => setNewRating(star)}
+                  style={{ cursor: 'pointer', color: star <= newRating ? '#ffcc00' : '#333' }}
+                >
+                  ★
+                </span>
+              ))}
+            </div>
+
+            <textarea 
+              value={newReviewComment}
+              onChange={(e) => setNewReviewComment(e.target.value)}
+              placeholder="What was it like riding with them?"
+              style={{ width: '100%', height: '120px', background: '#222', border: '1px solid #444', borderRadius: '12px', color: 'white', padding: '1rem', fontFamily: 'inherit', marginBottom: '1.5rem' }}
+            />
+
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <button 
+                onClick={() => setShowReviewModal(false)}
+                style={{ flex: 1, padding: '1rem', background: '#333', color: 'white', border: 'none', borderRadius: '12px', cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleSubmitReview}
+                disabled={isSubmittingReview || !newReviewComment.trim()}
+                style={{ flex: 2, padding: '1rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold', opacity: (isSubmittingReview || !newReviewComment.trim()) ? 0.5 : 1 }}
+              >
+                {isSubmittingReview ? 'Submitting...' : 'Submit Review'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Full Screen Post Modal */}
       {selectedFullPost && (
