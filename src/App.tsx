@@ -6,12 +6,14 @@ import Feed from './pages/Feed'
 import ForumHub from './pages/ForumHub'
 import CommunityView from './pages/CommunityView'
 import ThreadView from './pages/ThreadView'
+import About from './pages/About'
 
 function App() {
   return (
     <Router>
       <Routes>
         <Route path="/" element={<MapHome />} />
+        <Route path="/how-it-works" element={<About />} />
         <Route path="/feed" element={<Feed />} />
         <Route path="/profile/:username" element={<Profile />} />
         <Route path="/settings" element={<Settings />} />
