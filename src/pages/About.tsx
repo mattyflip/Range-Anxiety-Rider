@@ -86,6 +86,14 @@ const About: React.FC = () => {
           </p>
         </section>
 
+        <div style={{ width: '100%', maxWidth: '500px', margin: '0 auto 4rem auto', borderRadius: '30px', overflow: 'hidden', boxShadow: '0 30px 60px rgba(0,0,0,0.6)', border: '1px solid #333' }}>
+          <img 
+            src="/assets/example-share-card.png" 
+            alt="Example Range Anxiety Share Card" 
+            style={{ width: '100%', display: 'block' }} 
+          />
+        </div>
+
         <footer style={{ textAlign: 'center', padding: '4rem 0', borderTop: '1px solid #333' }}>
           <h3 style={{ marginBottom: '1.5rem' }}>Ready to plan your next ride?</h3>
           <button 
