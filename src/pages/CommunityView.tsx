@@ -191,9 +191,13 @@ const CommunityView: React.FC = () => {
 
   return (
     <div className="container" style={{ minHeight: '100vh', background: '#121212', overflowY: 'auto' }}>
-      <NavBar user={user} onShowInstall={() => setShowInstallTutorial(true)} />
+      <NavBar 
+        user={user} 
+        onShowInstall={() => setShowInstallTutorial(true)} 
+        onShowAuth={() => setShowAuthModal(true)}
+      />
 
-      <main style={{ padding: '2rem', maxWidth: '800px', margin: '0 auto' }}>
+      <main style={{ padding: '2rem', maxWidth: '900px', margin: '0 auto' }}>
         {community && (
           <div style={{ marginBottom: '3rem', borderBottom: '1px solid #222', paddingBottom: '2rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>

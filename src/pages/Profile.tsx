@@ -512,9 +512,10 @@ const Profile: React.FC = () => {
       <NavBar 
         user={user} 
         onShowInstall={() => setShowInstallTutorial(true)} 
+        onShowAuth={() => setShowAuthModal(true)}
       />
 
-      <main style={{ padding: '2rem', maxWidth: '800px', margin: '0 auto' }}>
+      <main style={{ padding: '4rem 1.5rem', maxWidth: '800px', margin: '0 auto' }}>
         {!user && !profileData ? (
           <div style={{ textAlign: 'center', padding: '4rem 0' }}>
             <h2 style={{ color: 'white' }}>Welcome to Range Anxiety</h2>

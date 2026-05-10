@@ -120,7 +120,11 @@ const Settings: React.FC = () => {
 
   return (
     <div className="container" style={{ minHeight: '100vh', background: '#121212' }}>
-      <NavBar user={user} onShowInstall={() => {}} />
+      <NavBar 
+        user={user} 
+        onShowInstall={() => {}} 
+        onShowAuth={() => {}} // User is always logged in on settings page
+      />
 
       <main style={{ maxWidth: '600px', margin: '2rem auto', padding: '1rem' }}>
         <h1 style={{ color: 'white', marginBottom: '2rem' }}>User Settings</h1>

@@ -252,9 +252,13 @@ const ThreadView: React.FC = () => {
 
   return (
     <div className="container" style={{ minHeight: '100vh', background: '#121212', overflowY: 'auto' }}>
-      <NavBar user={user} onShowInstall={() => setShowInstallTutorial(true)} />
+      <NavBar 
+        user={user} 
+        onShowInstall={() => setShowInstallTutorial(true)} 
+        onShowAuth={() => setShowAuthModal(true)}
+      />
 
-      <main style={{ padding: '2rem', maxWidth: '800px', margin: '0 auto' }}>
+      <main style={{ padding: '2rem', maxWidth: '900px', margin: '0 auto' }}>
         <Link to={`/forum/c/${communityId}`} style={{ color: '#ff6600', textDecoration: 'none', fontSize: '0.85rem', fontWeight: 'bold', display: 'block', marginBottom: '1.5rem' }}>← Back to c/{communityId}</Link>
 
         {thread && (

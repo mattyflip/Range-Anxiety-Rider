@@ -4,9 +4,10 @@ import { Link } from 'react-router-dom'
 interface NavBarProps {
   user: any;
   onShowInstall: () => void;
+  onShowAuth: () => void;
 }
 
-const NavBar: React.FC<NavBarProps> = ({ user, onShowInstall }) => {
+const NavBar: React.FC<NavBarProps> = ({ user, onShowInstall, onShowAuth }) => {
   return (
     <header style={{ 
       display: 'flex', 
@@ -42,11 +43,31 @@ const NavBar: React.FC<NavBarProps> = ({ user, onShowInstall }) => {
           <Link to="/forum" style={{ color: '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Forum</Link>
           <Link to={user ? `/profile/${user.displayName || user.uid}` : '/profile/me'} style={{ color: '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Profile</Link>
           
+          {!user && (
+            <button 
+              onClick={onShowAuth}
+              style={{ 
+                background: 'linear-gradient(45deg, #ff6600, #ff9900)', 
+                color: 'white', 
+                border: 'none', 
+                borderRadius: '20px', 
+                padding: '0.3rem 1rem', 
+                fontSize: '0.7rem', 
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                boxShadow: '0 4px 10px rgba(255,102,0,0.3)'
+              }}
+            >
+              Login
+            </button>
+          )}
+
           {/* Moved App Install button into the scrolling nav for mobile compatibility */}
           <button 
             onClick={onShowInstall}
             style={{ 
-              background: 'linear-gradient(45deg, #ff6600, #ff9900)', 
+              background: user ? 'linear-gradient(45deg, #ff6600, #ff9900)' : '#333', 
               color: 'white', 
               border: 'none', 
               borderRadius: '20px', 
@@ -55,7 +76,7 @@ const NavBar: React.FC<NavBarProps> = ({ user, onShowInstall }) => {
               fontWeight: 'bold',
               cursor: 'pointer',
               whiteSpace: 'nowrap',
-              boxShadow: '0 4px 10px rgba(255,102,0,0.3)'
+              boxShadow: user ? '0 4px 10px rgba(255,102,0,0.3)' : 'none'
             }}
           >
             App

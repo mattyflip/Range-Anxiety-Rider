@@ -7,6 +7,7 @@ import AdBanner from '../components/AdBanner'
 const About: React.FC = () => {
   const [user, setUser] = useState<any>(null);
   const [userData, setUserData] = useState<any>(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   useEffect(() => {
     const unsub = auth.onAuthStateChanged(async (u) => {
@@ -21,7 +22,11 @@ const About: React.FC = () => {
 
   return (
     <div className="container" style={{ minHeight: '100vh', background: '#121212', color: 'white' }}>
-      <NavBar user={user} onShowInstall={() => {}} />
+      <NavBar 
+        user={user} 
+        onShowInstall={() => {}} 
+        onShowAuth={() => setShowAuthModal(true)}
+      />
 
       <main style={{ maxWidth: '800px', margin: '0 auto', padding: '2rem 1rem' }}>
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
@@ -118,6 +123,8 @@ const About: React.FC = () => {
           </button>
         </footer>
       </main>
+
+      {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
     </div>
   );
 };

@@ -240,6 +240,7 @@ const Feed: React.FC = () => {
       <NavBar 
         user={user} 
         onShowInstall={() => setShowInstallTutorial(true)} 
+        onShowAuth={() => setShowAuthModal(true)}
       />
 
       <main style={{ padding: '2rem', maxWidth: '600px', margin: '0 auto' }}>

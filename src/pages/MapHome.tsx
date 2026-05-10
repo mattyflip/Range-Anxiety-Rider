@@ -1214,6 +1214,7 @@ function MapHome() {
       <NavBar 
         user={user} 
         onShowInstall={() => setShowInstallTutorial(true)} 
+        onShowAuth={() => setShowAuthModal(true)}
       />
 
       <div className="main-layout">
