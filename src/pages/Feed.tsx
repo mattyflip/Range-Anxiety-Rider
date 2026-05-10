@@ -24,7 +24,8 @@ interface Post {
   tripData?: any;
 }
 
-// ... (skipping to the map part)
+const Feed: React.FC = () => {
+  const navigate = useNavigate();
 
   const handleLoadRoute = (post: Post) => {
     if (!post.tripData) return;
@@ -32,8 +33,6 @@ interface Post {
     navigate('/');
   };
 
-const Feed: React.FC = () => {
-  const navigate = useNavigate();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
