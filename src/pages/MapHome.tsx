@@ -208,6 +208,7 @@ function MapHome() {
 
   const mapRef = useRef<google.maps.Map | null>(null);
   const shareCardRef = useRef<HTMLDivElement>(null);
+  const metricsCardRef = useRef<HTMLDivElement>(null);
 
   const [unitSystem, setUnitSystem] = useState<'imperial' | 'metric'>('imperial');
 
@@ -503,6 +504,15 @@ function MapHome() {
       }
     }
   }, [userData?.homeRegion]);
+
+  // Auto-scroll to stats when opening menu with results
+  useEffect(() => {
+    if (showMobileMenu && metrics && metricsCardRef.current) {
+      setTimeout(() => {
+        metricsCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 300);
+    }
+  }, [showMobileMenu, metrics]);
 
   // Load Route from External Source (Community Feed)
   useEffect(() => {
@@ -1360,7 +1370,7 @@ function MapHome() {
           </section>
 
           {metrics && (
-            <div className="card metrics-card" style={{ marginTop: '1rem', borderLeft: '4px solid #ff6600', background: 'rgba(40,40,40,0.9)' }}>
+            <div ref={metricsCardRef} className="card metrics-card" style={{ marginTop: '1rem', borderLeft: '4px solid #ff6600', background: 'rgba(40,40,40,0.9)' }}>
               <h3 style={{ fontSize: '0.9rem', color: '#ff6600' }}>ESTIMATED METRICS</h3>
 
               {response && response.routes.length > 1 && (
@@ -2097,7 +2107,7 @@ function MapHome() {
               whiteSpace: 'nowrap'
             }}
           >
-            {showMobileMenu ? 'Show Map' : 'Trip Settings'}
+            {showMobileMenu ? 'Show Map' : (metrics ? '📊 Trip Stats' : 'Trip Settings')}
           </button>
 
           <button 
