@@ -74,6 +74,7 @@ const Profile: React.FC = () => {
   const [adminEditingReview, setAdminEditingReview] = useState<Review | null>(null);
   const [adminEditingPost, setAdminEditingPost] = useState<Post | null>(null);
   const [adminEditingNickname, setAdminEditingNickname] = useState(false);
+  const [adminEditingUsername, setAdminEditingUsername] = useState(false);
   const [adminEditValue, setAdminEditValue] = useState('');
 
   // Review Comment states
@@ -291,10 +292,33 @@ const Profile: React.FC = () => {
           adminNickname: adminEditValue
         });
         alert("Nickname updated by Admin.");
+      } else if (adminEditingUsername) {
+        const newVal = adminEditValue.trim();
+        if (!newVal) return;
+        if (newVal.includes(' ')) {
+          alert("Usernames cannot contain spaces.");
+          return;
+        }
+
+        // Check uniqueness
+        const q = query(collection(db, "users"), where("usernameLowercase", "==", newVal.toLowerCase()));
+        const snap = await getDocs(q);
+        const isTaken = snap.docs.some(d => d.id !== profileData.id);
+        if (isTaken) {
+          alert("This username is already taken.");
+          return;
+        }
+
+        await updateDoc(doc(db, "users", profileData.id), {
+          username: newVal,
+          usernameLowercase: newVal.toLowerCase()
+        });
+        alert("Username updated by Admin.");
       }
       setAdminEditingReview(null);
       setAdminEditingPost(null);
       setAdminEditingNickname(false);
+      setAdminEditingUsername(false);
     } catch (e) {
       console.error("Admin edit failed", e);
       alert("Failed to save edits.");
@@ -567,12 +591,20 @@ const Profile: React.FC = () => {
               )}
 
               {isAdmin && (
-                <button 
-                  onClick={() => { setAdminEditingNickname(true); setAdminEditValue(profileData.adminNickname || ''); }}
-                  style={{ background: 'none', border: 'none', color: '#ffcc00', fontSize: '0.65rem', fontWeight: 'bold', cursor: 'pointer', textDecoration: 'underline', marginTop: '0.5rem' }}
-                >
-                  EDIT NICKNAME
-                </button>
+                <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', marginTop: '0.5rem' }}>
+                  <button 
+                    onClick={() => { setAdminEditingNickname(true); setAdminEditValue(profileData.adminNickname || ''); }}
+                    style={{ background: 'none', border: 'none', color: '#ffcc00', fontSize: '0.65rem', fontWeight: 'bold', cursor: 'pointer', textDecoration: 'underline' }}
+                  >
+                    EDIT NICKNAME
+                  </button>
+                  <button 
+                    onClick={() => { setAdminEditingUsername(true); setAdminEditValue(profileData.username || ''); }}
+                    style={{ background: 'none', border: 'none', color: '#ffcc00', fontSize: '0.65rem', fontWeight: 'bold', cursor: 'pointer', textDecoration: 'underline' }}
+                  >
+                    EDIT USERNAME
+                  </button>
+                </div>
               )}
 
               {/* Average Rating Display */}
@@ -975,11 +1007,11 @@ const Profile: React.FC = () => {
       {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
 
       {/* Admin Edit Modal */}
-      {(adminEditingReview || adminEditingPost || adminEditingNickname) && (
+      {(adminEditingReview || adminEditingPost || adminEditingNickname || adminEditingUsername) && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.9)', zIndex: 6000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
           <div style={{ background: '#1a1a1a', width: '100%', maxWidth: '450px', padding: '2rem', borderRadius: '24px', border: '1px solid #333' }}>
             <h2 style={{ color: 'white', marginTop: 0 }}>
-              {adminEditingNickname ? 'Admin Nickname Edit' : 'Admin Edit'}
+              {adminEditingNickname ? 'Admin Nickname Edit' : adminEditingUsername ? 'Admin Username Edit' : 'Admin Edit'}
             </h2>
             <p style={{ color: '#ffcc00', fontSize: '0.8rem', fontWeight: 'bold' }}>MODERATION MODE</p>
             
@@ -1000,13 +1032,13 @@ const Profile: React.FC = () => {
             <textarea 
               value={adminEditValue}
               onChange={(e) => setAdminEditValue(e.target.value)}
-              placeholder={adminEditingNickname ? "Enter a nickname for this rider..." : ""}
-              style={{ width: '100%', height: adminEditingNickname ? '80px' : '150px', background: '#222', border: '1px solid #444', borderRadius: '12px', color: 'white', padding: '1rem', fontFamily: 'inherit', marginBottom: '1.5rem' }}
+              placeholder={adminEditingNickname ? "Enter a nickname for this rider..." : adminEditingUsername ? "Enter new unique username (no spaces)..." : ""}
+              style={{ width: '100%', height: (adminEditingNickname || adminEditingUsername) ? '80px' : '150px', background: '#222', border: '1px solid #444', borderRadius: '12px', color: 'white', padding: '1rem', fontFamily: 'inherit', marginBottom: '1.5rem' }}
             />
 
             <div style={{ display: 'flex', gap: '1rem' }}>
               <button 
-                onClick={() => { setAdminEditingReview(null); setAdminEditingPost(null); setAdminEditingNickname(false); }}
+                onClick={() => { setAdminEditingReview(null); setAdminEditingPost(null); setAdminEditingNickname(false); setAdminEditingUsername(false); }}
                 style={{ flex: 1, padding: '1rem', background: '#333', color: 'white', border: 'none', borderRadius: '12px', cursor: 'pointer' }}
               >
                 Cancel
