@@ -81,9 +81,6 @@ const Profile: React.FC = () => {
   const [reviewComments, setReviewComments] = useState<{ [reviewId: string]: any[] }>({});
   const [newReviewCommentText, setNewReviewCommentText] = useState('');
 
-  const [isEditingNickname, setIsEditingNickname] = useState(false);
-  const [editNicknameValue, setEditNicknameValue] = useState('');
-
   useEffect(() => {
     const unsub = auth.onAuthStateChanged(u => {
       setUser(u);
@@ -346,11 +343,19 @@ const Profile: React.FC = () => {
   };
 
   const fetchReviewComments = (reviewId: string) => {
-    const q = query(collection(db, `rider_reviews/${reviewId}/comments`), orderBy("createdAt", "asc"));
+    const q = query(collection(db, `rider_reviews/${reviewId}/comments`));
     return onSnapshot(q, (snap) => {
       const comments: any[] = [];
       snap.forEach(docSnap => comments.push({ id: docSnap.id, ...docSnap.data() }));
-      setReviewComments(prev => ({ ...prev, [reviewId]: comments }));
+      
+      // Client-side sort by createdAt asc
+      const sorted = comments.sort((a, b) => {
+        const timeA = a.createdAt?.toMillis() || 0;
+        const timeB = b.createdAt?.toMillis() || 0;
+        return timeA - timeB;
+      });
+
+      setReviewComments(prev => ({ ...prev, [reviewId]: sorted }));
     });
   };
 
@@ -819,8 +824,13 @@ const Profile: React.FC = () => {
                                   {c.authorProfilePic ? <img src={c.authorProfilePic} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : '🚲'}
                                 </div>
                                 <div style={{ background: '#222', padding: '0.6rem 0.8rem', borderRadius: '12px', flex: 1 }}>
-                                  <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'white', marginBottom: '0.1rem' }}>{c.authorUsername}</div>
-                                  <div style={{ fontSize: '0.85rem', color: '#bbb' }}>{c.text}</div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.1rem' }}>
+                                  <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'white' }}>{c.authorUsername}</div>
+                                  {c.authorId === profileData.id && (
+                                    <span style={{ background: '#ff6600', color: 'white', fontSize: '0.55rem', padding: '1px 4px', borderRadius: '4px', fontWeight: 'bold', textTransform: 'uppercase' }}>Owner</span>
+                                  )}
+                                </div>
+                                <div style={{ fontSize: '0.85rem', color: '#bbb' }}>{c.text}</div>
                                 </div>
                               </div>
                             ))}
