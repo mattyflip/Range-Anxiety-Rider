@@ -25,7 +25,7 @@ const About: React.FC = () => {
         <section style={{ marginBottom: '4rem' }}>
           <h2 style={{ color: '#ff6600', fontSize: '1.8rem', marginBottom: '1.5rem', borderBottom: '1px solid #333', paddingBottom: '0.5rem' }}>Physics-Based Accuracy</h2>
           <p style={{ lineHeight: '1.8', color: '#ccc', fontSize: '1.1rem' }}>
-            Unlike basic range estimators that only look at distance, **Range Anxiety** uses a sophisticated mathematical model to predict battery consumption. We calculate the energy required to overcome several real-world forces:
+            Unlike basic range estimators that only look at distance, <strong>Range Anxiety</strong> uses a sophisticated mathematical model to predict battery consumption. We calculate the energy required to overcome several real-world forces:
           </p>
           <ul style={{ marginTop: '1.5rem', color: '#ccc', lineHeight: '2' }}>
             <li><strong>Aerodynamic Drag:</strong> Calculated based on your target speed and real-time wind conditions (headwinds/tailwinds).</li>
@@ -65,7 +65,7 @@ const About: React.FC = () => {
         <section style={{ marginBottom: '4rem' }}>
           <h2 style={{ color: '#ff6600', fontSize: '1.8rem', marginBottom: '1.5rem', borderBottom: '1px solid #333', paddingBottom: '0.5rem' }}>The Share Card</h2>
           <p style={{ lineHeight: '1.8', color: '#ccc', fontSize: '1.1rem' }}>
-            When you plan a trip, we generate a high-impact **Share Card**. This isn't just a screenshot; it's a data-rich report that includes your route map, wind direction, elevation profile, and exact battery percentages. Shared trips are indexed by city and state, allowing the community to discover and "Load Route" popular rides in their local area.
+            When you plan a trip, we generate a high-impact <strong>Share Card</strong>. This isn't just a screenshot; it's a data-rich report that includes your route map, wind direction, elevation profile, and exact battery percentages. Shared trips are indexed by city and state, allowing the community to discover and "Load Route" popular rides in their local area.
           </p>
         </section>
 
