@@ -1144,7 +1144,10 @@ function MapHome() {
   };
 
   const shareToCommunity = async () => {
-    if (!shareCardRef.current || !metrics || !user) return;
+    if (!shareCardRef.current || !metrics || !user || !mapSnapshot) {
+      alert("Preparing share card data... please wait a second and try again.");
+      return;
+    }
     
     // Enforce profile completeness
     if (!userData?.username || !userData?.profilePic) {
@@ -1156,10 +1159,20 @@ function MapHome() {
       setIsLoading(true);
       const el = shareCardRef.current;
       el.style.opacity = '1';
-      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      // Wait longer for map snapshot to be fully rendered in the DOM
+      await new Promise(resolve => setTimeout(resolve, 1500));
 
       // Generate the high-res PNG
-      const dataUrl = await toPng(el, { cacheBust: true, backgroundColor: "#121212", pixelRatio: 1.5 });
+      const dataUrl = await toPng(el, { 
+        cacheBust: true, 
+        backgroundColor: "#121212", 
+        pixelRatio: 2,
+        style: {
+          opacity: '1',
+          visibility: 'visible',
+        }
+      });
       el.style.opacity = '0';
 
       // Professional Storage upload for high-res images (Blaze Plan)
@@ -1485,17 +1498,9 @@ function MapHome() {
             {user && (
               <div style={{ marginTop: '1rem', padding: '0.8rem', background: 'rgba(255,255,255,0.05)', borderRadius: '10px' }}>
                 <label style={{ fontSize: '0.6rem', color: '#888', textTransform: 'uppercase' }}>Social Profile</label>
-                {!showUsernameEdit ? (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '0.4rem' }}>
-                    <span style={{ fontSize: '0.9rem', color: 'white', fontWeight: 'bold' }}>{username || 'Anonymous Rider'}</span>
-                    <button onClick={() => { setUsernameInput(username); setShowUsernameEdit(true); }} style={{ background: 'none', border: 'none', color: '#ff6600', fontSize: '1rem', cursor: 'pointer' }} title="Edit Username">✏️</button>
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.4rem' }}>
-                    <input type="text" placeholder="Username" value={usernameInput} onChange={e => setUsernameInput(e.target.value)} style={{ padding: '0.3rem', fontSize: '0.8rem' }} />
-                    <button onClick={() => { updateUsername(usernameInput); setShowUsernameEdit(false); }} style={{ padding: '0.3rem 0.6rem', backgroundColor: '#34a853', border: 'none', borderRadius: '4px', color: 'white', cursor: 'pointer', fontSize: '0.7rem' }}>Save</button>
-                  </div>
-                )}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '0.4rem' }}>
+                  <span style={{ fontSize: '0.9rem', color: 'white', fontWeight: 'bold' }}>{username || 'Anonymous Rider'}</span>
+                </div>
               </div>
             )}
           </div>

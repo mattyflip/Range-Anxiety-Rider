@@ -616,6 +616,27 @@ const Profile: React.FC = () => {
                 </div>
               )}
 
+              {isOwner && (
+                <button 
+                  onClick={() => navigate('/settings')}
+                  style={{ 
+                    marginTop: '1.5rem', 
+                    background: 'rgba(255,102,0,0.1)', 
+                    color: '#ff6600', 
+                    border: '1px solid #ff6600', 
+                    padding: '0.8rem 2rem', 
+                    borderRadius: '12px', 
+                    fontWeight: 'bold', 
+                    cursor: 'pointer', 
+                    fontSize: '1rem',
+                    width: '100%',
+                    maxWidth: '300px'
+                  }}
+                >
+                  ⚙️ User Settings
+                </button>
+              )}
+
               {/* Average Rating Display */}
               <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
                 <div style={{ color: '#ffcc00', fontSize: '1.2rem' }}>
@@ -624,25 +645,7 @@ const Profile: React.FC = () => {
                 <span style={{ color: '#888', fontSize: '0.85rem' }}>({(profileData.averageRating || 0).toFixed(1)} / {profileData.ratingCount || 0} reviews)</span>
               </div>
               
-              {isEditing ? (
-                <div style={{ marginTop: '1rem' }}>
-                  <textarea 
-                    value={editBio} 
-                    onChange={e => setEditBio(e.target.value)}
-                    style={{ width: '100%', background: '#222', border: '1px solid #444', borderRadius: '8px', color: 'white', padding: '0.8rem', marginBottom: '0.5rem', fontFamily: 'inherit' }}
-                    placeholder="Tell us about your ride..."
-                  />
-                  <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
-                    <button onClick={handleUpdateBio} style={{ background: '#34a853', color: 'white', border: 'none', padding: '0.4rem 1.2rem', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Save</button>
-                    <button onClick={() => setIsEditing(false)} style={{ background: '#444', color: 'white', border: 'none', padding: '0.4rem 1.2rem', borderRadius: '4px', cursor: 'pointer' }}>Cancel</button>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <p style={{ color: '#888', marginTop: '0.5rem' }}>{profileData.bio || 'No bio yet.'}</p>
-                  {isOwner && <button onClick={() => setIsEditing(true)} style={{ background: 'none', border: 'none', color: '#ff6600', fontSize: '1rem', cursor: 'pointer' }} title="Edit Bio">✏️</button>}
-                </>
-              )}
+              <p style={{ color: '#888', marginTop: '0.5rem' }}>{profileData.bio || 'No bio yet.'}</p>
               
               <div style={{ display: 'flex', justifyContent: 'center', gap: '2rem', marginTop: '1.5rem' }}>
                 <div>
@@ -681,22 +684,13 @@ const Profile: React.FC = () => {
                   </button>
                 </div>
               )}
-
-              {isOwner && (
-                <button 
-                  onClick={handleSignOut}
-                  style={{ marginTop: '2rem', background: 'rgba(255,255,255,0.05)', color: '#ff4444', border: '1px solid #333', padding: '0.6rem 1.5rem', borderRadius: '8px', cursor: 'pointer', fontSize: '0.8rem' }}
-                >
-                  Sign Out
-                </button>
-              )}
             </div>
 
             {profileData?.bikes && (
               <section style={{ marginBottom: '4rem' }}>
                 <h3 style={{ color: '#ff6600', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '0.1em', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between' }}>
                   Garage
-                  {isOwner && <span style={{ fontSize: '0.7rem', textTransform: 'none', color: '#444' }}>(Manage bikes on Map page)</span>}
+                  {isOwner && <span style={{ fontSize: '0.7rem', textTransform: 'none', color: '#444' }}>(Manage bikes in User Settings)</span>}
                 </h3>
                 <div className="garage-grid">
                   {profileData.bikes.length === 0 ? (
