@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { db, auth, storage } from '../firebase'
-import { doc, collection, query, where, onSnapshot, updateDoc, arrayRemove, getDoc, getDocs, addDoc, serverTimestamp, deleteDoc } from 'firebase/firestore'
+import { doc, collection, query, where, onSnapshot, updateDoc, arrayRemove, getDoc, getDocs, addDoc, serverTimestamp } from 'firebase/firestore'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { signOut } from 'firebase/auth'
 import NavBar from '../components/NavBar'
@@ -150,11 +150,19 @@ const Profile: React.FC = () => {
   }, [username, user?.uid]);
 
   const fetchUserReviews = (userId: string) => {
-    const q = query(collection(db, "rider_reviews"), where("targetUserId", "==", userId), orderBy("createdAt", "desc"));
+    const q = query(collection(db, "rider_reviews"), where("targetUserId", "==", userId));
     return onSnapshot(q, (snap) => {
       const reviews: Review[] = [];
       snap.forEach(docSnap => reviews.push({ id: docSnap.id, ...docSnap.data() } as Review));
-      setUserReviews(reviews);
+      
+      // Client-side sort by createdAt desc
+      const sorted = reviews.sort((a, b) => {
+        const timeA = a.createdAt?.toMillis() || 0;
+        const timeB = b.createdAt?.toMillis() || 0;
+        return timeB - timeA;
+      });
+      
+      setUserReviews(sorted);
     });
   };
 
