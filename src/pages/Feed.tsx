@@ -112,7 +112,6 @@ const Feed: React.FC = () => {
         if (aFollowed && !bFollowed) return -1;
         if (!aFollowed && bFollowed) return 1;
 
-        // Both followed or both not followed: Sort by date
         const timeA = a.createdAt?.toMillis() || 0;
         const timeB = b.createdAt?.toMillis() || 0;
         return timeB - timeA;
@@ -209,7 +208,6 @@ const Feed: React.FC = () => {
 
     setIsPosting(true);
     try {
-      // Professional Storage upload for high-res images
       const response = await fetch(selectedImage);
       const blob = await response.blob();
 
@@ -415,9 +413,10 @@ const Feed: React.FC = () => {
                       </div>
                     </article>
 
-                    {/* Show an Ad after every 3 posts for free users */}
                     {(index + 1) % 3 === 0 && (
-                      <AdBanner isPro={userData?.isPro || false} />
+                      <div style={{ marginBottom: '2rem' }}>
+                        <AdBanner isPro={userData?.isPro || false} />
+                      </div>
                     )}
                   </React.Fragment>
                 ))}
@@ -427,6 +426,91 @@ const Feed: React.FC = () => {
         )}
       </main>
 
+      {showCreatePost && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.9)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', backdropFilter: 'blur(10px)' }}>
+          <div style={{ background: '#1a1a1a', padding: '2rem', borderRadius: '24px', border: '1px solid #333', maxWidth: '500px', width: '100%' }}>
+            <h3 style={{ color: 'white', marginTop: 0 }}>New Post</h3>
+            
+            {showCropper && selectedImage ? (
+              <div style={{ position: 'relative', width: '100%', height: '300px', marginBottom: '1rem' }}>
+                <Cropper
+                  image={selectedImage}
+                  crop={crop}
+                  zoom={zoom}
+                  aspect={1}
+                  onCropChange={setCrop}
+                  onCropComplete={onCropComplete}
+                  onZoomChange={setZoom}
+                />
+                <button 
+                  onClick={handleApplyCrop}
+                  style={{ position: 'absolute', bottom: '1rem', right: '1rem', background: '#ff6600', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', zIndex: 1200 }}
+                >
+                  Apply Crop
+                </button>
+              </div>
+            ) : (
+              <div style={{ 
+                width: '100%', height: '250px', background: '#222', 
+                borderRadius: '12px', border: '2px dashed #444', 
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                overflow: 'hidden', cursor: 'pointer', position: 'relative'
+              }}>
+                {selectedImage ? (
+                  <img src={selectedImage} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <span style={{ color: '#666' }}>Tap to select photo</span>
+                )}
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  onChange={handleImageSelect} 
+                  style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer', zIndex: 5 }} 
+                />
+              </div>
+            )}
+
+            {!showCropper && (
+              <>
+                <textarea 
+                  placeholder="Write a caption (optional)..."
+                  value={newCaption}
+                  onChange={e => setNewCaption(e.target.value)}
+                  style={{ width: '100%', background: '#222', border: '1px solid #444', borderRadius: '8px', color: 'white', padding: '1rem', marginTop: '1.5rem', height: '100px', fontFamily: 'inherit' }}
+                />
+
+                <div style={{ marginTop: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                  <input 
+                    type="checkbox" 
+                    id="allow-comments" 
+                    checked={allowComments} 
+                    onChange={e => setAllowComments(e.target.checked)}
+                    style={{ width: 'auto' }}
+                  />
+                  <label htmlFor="allow-comments" style={{ margin: 0, textTransform: 'none', fontSize: '0.9rem', color: '#ccc' }}>Allow community comments</label>
+                </div>
+
+                <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
+                  <button 
+                    onClick={() => setShowCreatePost(false)}
+                    style={{ flex: 1, padding: '1rem', background: '#333', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    onClick={handleCreatePost}
+                    disabled={isPosting || !selectedImage}
+                    style={{ flex: 2, padding: '1rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', opacity: (isPosting || !selectedImage) ? 0.5 : 1 }}
+                  >
+                    {isPosting ? 'Posting...' : 'Post to Community'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       {activeCommentPost && (
         <CommentModal 
           postId={activeCommentPost.id} 
@@ -435,13 +519,11 @@ const Feed: React.FC = () => {
         />
       )}
 
-      {/* Full Screen Post Modal */}
       {selectedFullPost && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.98)', zIndex: 4000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
           <button 
             onClick={() => {
               setSelectedFullPost(null);
-              // Clean up URL if they came from search
               if (location.search.includes('post=')) {
                 navigate('/feed', { replace: true });
               }
@@ -495,7 +577,6 @@ const Feed: React.FC = () => {
       {showInstallTutorial && <InstallTutorial onClose={() => setShowInstallTutorial(false)} />}
       {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
 
-      {/* Admin Edit Modal */}
       {adminEditingPost && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.9)', zIndex: 6000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
           <div style={{ background: '#1a1a1a', width: '100%', maxWidth: '450px', padding: '2rem', borderRadius: '24px', border: '1px solid #333' }}>
