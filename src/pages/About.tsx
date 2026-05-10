@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { auth, db } from '../firebase'
 import { getDoc, doc } from 'firebase/firestore'
 import NavBar from '../components/NavBar'
+import AuthModal from '../components/AuthModal'
 import AdBanner from '../components/AdBanner'
 
 const About: React.FC = () => {
