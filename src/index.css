@@ -226,11 +226,16 @@ main {
   color: #333;
 }
 
-.persistent-controls {
-  display: none;
+/* Utility Classes */
+.desktop-only {
+  display: block;
 }
 
 @media (max-width: 800px) {
+  .desktop-only {
+    display: none !important;
+  }
+  
   .persistent-controls {
     display: flex;
   }

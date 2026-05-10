@@ -17,7 +17,7 @@ const About: React.FC = () => {
       <main style={{ maxWidth: '800px', margin: '0 auto', padding: '4rem 1rem' }}>
         <header style={{ textAlign: 'center', marginBottom: '4rem' }}>
           <h1 style={{ fontSize: '3.5rem', fontWeight: 900, color: '#ff6600', marginBottom: '0.5rem', letterSpacing: '-0.02em' }}>How It Works</h1>
-          <p style={{ fontSize: '1.2rem', color: '#888', maxWidth: '600px', margin: '0 auto', lineHeight: '1.5' }}>
+          <p className="desktop-only" style={{ fontSize: '1.2rem', color: '#888', maxWidth: '600px', margin: '0 auto', lineHeight: '1.5' }}>
             The science behind conquering range anxiety. Learn how our physics-based model calculates your e-bike's battery life.
           </p>
         </header>
