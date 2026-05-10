@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { db, auth, storage } from '../firebase'
-import { doc, collection, query, where, onSnapshot, updateDoc, arrayRemove, getDoc, getDocs, addDoc, serverTimestamp } from 'firebase/firestore'
+import { doc, collection, query, where, onSnapshot, updateDoc, arrayRemove, getDoc, getDocs, addDoc, serverTimestamp, deleteDoc } from 'firebase/firestore'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { signOut } from 'firebase/auth'
 import NavBar from '../components/NavBar'
@@ -31,6 +31,7 @@ interface Review {
   rating: number;
   comment: string;
   createdAt: any;
+  targetUserId?: string;
 }
 
 const Profile: React.FC = () => {
@@ -43,6 +44,8 @@ const Profile: React.FC = () => {
   const [showInstallTutorial, setShowInstallTutorial] = useState(false);
   const [userPosts, setUserPosts] = useState<Post[]>([]);
   const [userReviews, setUserReviews] = useState<Review[]>([]);
+
+  const isAdmin = user?.email?.toLowerCase() === 'mattyfliptv@gmail.com';
 
   const [isEditing, setIsEditing] = useState(false);
   const [editBio, setEditBio] = useState('');
@@ -164,6 +167,49 @@ const Profile: React.FC = () => {
       
       setUserReviews(sorted);
     });
+  };
+
+  const handleDeleteReview = async (review: Review) => {
+    if (!isAdmin || !profileData) return;
+    if (!window.confirm("Are you sure you want to delete this review? This action cannot be undone.")) return;
+
+    try {
+      await deleteDoc(doc(db, "rider_reviews", review.id));
+      
+      // Recalculate stats
+      const currentAvg = profileData.averageRating || 0;
+      const currentCount = profileData.ratingCount || 0;
+      
+      let newCount = currentCount - 1;
+      if (newCount < 0) newCount = 0;
+      
+      let newAvg = 0;
+      if (newCount > 0) {
+        newAvg = ((currentAvg * currentCount) - review.rating) / newCount;
+      }
+
+      await updateDoc(doc(db, "users", profileData.id), {
+        averageRating: newAvg,
+        ratingCount: newCount
+      });
+
+      alert("Review deleted successfully.");
+    } catch (e) {
+      console.error("Delete failed", e);
+      alert("Failed to delete review.");
+    }
+  };
+
+  const handleDeletePost = async (post: Post) => {
+    if (!isAdmin) return;
+    if (!window.confirm("Are you sure you want to delete this post?")) return;
+    try {
+      await deleteDoc(doc(db, "posts", post.id));
+      alert("Post deleted successfully.");
+    } catch (e) {
+      console.error("Delete post failed", e);
+      alert("Failed to delete post.");
+    }
   };
 
   const handleSubmitReview = async () => {
@@ -531,7 +577,17 @@ const Profile: React.FC = () => {
                         <img src={post.imageUrl} alt="Post" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       </div>
                       <div style={{ padding: '0.8rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div style={{ color: 'white', fontSize: '0.75rem', fontWeight: 'bold' }}>{post.likes.length} Likes</div>
+                        <div style={{ color: 'white', fontSize: '0.75rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          {post.likes.length} Likes
+                          {isAdmin && (
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); handleDeletePost(post); }}
+                              style={{ background: 'none', border: 'none', color: '#ff4444', cursor: 'pointer', fontSize: '0.65rem', fontWeight: 'bold' }}
+                            >
+                              DELETE
+                            </button>
+                          )}
+                        </div>
                         {(post.commentsEnabled !== false) && (
                           <button onClick={() => setActiveCommentPost(post)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem' }}>💬</button>
                         )}
@@ -548,7 +604,7 @@ const Profile: React.FC = () => {
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                   {userReviews.map(review => (
-                    <div key={review.id} style={{ background: '#1a1a1a', padding: '1.2rem', borderRadius: '16px', border: '1px solid #333' }}>
+                    <div key={review.id} style={{ background: '#1a1a1a', padding: '1.2rem', borderRadius: '16px', border: '1px solid #333', position: 'relative' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.8rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
                           <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#333', overflow: 'hidden' }}>
@@ -556,8 +612,16 @@ const Profile: React.FC = () => {
                           </div>
                           <span style={{ fontWeight: 'bold', color: 'white', fontSize: '0.9rem' }}>{review.reviewerUsername}</span>
                         </div>
-                        <div style={{ color: '#ffcc00' }}>
-                          {'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}
+                        <div style={{ color: '#ffcc00', display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                          <div>{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</div>
+                          {isAdmin && (
+                            <button 
+                              onClick={() => handleDeleteReview(review)}
+                              style={{ background: 'none', border: 'none', color: '#ff4444', cursor: 'pointer', fontSize: '0.7rem', padding: '4px', borderLeft: '1px solid #333' }}
+                            >
+                              DELETE
+                            </button>
+                          )}
                         </div>
                       </div>
                       <p style={{ color: '#ccc', margin: 0, fontSize: '0.95rem', lineHeight: '1.5' }}>{review.comment}</p>
