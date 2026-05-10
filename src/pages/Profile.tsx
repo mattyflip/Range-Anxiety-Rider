@@ -68,7 +68,8 @@ const Profile: React.FC = () => {
     if (!target) return;
 
     setLoading(true);
-    let unsubscribe: () => void;
+    let profileUnsub: () => void;
+    let postsUnsub: () => void;
 
     // Standardize the target: treat spaces and underscores as the same for lookup
     const normalizedTarget = target.replace(/%20/g, ' ').replace(/\s+/g, '_');
@@ -81,12 +82,15 @@ const Profile: React.FC = () => {
     // Search for user by username (Case-Insensitive & Space/Underscore Agnostic)
     const q = query(usersRef, where("usernameLowercase", "in", [lowerTarget, lowerSpaceTarget]));
 
-    unsubscribe = onSnapshot(q, (snap) => {
+    profileUnsub = onSnapshot(q, (snap) => {
       if (!snap.empty) {
         const data = snap.docs[0].data();
         setProfileData({ ...data, id: snap.docs[0].id });
         setEditBio(data.bio || '');
-        fetchUserPosts(snap.docs[0].id);
+        
+        // Start listening to posts for this specific user
+        if (postsUnsub) postsUnsub();
+        postsUnsub = fetchUserPosts(snap.docs[0].id);
       } else {
         // Fallback 1: Search by original username field (case-sensitive, both versions)
         const qOrig = query(usersRef, where("username", "in", [normalizedTarget, spaceTarget, target]));
@@ -95,7 +99,9 @@ const Profile: React.FC = () => {
             const data = origSnap.docs[0].data();
             setProfileData({ ...data, id: origSnap.docs[0].id });
             setEditBio(data.bio || '');
-            fetchUserPosts(origSnap.docs[0].id);
+            
+            if (postsUnsub) postsUnsub();
+            postsUnsub = fetchUserPosts(origSnap.docs[0].id);
           } else {
             // Fallback 2: Check if target is actually a UID
             const docRef = doc(db, "users", target);
@@ -104,7 +110,9 @@ const Profile: React.FC = () => {
                 const data = uSnap.data();
                 setProfileData({ ...data, id: uSnap.id });
                 setEditBio(data.bio || '');
-                fetchUserPosts(uSnap.id);
+                
+                if (postsUnsub) postsUnsub();
+                postsUnsub = fetchUserPosts(uSnap.id);
               }
             });
           }
@@ -113,7 +121,10 @@ const Profile: React.FC = () => {
       setLoading(false);
     });
 
-    return () => { if (unsubscribe) unsubscribe(); };
+    return () => { 
+      if (profileUnsub) profileUnsub(); 
+      if (postsUnsub) postsUnsub();
+    };
   }, [username, user?.uid]);
 
   const fetchUserPosts = (userId: string) => {
