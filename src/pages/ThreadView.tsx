@@ -165,15 +165,17 @@ const ThreadView: React.FC = () => {
                  <div style={{ display: 'flex', gap: '0.8rem', marginTop: '0.5rem' }}>
                     <button 
                       onClick={() => { setAdminEditingComment(comment); setAdminEditValue(comment.text); }}
-                      style={{ background: 'none', border: 'none', color: '#ffcc00', fontSize: '0.7rem', fontWeight: 'bold', cursor: 'pointer', padding: 0 }}
+                      style={{ background: 'none', border: 'none', color: '#ffcc00', fontSize: '1rem', cursor: 'pointer', padding: 0 }}
+                      title="Edit Comment"
                     >
-                      EDIT
+                      ✏️
                     </button>
                     <button 
                       onClick={() => handleDeleteComment(comment)}
-                      style={{ background: 'none', border: 'none', color: '#ff4444', fontSize: '0.7rem', fontWeight: 'bold', cursor: 'pointer', padding: 0 }}
+                      style={{ background: 'none', border: 'none', color: '#ff4444', fontSize: '1rem', cursor: 'pointer', padding: 0 }}
+                      title="Delete Comment"
                     >
-                      DELETE
+                      🗑️
                     </button>
                  </div>
                )}

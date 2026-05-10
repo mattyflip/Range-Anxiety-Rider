@@ -185,15 +185,17 @@ const CommunityView: React.FC = () => {
                       <div style={{ display: 'flex', gap: '1rem' }}>
                          <button 
                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setAdminEditingThread(thread); setAdminEditValue(thread.title); }}
-                           style={{ background: 'none', border: 'none', color: '#ffcc00', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer' }}
+                           style={{ background: 'none', border: 'none', color: '#ffcc00', fontSize: '1rem', cursor: 'pointer' }}
+                           title="Edit Thread"
                          >
-                           EDIT
+                           ✏️
                          </button>
                          <button 
                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteThread(thread); }}
-                           style={{ background: 'none', border: 'none', color: '#ff4444', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer' }}
+                           style={{ background: 'none', border: 'none', color: '#ff4444', fontSize: '1rem', cursor: 'pointer' }}
+                           title="Delete Thread"
                          >
-                           DELETE
+                           🗑️
                          </button>
                       </div>
                     )}

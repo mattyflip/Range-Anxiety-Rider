@@ -782,15 +782,17 @@ const Profile: React.FC = () => {
                             <div style={{ display: 'flex', gap: '0.4rem', borderLeft: '1px solid #333', paddingLeft: '0.8rem' }}>
                               <button 
                                 onClick={() => { setAdminEditingReview(review); setAdminEditValue(review.comment); setNewRating(review.rating); }}
-                                style={{ background: 'none', border: 'none', color: '#ffcc00', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 'bold' }}
+                                style={{ background: 'none', border: 'none', color: '#ffcc00', cursor: 'pointer', fontSize: '1rem' }}
+                                title="Edit Review"
                               >
-                                EDIT
+                                ✏️
                               </button>
                               <button 
                                 onClick={() => handleDeleteReview(review)}
-                                style={{ background: 'none', border: 'none', color: '#ff4444', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 'bold' }}
+                                style={{ background: 'none', border: 'none', color: '#ff4444', cursor: 'pointer', fontSize: '1rem' }}
+                                title="Delete Review"
                               >
-                                DELETE
+                                🗑️
                               </button>
                             </div>
                           )}

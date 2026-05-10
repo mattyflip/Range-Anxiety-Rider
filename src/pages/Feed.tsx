@@ -406,15 +406,17 @@ const Feed: React.FC = () => {
                       <div style={{ display: 'flex', gap: '1rem', marginLeft: 'auto' }}>
                          <button 
                            onClick={() => { setAdminEditingPost(post); setAdminEditValue(post.caption); }}
-                           style={{ background: 'none', border: 'none', color: '#ffcc00', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer' }}
+                           style={{ background: 'none', border: 'none', color: '#ffcc00', fontSize: '1rem', cursor: 'pointer' }}
+                           title="Edit Post"
                          >
-                           EDIT
+                           ✏️
                          </button>
                          <button 
                            onClick={() => handleDeletePost(post)}
-                           style={{ background: 'none', border: 'none', color: '#ff4444', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer' }}
+                           style={{ background: 'none', border: 'none', color: '#ff4444', fontSize: '1rem', cursor: 'pointer' }}
+                           title="Delete Post"
                          >
-                           DELETE
+                           🗑️
                          </button>
                       </div>
                     )}
