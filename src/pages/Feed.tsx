@@ -292,7 +292,7 @@ const Feed: React.FC = () => {
               <article key={post.id} style={{ background: '#1a1a1a', borderRadius: '24px', border: '1px solid #333', overflow: 'hidden' }}>
                 <div 
                   style={{ padding: '1rem', display: 'flex', alignItems: 'center', gap: '0.8rem', cursor: 'pointer' }}
-                  onClick={() => navigate(`/profile/${post.authorUsername}`)}
+                  onClick={() => navigate(`/profile/${post.authorUsername.replace(/\s+/g, '_')}`)}
                 >
                   <div style={{ 
                     width: '40px', 

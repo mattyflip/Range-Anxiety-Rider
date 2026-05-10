@@ -144,7 +144,7 @@ const CommunityView: React.FC = () => {
                 </div>
                 <Link to={`/forum/c/${communityId}/t/${thread.id}`} style={{ flex: 1, padding: '1.5rem', textDecoration: 'none' }}>
                   <div style={{ fontSize: '0.7rem', color: '#444', textTransform: 'uppercase', fontWeight: 'bold', marginBottom: '0.5rem' }}>
-                    Posted by <Link to={`/profile/${thread.authorUsername}`} style={{ color: '#888', textDecoration: 'none' }}>{thread.authorUsername}</Link> • {thread.createdAt?.toDate().toLocaleDateString()}
+                    Posted by <Link to={`/profile/${thread.authorUsername.replace(/\s+/g, '_')}`} style={{ color: '#888', textDecoration: 'none' }}>{thread.authorUsername}</Link> • {thread.createdAt?.toDate().toLocaleDateString()}
                   </div>
                   <h3 style={{ color: 'white', margin: 0, fontSize: '1.2rem', lineHeight: '1.4' }}>{thread.title}</h3>
                   <div style={{ color: '#666', fontSize: '0.8rem', marginTop: '1rem', fontWeight: 'bold' }}>

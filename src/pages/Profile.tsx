@@ -69,11 +69,16 @@ const Profile: React.FC = () => {
     setLoading(true);
     let unsubscribe: () => void;
 
-    // Search for user by username (Case-Insensitive via lowercase field)
+    // Standardize the target: treat spaces and underscores as the same for lookup
+    const normalizedTarget = target.replace(/%20/g, ' ').replace(/\s+/g, '_');
+    const spaceTarget = normalizedTarget.replace(/_/g, ' ');
+    const lowerTarget = normalizedTarget.toLowerCase();
+    const lowerSpaceTarget = spaceTarget.toLowerCase();
+
     const usersRef = collection(db, "users");
-    const lowerTarget = target.toLowerCase();
     
-    const q = query(usersRef, where("usernameLowercase", "==", lowerTarget));
+    // Search for user by username (Case-Insensitive & Space/Underscore Agnostic)
+    const q = query(usersRef, where("usernameLowercase", "in", [lowerTarget, lowerSpaceTarget]));
 
     unsubscribe = onSnapshot(q, (snap) => {
       if (!snap.empty) {
@@ -82,8 +87,8 @@ const Profile: React.FC = () => {
         setEditBio(data.bio || '');
         fetchUserPosts(snap.docs[0].id);
       } else {
-        // Fallback 1: Search by original username field (case-sensitive)
-        const qOrig = query(usersRef, where("username", "==", target));
+        // Fallback 1: Search by original username field (case-sensitive, both versions)
+        const qOrig = query(usersRef, where("username", "in", [normalizedTarget, spaceTarget, target]));
         getDocs(qOrig).then((origSnap: any) => {
           if (!origSnap.empty) {
             const data = origSnap.docs[0].data();
@@ -91,7 +96,7 @@ const Profile: React.FC = () => {
             setEditBio(data.bio || '');
             fetchUserPosts(origSnap.docs[0].id);
           } else {
-            // Fallback 2: Check if username parameter is actually a UID
+            // Fallback 2: Check if target is actually a UID
             const docRef = doc(db, "users", target);
             getDoc(docRef).then((uSnap: any) => {
               if (uSnap.exists()) {
