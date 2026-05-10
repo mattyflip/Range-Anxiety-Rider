@@ -76,6 +76,11 @@ const Profile: React.FC = () => {
   const [adminEditingNickname, setAdminEditingNickname] = useState(false);
   const [adminEditValue, setAdminEditValue] = useState('');
 
+  // Review Comment states
+  const [activeReviewForComments, setActiveReviewForComments] = useState<string | null>(null);
+  const [reviewComments, setReviewComments] = useState<{ [reviewId: string]: any[] }>({});
+  const [newReviewCommentText, setNewReviewCommentText] = useState('');
+
   const [isEditingNickname, setIsEditingNickname] = useState(false);
   const [editNicknameValue, setEditNicknameValue] = useState('');
 
@@ -338,6 +343,32 @@ const Profile: React.FC = () => {
     } finally {
       setIsSubmittingReview(false);
     }
+  };
+
+  const fetchReviewComments = (reviewId: string) => {
+    const q = query(collection(db, `rider_reviews/${reviewId}/comments`), orderBy("createdAt", "asc"));
+    return onSnapshot(q, (snap) => {
+      const comments: any[] = [];
+      snap.forEach(docSnap => comments.push({ id: docSnap.id, ...docSnap.data() }));
+      setReviewComments(prev => ({ ...prev, [reviewId]: comments }));
+    });
+  };
+
+  const handleSubmitReviewComment = async (reviewId: string) => {
+    if (!user || !newReviewCommentText.trim()) return;
+    try {
+      const userSnap = await getDoc(doc(db, "users", user.uid));
+      const senderData = userSnap.exists() ? userSnap.data() : {};
+      
+      await addDoc(collection(db, `rider_reviews/${reviewId}/comments`), {
+        authorId: user.uid,
+        authorUsername: senderData.username || "Rider",
+        authorProfilePic: senderData.profilePic || "",
+        text: newReviewCommentText,
+        createdAt: serverTimestamp()
+      });
+      setNewReviewCommentText('');
+    } catch (e) { console.error("Review comment failed", e); }
   };
 
   const fetchUserPosts = (userId: string) => {
@@ -761,7 +792,58 @@ const Profile: React.FC = () => {
                         </div>
                       </div>
                       <p style={{ color: '#ccc', margin: 0, fontSize: '0.95rem', lineHeight: '1.5' }}>{review.comment}</p>
-                      <div style={{ fontSize: '0.7rem', color: '#444', marginTop: '0.8rem' }}>{review.createdAt?.toDate().toLocaleDateString()}</div>
+                      
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem' }}>
+                        <div style={{ fontSize: '0.7rem', color: '#444' }}>{review.createdAt?.toDate().toLocaleDateString()}</div>
+                        <button 
+                          onClick={() => {
+                            if (activeReviewForComments === review.id) {
+                              setActiveReviewForComments(null);
+                            } else {
+                              setActiveReviewForComments(review.id);
+                              fetchReviewComments(review.id);
+                            }
+                          }}
+                          style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
+                        >
+                          💬 {reviewComments[review.id]?.length || 0} Comments
+                        </button>
+                      </div>
+
+                      {activeReviewForComments === review.id && (
+                        <div style={{ marginTop: '1.5rem', borderTop: '1px solid #222', paddingTop: '1rem' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', marginBottom: '1rem' }}>
+                            {reviewComments[review.id]?.map(c => (
+                              <div key={c.id} style={{ display: 'flex', gap: '0.6rem' }}>
+                                <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#333', overflow: 'hidden', flexShrink: 0 }}>
+                                  {c.authorProfilePic ? <img src={c.authorProfilePic} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : '🚲'}
+                                </div>
+                                <div style={{ background: '#222', padding: '0.6rem 0.8rem', borderRadius: '12px', flex: 1 }}>
+                                  <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'white', marginBottom: '0.1rem' }}>{c.authorUsername}</div>
+                                  <div style={{ fontSize: '0.85rem', color: '#bbb' }}>{c.text}</div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          {user && (
+                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                              <input 
+                                value={newReviewCommentText}
+                                onChange={(e) => setNewReviewCommentText(e.target.value)}
+                                placeholder="Write a reply..."
+                                style={{ flex: 1, background: '#111', border: '1px solid #333', borderRadius: '8px', color: 'white', padding: '0.5rem 0.8rem', fontSize: '0.85rem' }}
+                              />
+                              <button 
+                                onClick={() => handleSubmitReviewComment(review.id)}
+                                disabled={!newReviewCommentText.trim()}
+                                style={{ background: '#ff6600', color: 'white', border: 'none', borderRadius: '8px', padding: '0 1rem', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer', opacity: !newReviewCommentText.trim() ? 0.5 : 1 }}
+                              >
+                                Send
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
