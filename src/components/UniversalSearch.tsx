@@ -132,7 +132,7 @@ const UniversalSearch: React.FC = () => {
               {results.posts.map(p => (
                 <div 
                   key={p.id} 
-                  onClick={() => { navigate('/feed'); setShowResults(false); setSearchQuery(''); }}
+                  onClick={() => { navigate(`/feed?post=${p.id}`); setShowResults(false); setSearchQuery(''); }}
                   style={{ padding: '0.5rem', cursor: 'pointer', borderRadius: '8px' }}
                   onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,102,0,0.1)'}
                   onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}

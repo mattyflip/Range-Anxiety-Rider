@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { db, auth, storage } from '../firebase'
 import { collection, query, orderBy, onSnapshot, doc, getDoc, updateDoc, arrayUnion, arrayRemove, addDoc, serverTimestamp, deleteDoc } from 'firebase/firestore'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
@@ -48,8 +48,9 @@ const Feed: React.FC = () => {
   const [isPosting, setIsPosting] = useState(false);
   const [allowComments, setAllowComments] = useState(true);
 
-  // Comment Modal state
+  // Modal states
   const [activeCommentPost, setActiveCommentPost] = useState<Post | null>(null);
+  const [selectedFullPost, setSelectedFullPost] = useState<Post | null>(null);
 
   // Admin states
   const [adminEditingPost, setAdminEditingPost] = useState<Post | null>(null);
@@ -74,6 +75,17 @@ const Feed: React.FC = () => {
     });
     return () => unsub();
   }, []);
+
+  useEffect(() => {
+    if (!loading && posts.length > 0) {
+      const params = new URLSearchParams(location.search);
+      const postId = params.get('post');
+      if (postId) {
+        const found = posts.find(p => p.id === postId);
+        if (found) setSelectedFullPost(found);
+      }
+    }
+  }, [location.search, posts, loading]);
 
   useEffect(() => {
     const q = query(collection(db, "posts"), orderBy("createdAt", "desc"));
@@ -369,7 +381,10 @@ const Feed: React.FC = () => {
                   <div style={{ fontWeight: 'bold', color: 'white' }}>{post.authorUsername}</div>
                 </div>
                 
-                <div style={{ width: '100%', aspectRatio: '1/1', overflow: 'hidden' }}>
+                <div 
+                  style={{ width: '100%', aspectRatio: '1/1', overflow: 'hidden', cursor: 'pointer' }}
+                  onClick={() => setSelectedFullPost(post)}
+                >
                   <img src={post.imageUrl} alt="Trip Report" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 </div>
                 
@@ -472,6 +487,63 @@ const Feed: React.FC = () => {
           user={user} 
           onClose={() => setActiveCommentPost(null)} 
         />
+      )}
+
+      {/* Full Screen Post Modal */}
+      {selectedFullPost && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.98)', zIndex: 4000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+          <button 
+            onClick={() => {
+              setSelectedFullPost(null);
+              // Clean up URL if they came from search
+              if (location.search.includes('post=')) {
+                navigate('/feed', { replace: true });
+              }
+            }}
+            style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', background: 'none', border: 'none', color: 'white', fontSize: '2rem', cursor: 'pointer', zIndex: 4001 }}
+          >
+            ✕
+          </button>
+          
+          <div style={{ width: '100%', maxWidth: '600px', padding: '1rem', maxHeight: '95vh', overflowY: 'auto' }}>
+             <img src={selectedFullPost.imageUrl} alt="Full View" style={{ width: '100%', borderRadius: '24px', boxShadow: '0 20px 50px rgba(0,0,0,0.8)' }} />
+             <div style={{ marginTop: '1.5rem', padding: '0 1rem' }}>
+                <p style={{ color: '#ccc', fontSize: '1.1rem', lineHeight: '1.6' }}>
+                  <span style={{ fontWeight: 'bold', color: 'white', marginRight: '0.5rem' }}>{selectedFullPost.authorUsername}</span>
+                  {selectedFullPost.caption}
+                </p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '1rem' }}>
+                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <button 
+                        onClick={() => handleLike(selectedFullPost)}
+                        style={{ background: 'none', border: 'none', color: selectedFullPost.likes.includes(user?.uid) ? '#ff6600' : 'white', fontSize: '1.8rem', cursor: 'pointer', padding: 0 }}
+                      >
+                        {selectedFullPost.likes.includes(user?.uid) ? '🧡' : '🤍'}
+                      </button>
+                      <span style={{ color: '#888', fontWeight: 'bold' }}>{selectedFullPost.likes.length}</span>
+                   </div>
+
+                   {selectedFullPost.tripData && (
+                     <button 
+                       onClick={() => handleLoadRoute(selectedFullPost)}
+                       style={{ background: 'rgba(255,102,0,0.1)', border: '1px solid #ff6600', color: '#ff6600', padding: '0.6rem 1.2rem', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                     >
+                       📍 Load Route
+                     </button>
+                   )}
+
+                   {(selectedFullPost.commentsEnabled !== false) && (
+                     <button 
+                       onClick={() => { setActiveCommentPost(selectedFullPost); setSelectedFullPost(null); }} 
+                       style={{ background: '#333', border: 'none', color: 'white', padding: '0.6rem 1.2rem', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
+                     >
+                       💬 View Comments
+                     </button>
+                   )}
+                </div>
+             </div>
+          </div>
+        </div>
       )}
 
       {showInstallTutorial && <InstallTutorial onClose={() => setShowInstallTutorial(false)} />}
