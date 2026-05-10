@@ -769,6 +769,28 @@ function MapHome() {
     return { min: v * 0.8, max: v * 1.15 };
   };
 
+  const convertBattery = (mode: 'percent' | 'voltage', target: 'percent' | 'voltage') => {
+    if (mode === target) return;
+    const { min, max } = getBatteryLevels(Number(specs.voltage));
+    if (target === 'voltage') {
+      // Percent to Voltage
+      const p = Number(startBattery) / 100;
+      const v = min + (p * (max - min));
+      setStartVoltage(Number(v.toFixed(1)));
+    } else {
+      // Voltage to Percent
+      const v = Number(startVoltage);
+      const p = ((v - min) / (max - min)) * 100;
+      setStartBattery(Math.min(100, Math.max(0, Number(p.toFixed(0)))));
+    }
+  };
+
+  const handleToggleBatteryMode = (newMode: 'percent' | 'voltage') => {
+    if (newMode === batteryInputMode) return;
+    convertBattery(batteryInputMode, newMode);
+    setBatteryInputMode(newMode);
+  };
+
   const loadBike = (bike: SavedBike) => {
     ReactGA.event({ category: "Engagement", action: "Load Bike", label: bike.name });
     setSpecs(bike.specs);
@@ -1276,8 +1298,8 @@ function MapHome() {
           <section className="form-group">
             <label>Current Battery Level</label>
             <div className="mode-toggle" style={{ marginBottom: '0.5rem' }}>
-              <button className={batteryInputMode === 'percent' ? 'active' : ''} onClick={() => setBatteryInputMode('percent')}>%</button>
-              <button className={batteryInputMode === 'voltage' ? 'active' : ''} onClick={() => setBatteryInputMode('voltage')}>V</button>
+              <button className={batteryInputMode === 'percent' ? 'active' : ''} onClick={() => handleToggleBatteryMode('percent')}>%</button>
+              <button className={batteryInputMode === 'voltage' ? 'active' : ''} onClick={() => handleToggleBatteryMode('voltage')}>V</button>
             </div>
             <input type="number" value={batteryInputMode === 'percent' ? startBattery : startVoltage} onChange={(e) => batteryInputMode === 'percent' ? setStartBattery(parseFloat(e.target.value) || '') : setStartVoltage(parseFloat(e.target.value) || '')} />
           </section>
