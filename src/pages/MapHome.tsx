@@ -1839,18 +1839,19 @@ function MapHome() {
               {/* Circuit Pattern Overlay */}
               <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0.05, pointerEvents: 'none', backgroundImage: 'radial-gradient(#ff6600 0.5px, transparent 0.5px)', backgroundSize: '20px 20px' }} />
               
-              {/* Header Section - ULTRA SMALL */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', zIndex: 2 }}>
+              {/* Header Section - BETTER READABILITY */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', zIndex: 2, marginBottom: '0.5rem' }}>
                 <div>
-                  <h1 style={{ color: '#ff6600', margin: 0, fontSize: '0.9rem', fontWeight: 900, letterSpacing: '-0.02em', fontStyle: 'italic' }}>RANGE ANXIETY</h1>
-                  <p style={{ margin: 0, fontSize: '0.5rem', color: '#666', fontWeight: 600 }}>Trip Report • {new Date().toLocaleDateString()}</p>
+                  <h1 style={{ color: '#ff6600', margin: 0, fontSize: '1.4rem', fontWeight: 900, letterSpacing: '-0.02em', fontStyle: 'italic' }}>RANGE ANXIETY</h1>
+                  <p style={{ margin: 0, fontSize: '0.7rem', color: '#666', fontWeight: 600 }}>Trip Report • {new Date().toLocaleDateString()}</p>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: '0.8rem', fontWeight: 800, color: 'white' }}>{specs.voltage}V {specs.capacityAh}Ah</div>
+                  <div style={{ fontSize: '1.2rem', fontWeight: 800, color: 'white' }}>{specs.voltage}V {specs.capacityAh}Ah</div>
+                  <div style={{ fontSize: '0.7rem', color: '#ff6600', fontWeight: 600 }}>{bikeSearchQuery || "Custom E-Bike"}</div>
                 </div>
               </div>
 
-              {/* Route Map Snapshot - THE ABSOLUTE FOCUS */}
+              {/* Route Map Snapshot - MAINTAIN FOCUS */}
               {mapSnapshot && (
                 <div style={{ flex: 1, width: '100%', borderRadius: '24px', overflow: 'hidden', border: '2px solid rgba(255,102,0,0.6)', position: 'relative', zIndex: 2, boxShadow: '0 20px 50px rgba(0,0,0,0.7)' }}>
                   <img 
@@ -1862,42 +1863,42 @@ function MapHome() {
                 </div>
               )}
 
-              {/* ULTRA COMPACT METRICS BAR */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr', gap: '0.5rem', margin: '0.5rem 0', zIndex: 2 }}>
+              {/* BALANCED METRICS BAR */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr', gap: '0.8rem', margin: '0.8rem 0', zIndex: 2 }}>
                 {/* Compact Battery Bezel */}
                 <div style={{ 
                   background: 'linear-gradient(145deg, #2a2a2a 0%, #1a1a1a 100%)', 
-                  borderRadius: '15px', 
+                  borderRadius: '18px', 
                   border: '1px solid #444',
-                  padding: '0.5rem',
+                  padding: '0.8rem',
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
                   justifyContent: 'center',
                   boxShadow: '0 5px 15px rgba(0,0,0,0.3)'
                 }}>
-                  <div style={{ fontSize: '0.45rem', color: '#ff6600', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.2rem' }}>Battery Left</div>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.2rem' }}>
-                    <span style={{ fontSize: '1.8rem', fontWeight: 900, color: 'white' }}>{metrics.batteryPercentUsed.toFixed(0)}%</span>
-                    <span style={{ fontSize: '0.7rem', color: '#ff6600', fontWeight: 700 }}>
+                  <div style={{ fontSize: '0.55rem', color: '#ff6600', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.4rem' }}>Battery Left</div>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.4rem' }}>
+                    <span style={{ fontSize: '2.5rem', fontWeight: 900, color: 'white', lineHeight: 1 }}>{metrics.batteryPercentUsed.toFixed(0)}%</span>
+                    <span style={{ fontSize: '0.9rem', color: '#ff6600', fontWeight: 700 }}>
                       {(getBatteryLevels(Number(specs.voltage)).min + (metrics.batteryPercentUsed / 100) * (getBatteryLevels(Number(specs.voltage)).max - getBatteryLevels(Number(specs.voltage)).min)).toFixed(1)}V
                     </span>
                   </div>
                 </div>
 
-                <div style={{ background: 'rgba(30,30,30,0.8)', padding: '0.5rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)', textAlign: 'center' }}>
-                  <div style={{ fontSize: '0.45rem', color: '#666', textTransform: 'uppercase' }}>Distance</div>
-                  <div style={{ fontSize: '1rem', fontWeight: 900, color: 'white' }}>{unitSystem === 'imperial' ? `${metrics.distanceMiles.toFixed(1)}mi` : `${(metrics.distanceMiles * 1.60934).toFixed(1)}km`}</div>
+                <div style={{ background: 'rgba(30,30,30,0.8)', padding: '0.8rem', borderRadius: '15px', border: '1px solid rgba(255,255,255,0.05)', textAlign: 'center', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                  <div style={{ fontSize: '0.55rem', color: '#666', textTransform: 'uppercase', fontWeight: 800, marginBottom: '0.2rem' }}>Distance</div>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 900, color: 'white' }}>{unitSystem === 'imperial' ? `${metrics.distanceMiles.toFixed(1)}mi` : `${(metrics.distanceMiles * 1.60934).toFixed(1)}km`}</div>
                 </div>
 
-                <div style={{ background: 'rgba(30,30,30,0.8)', padding: '0.5rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)', textAlign: 'center' }}>
-                  <div style={{ fontSize: '0.45rem', color: '#666', textTransform: 'uppercase' }}>Efficiency</div>
-                  <div style={{ fontSize: '1rem', fontWeight: 900, color: 'white' }}>{(metrics.estimatedWh / metrics.distanceMiles).toFixed(0)}<span style={{ fontSize: '0.4rem' }}>Wh/mi</span></div>
+                <div style={{ background: 'rgba(30,30,30,0.8)', padding: '0.8rem', borderRadius: '15px', border: '1px solid rgba(255,255,255,0.05)', textAlign: 'center', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                  <div style={{ fontSize: '0.55rem', color: '#666', textTransform: 'uppercase', fontWeight: 800, marginBottom: '0.2rem' }}>Efficiency</div>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 900, color: 'white' }}>{(metrics.estimatedWh / metrics.distanceMiles).toFixed(0)}<span style={{ fontSize: '0.6rem' }}>Wh/mi</span></div>
                 </div>
               </div>
 
               {/* Route Summary Text */}
-              <div style={{ fontSize: '0.65rem', color: '#ccc', textAlign: 'center', marginBottom: '0.5rem', fontStyle: 'italic', zIndex: 2 }}>
+              <div style={{ fontSize: '0.8rem', color: '#ccc', textAlign: 'center', marginBottom: '0.8rem', fontStyle: 'italic', zIndex: 2, fontWeight: 500 }}>
                 {trip.origin || "Current Location"} ➔ {trip.destination}
               </div>
 
@@ -1977,18 +1978,19 @@ function MapHome() {
           
           {metrics && (
             <>
-              {/* Header Section - ULTRA SMALL */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', zIndex: 2 }}>
+              {/* Header Section - BETTER READABILITY */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', zIndex: 2, marginBottom: '0.5rem' }}>
                 <div>
-                  <h1 style={{ color: '#ff6600', margin: 0, fontSize: '0.9rem', fontWeight: 900, letterSpacing: '-0.02em', fontStyle: 'italic' }}>RANGE ANXIETY</h1>
-                  <p style={{ margin: 0, fontSize: '0.5rem', color: '#666', fontWeight: 600 }}>Trip Report • {new Date().toLocaleDateString()}</p>
+                  <h1 style={{ color: '#ff6600', margin: 0, fontSize: '1.4rem', fontWeight: 900, letterSpacing: '-0.02em', fontStyle: 'italic' }}>RANGE ANXIETY</h1>
+                  <p style={{ margin: 0, fontSize: '0.7rem', color: '#666', fontWeight: 600 }}>Trip Report • {new Date().toLocaleDateString()}</p>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: '0.8rem', fontWeight: 800, color: 'white' }}>{specs.voltage}V {specs.capacityAh}Ah</div>
+                  <div style={{ fontSize: '1.2rem', fontWeight: 800, color: 'white' }}>{specs.voltage}V {specs.capacityAh}Ah</div>
+                  <div style={{ fontSize: '0.7rem', color: '#ff6600', fontWeight: 600 }}>{bikeSearchQuery || "Custom E-Bike"}</div>
                 </div>
               </div>
 
-              {/* Route Map Snapshot - THE ABSOLUTE FOCUS */}
+              {/* Route Map Snapshot - MAINTAIN FOCUS */}
               {mapSnapshot && (
                 <div style={{ flex: 1, width: '100%', borderRadius: '24px', overflow: 'hidden', border: '2px solid rgba(255,102,0,0.6)', position: 'relative', zIndex: 2, boxShadow: '0 20px 50px rgba(0,0,0,0.7)' }}>
                   <img 
@@ -2000,42 +2002,42 @@ function MapHome() {
                 </div>
               )}
 
-              {/* ULTRA COMPACT METRICS BAR */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr', gap: '0.5rem', margin: '0.5rem 0', zIndex: 2 }}>
+              {/* BALANCED METRICS BAR */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr', gap: '0.8rem', margin: '0.8rem 0', zIndex: 2 }}>
                 {/* Compact Battery Bezel */}
                 <div style={{ 
                   background: 'linear-gradient(145deg, #2a2a2a 0%, #1a1a1a 100%)', 
-                  borderRadius: '15px', 
+                  borderRadius: '18px', 
                   border: '1px solid #444',
-                  padding: '0.5rem',
+                  padding: '0.8rem',
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
                   justifyContent: 'center',
                   boxShadow: '0 5px 15px rgba(0,0,0,0.3)'
                 }}>
-                  <div style={{ fontSize: '0.45rem', color: '#ff6600', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.2rem' }}>Battery Left</div>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.2rem' }}>
-                    <span style={{ fontSize: '1.8rem', fontWeight: 900, color: 'white' }}>{metrics.batteryPercentUsed.toFixed(0)}%</span>
-                    <span style={{ fontSize: '0.7rem', color: '#ff6600', fontWeight: 700 }}>
+                  <div style={{ fontSize: '0.55rem', color: '#ff6600', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.4rem' }}>Battery Left</div>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.4rem' }}>
+                    <span style={{ fontSize: '2.5rem', fontWeight: 900, color: 'white', lineHeight: 1 }}>{metrics.batteryPercentUsed.toFixed(0)}%</span>
+                    <span style={{ fontSize: '0.9rem', color: '#ff6600', fontWeight: 700 }}>
                       {(getBatteryLevels(Number(specs.voltage)).min + (metrics.batteryPercentUsed / 100) * (getBatteryLevels(Number(specs.voltage)).max - getBatteryLevels(Number(specs.voltage)).min)).toFixed(1)}V
                     </span>
                   </div>
                 </div>
 
-                <div style={{ background: 'rgba(30,30,30,0.8)', padding: '0.5rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)', textAlign: 'center' }}>
-                  <div style={{ fontSize: '0.45rem', color: '#666', textTransform: 'uppercase' }}>Distance</div>
-                  <div style={{ fontSize: '1rem', fontWeight: 900, color: 'white' }}>{unitSystem === 'imperial' ? `${metrics.distanceMiles.toFixed(1)}mi` : `${(metrics.distanceMiles * 1.60934).toFixed(1)}km`}</div>
+                <div style={{ background: 'rgba(30,30,30,0.8)', padding: '0.8rem', borderRadius: '15px', border: '1px solid rgba(255,255,255,0.05)', textAlign: 'center', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                  <div style={{ fontSize: '0.55rem', color: '#666', textTransform: 'uppercase', fontWeight: 800, marginBottom: '0.2rem' }}>Distance</div>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 900, color: 'white' }}>{unitSystem === 'imperial' ? `${metrics.distanceMiles.toFixed(1)}mi` : `${(metrics.distanceMiles * 1.60934).toFixed(1)}km`}</div>
                 </div>
 
-                <div style={{ background: 'rgba(30,30,30,0.8)', padding: '0.5rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)', textAlign: 'center' }}>
-                  <div style={{ fontSize: '0.45rem', color: '#666', textTransform: 'uppercase' }}>Efficiency</div>
-                  <div style={{ fontSize: '1rem', fontWeight: 900, color: 'white' }}>{(metrics.estimatedWh / metrics.distanceMiles).toFixed(0)}<span style={{ fontSize: '0.4rem' }}>Wh/mi</span></div>
+                <div style={{ background: 'rgba(30,30,30,0.8)', padding: '0.8rem', borderRadius: '15px', border: '1px solid rgba(255,255,255,0.05)', textAlign: 'center', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                  <div style={{ fontSize: '0.55rem', color: '#666', textTransform: 'uppercase', fontWeight: 800, marginBottom: '0.2rem' }}>Efficiency</div>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 900, color: 'white' }}>{(metrics.estimatedWh / metrics.distanceMiles).toFixed(0)}<span style={{ fontSize: '0.6rem' }}>Wh/mi</span></div>
                 </div>
               </div>
 
               {/* Route Summary Text */}
-              <div style={{ fontSize: '0.65rem', color: '#ccc', textAlign: 'center', marginBottom: '0.5rem', fontStyle: 'italic', zIndex: 2 }}>
+              <div style={{ fontSize: '0.8rem', color: '#ccc', textAlign: 'center', marginBottom: '0.8rem', fontStyle: 'italic', zIndex: 2, fontWeight: 500 }}>
                 {trip.origin || "Current Location"} ➔ {trip.destination}
               </div>
 
