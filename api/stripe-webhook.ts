@@ -3,14 +3,10 @@ import Stripe from 'stripe';
 import { getApps, initializeApp, cert, ServiceAccount } from 'firebase-admin/app';
 import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
 
-const privateKey = process.env.FIREBASE_PRIVATE_KEY
-  ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n').replace(/^"(.*)"$/, '$1')
-  : undefined;
-
 const serviceAccount: ServiceAccount = {
   projectId: process.env.VITE_FIREBASE_PROJECT_ID,
   clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-  privateKey: privateKey,
+  privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n').replace(/^"(.*)"$/, '$1'),
 };
 
 if (!getApps().length) {
@@ -30,7 +26,8 @@ export const config = {
   },
 };
 
-async function buffer(readable: any) {
+// More robust buffering for Vercel
+async function getRawBody(readable: any): Promise<Buffer> {
   const chunks = [];
   for await (const chunk of readable) {
     chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
@@ -43,16 +40,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).send('Method Not Allowed');
   }
 
-  const buf = await buffer(req);
-  const sig = req.headers['stripe-signature'] as string;
+  const sig = req.headers['stripe-signature'];
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+  if (!sig || !webhookSecret) {
+    console.error('Missing signature or webhook secret');
+    return res.status(400).send('Webhook Error: Missing signature or secret');
+  }
+
+  const rawBody = await getRawBody(req);
 
   let event: Stripe.Event;
 
   try {
-    event = stripe.webhooks.constructEvent(buf, sig, webhookSecret as string);
+    // We pass the raw buffer directly to prevent any string-encoding issues
+    event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret);
   } catch (err: any) {
-    console.error(`Webhook Error: ${err.message}`);
+    console.error(`Signature Verification Failed: ${err.message}`);
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
@@ -61,13 +65,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const userId = session.metadata?.userId;
     const tier = session.metadata?.tier;
 
-    console.log('Checkout completed for session:', session.id);
-    console.log('Metadata userId:', userId);
-    console.log('Metadata tier:', tier);
-
     if (userId) {
       try {
-        console.log(`Attempting to upgrade user ${userId} to PRO in Firestore...`);
         const updateData: any = {
           isPro: true,
           updatedAt: FieldValue.serverTimestamp(),
@@ -86,8 +85,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         console.error('Error updating user pro status in Firestore:', e.message);
         return res.status(500).send(`Database Error: ${e.message}`);
       }
-    } else {
-      console.warn('No userId found in session metadata. Upgrade skipped.');
     }
   }
 
