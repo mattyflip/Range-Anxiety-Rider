@@ -53,8 +53,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const userId = session.metadata?.userId;
     const tier = session.metadata?.tier;
 
+    console.log('Checkout completed for session:', session.id);
+    console.log('Metadata userId:', userId);
+    console.log('Metadata tier:', tier);
+
     if (userId) {
       try {
+        console.log(`Attempting to upgrade user ${userId} to PRO in Firestore...`);
         const updateData: any = {
           isPro: true,
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -62,18 +67,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         if (tier === 'host') {
           updateData.isHostTier = true;
-          // Set expiration to 30 days from now
           const expiresAt = new Date();
           expiresAt.setDate(expiresAt.getDate() + 30);
           updateData.hostTierExpiresAt = admin.firestore.Timestamp.fromDate(expiresAt);
         }
 
         await admin.firestore().collection('users').doc(userId).set(updateData, { merge: true });
-        console.log(`User ${userId} upgraded to ${tier === 'host' ? 'HOST' : 'PRO'}`);
-      } catch (e) {
-        console.error('Error updating user pro status:', e);
-        return res.status(500).send('Database Error');
+        console.log(`Successfully upgraded user ${userId} to ${tier === 'host' ? 'HOST' : 'PRO'}`);
+      } catch (e: any) {
+        console.error('Error updating user pro status in Firestore:', e.message);
+        return res.status(500).send(`Database Error: ${e.message}`);
       }
+    } else {
+      console.warn('No userId found in session metadata. Upgrade skipped.');
     }
   }
 

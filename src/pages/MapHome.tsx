@@ -542,14 +542,17 @@ function MapHome() {
   }, [activeRide?.id, user?.uid, username]);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+    let unsubscribeSnapshot: (() => void) | undefined;
+
+    const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       setAuthInitialized(true);
+
       if (currentUser) {
-        try {
-          const userDoc = await getDoc(doc(db, "users", currentUser.uid));
-          if (userDoc.exists()) {
-            const data = userDoc.data();
+        // Set up real-time listener for the user document
+        unsubscribeSnapshot = onSnapshot(doc(db, "users", currentUser.uid), (docSnap) => {
+          if (docSnap.exists()) {
+            const data = docSnap.data();
             setUserData(data);
             setIsPro(data.isPro || false);
             setIsHostTier(data.isHostTier || false);
@@ -559,28 +562,33 @@ function MapHome() {
             // Auto-sync/Self-heal: Prohibit spaces in usernames
             if (data.username && data.username.includes(' ')) {
               const fixedName = data.username.replace(/\s+/g, '_');
-              updateDoc(doc(db, "users", currentUser.uid), {
+              updateDoc(docSnap.ref, {
                 username: fixedName,
                 usernameLowercase: fixedName.toLowerCase()
               }).catch(e => console.error("Username space fix failed", e));
               setUsername(fixedName);
             } else if (data.username && !data.usernameLowercase) {
-              // Auto-sync lowercase username for search functionality
-              updateDoc(doc(db, "users", currentUser.uid), {
+              updateDoc(docSnap.ref, {
                 usernameLowercase: data.username.toLowerCase()
               }).catch(e => console.error("Lowercase sync failed", e));
             }
 
             if (data.bikes) setSavedBikes(data.bikes);
           } else {
-            const newUser = { email: currentUser.email, isPro: false, createdAt: new Date(), uid: currentUser.uid };
-            await setDoc(doc(db, "users", currentUser.uid), newUser);
-            setUserData(newUser);
-            setIsPro(false);
-            setIsHostTier(false);
+            // Document doesn't exist, create it
+            const newUser = { 
+              email: currentUser.email, 
+              isPro: false, 
+              createdAt: new Date(), 
+              uid: currentUser.uid 
+            };
+            setDoc(doc(db, "users", currentUser.uid), newUser);
           }
-        } catch (e) { console.error("Firestore error:", e); }
+        }, (err) => {
+          console.error("Firestore snapshot error:", err);
+        });
       } else {
+        // User logged out
         setUserData(null);
         setIsPro(false);
         setIsHostTier(false);
@@ -589,9 +597,15 @@ function MapHome() {
         setRideParticipants([]);
         const local = localStorage.getItem('ebike-saved-bikes');
         if (local) setSavedBikes(JSON.parse(local));
+        
+        if (unsubscribeSnapshot) unsubscribeSnapshot();
       }
     });
-    return () => unsubscribe();
+
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribeSnapshot) unsubscribeSnapshot();
+    };
   }, []);
 
   // Onboarding Popup Logic
