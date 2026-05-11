@@ -1,17 +1,21 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import Stripe from 'stripe';
-import * as admin from 'firebase-admin';
+import { getApps, initializeApp, cert, ServiceAccount } from 'firebase-admin/app';
+import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
 
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert({
-      projectId: process.env.VITE_FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-    }),
+const serviceAccount: ServiceAccount = {
+  projectId: process.env.VITE_FIREBASE_PROJECT_ID,
+  clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+  privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+};
+
+if (!getApps().length) {
+  initializeApp({
+    credential: cert(serviceAccount),
   });
 }
 
+const db = getFirestore();
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
   apiVersion: '2025-01-27.acacia' as any,
 });
@@ -62,17 +66,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         console.log(`Attempting to upgrade user ${userId} to PRO in Firestore...`);
         const updateData: any = {
           isPro: true,
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
         };
 
         if (tier === 'host') {
           updateData.isHostTier = true;
           const expiresAt = new Date();
           expiresAt.setDate(expiresAt.getDate() + 30);
-          updateData.hostTierExpiresAt = admin.firestore.Timestamp.fromDate(expiresAt);
+          updateData.hostTierExpiresAt = Timestamp.fromDate(expiresAt);
         }
 
-        await admin.firestore().collection('users').doc(userId).set(updateData, { merge: true });
+        await db.collection('users').doc(userId).set(updateData, { merge: true });
         console.log(`Successfully upgraded user ${userId} to ${tier === 'host' ? 'HOST' : 'PRO'}`);
       } catch (e: any) {
         console.error('Error updating user pro status in Firestore:', e.message);
