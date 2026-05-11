@@ -1805,7 +1805,16 @@ function MapHome() {
                 <div className="map-controls">
                     <button onClick={() => searchPOIs('cafe')}>☕ Cafes</button>
                     <button onClick={() => searchPOIs('bike shop')}>🚲 Shops</button>
-                    <button onClick={() => searchPOIs('charging')}>⚡ Charging (PRO)</button>
+                    <button 
+                      onClick={() => searchPOIs('charging')}
+                      style={{
+                        background: (!isPro && !isHostTier) ? 'rgba(0,0,0,0.5)' : undefined,
+                        opacity: (!isPro && !isHostTier) ? 0.7 : 1,
+                        border: (!isPro && !isHostTier) ? '1px dashed #666' : undefined
+                      }}
+                    >
+                      ⚡ Charging {(!isPro && !isHostTier) && '🔒'}
+                    </button>
                     <button onClick={searchByMapCenter}>🔍 Search Area</button>
                 </div>
               )}
