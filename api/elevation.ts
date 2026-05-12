@@ -30,8 +30,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'Path is required' });
     }
 
-    // Ensure path is prefixed with enc: if it's an encoded polyline
-    const finalPath = pathParam.includes('|') ? pathParam : `enc:${pathParam}`;
+    // Robust check for encoded polyline vs coordinate list
+    // Encoded polylines can contain '|', so we check for 'lat,lng' pattern or 'enc:' prefix
+    let finalPath = pathParam;
+    if (!pathParam.startsWith('enc:')) {
+      // If it doesn't look like a coordinate list (lat,lng|lat,lng), it's probably a raw polyline
+      const isCoordList = /^-?\d+\.\d+,-?\d+\.\d+(\|-?\d+\.\d+,-?\d+\.\d+)*$/.test(pathParam);
+      if (!isCoordList) {
+        finalPath = `enc:${pathParam}`;
+      }
+    }
 
     console.log('Calling Google Elevation API with path length:', finalPath.length);
     
