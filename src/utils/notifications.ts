@@ -1,7 +1,7 @@
 import { db } from '../firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
-export type NotificationType = 'like' | 'comment' | 'upvote' | 'review';
+export type NotificationType = 'like' | 'comment' | 'upvote' | 'review' | 'moderation';
 
 export const createNotification = async (
   targetUserId: string,

@@ -25,6 +25,11 @@ const ThreadView: React.FC = () => {
   const [user, setUser] = useState<any>(null);
 
   const isAdmin = user?.email?.toLowerCase() === 'mattyfliptv@gmail.com';
+
+  const promptForModerationReason = (action: string) => {
+    const reason = window.prompt(`Reason for ${action}:`, "Violates community guidelines");
+    return reason;
+  };
   
   const [replyText, setReplyText] = useState('');
   const [activeReplyId, setActiveReplyId] = useState<string | null>(null);
@@ -68,12 +73,22 @@ const ThreadView: React.FC = () => {
 
   const handleDeleteComment = async (comment: ForumComment) => {
     if (!isAdmin || !communityId || !threadId) return;
-    if (!window.confirm("Are you sure you want to delete this comment?")) return;
+    const reason = promptForModerationReason("comment deletion");
+    if (reason === null) return;
+
     try {
       await deleteDoc(doc(db, `communities/${communityId}/threads/${threadId}/comments`, comment.id));
       await updateDoc(doc(db, `communities/${communityId}/threads`, threadId), {
         commentCount: increment(-1)
       });
+      await createNotification(
+        comment.authorId,
+        user.uid,
+        "System Admin",
+        'moderation',
+        'deleted_comment',
+        `Your comment was removed by a moderator. Reason: ${reason}`
+      );
       alert("Comment deleted by Admin.");
     } catch (e) {
       console.error("Delete failed", e);
@@ -83,10 +98,21 @@ const ThreadView: React.FC = () => {
 
   const handleSaveAdminEdit = async () => {
     if (!isAdmin || !adminEditingComment || !communityId || !threadId) return;
+    const reason = promptForModerationReason("edit");
+    if (reason === null) return;
+
     try {
       await updateDoc(doc(db, `communities/${communityId}/threads/${threadId}/comments`, adminEditingComment.id), {
         text: adminEditValue
       });
+      await createNotification(
+        adminEditingComment.authorId,
+        user.uid,
+        "System Admin",
+        'moderation',
+        adminEditingComment.id,
+        `Your comment was edited by a moderator. Reason: ${reason}`
+      );
       setAdminEditingComment(null);
       alert("Comment updated by Admin.");
     } catch (e) {
@@ -133,6 +159,26 @@ const ThreadView: React.FC = () => {
     } catch (e) {
       console.error("Comment failed", e);
     }
+  };
+
+  const handleDeleteThread = async () => {
+    if (!isAdmin || !thread || !communityId) return;
+    const reason = promptForModerationReason("thread deletion");
+    if (reason === null) return;
+
+    try {
+      await deleteDoc(doc(db, `communities/${communityId}/threads`, thread.id));
+      await createNotification(
+        thread.authorId,
+        user.uid,
+        "System Admin",
+        'moderation',
+        'deleted_thread',
+        `Your thread was removed by a moderator. Reason: ${reason}`
+      );
+      alert("Thread deleted by Admin.");
+      window.location.href = `/forum/c/${communityId}`;
+    } catch (e) { console.error("Delete failed", e); }
   };
 
   const handleVote = async (incrementVal: number) => {
@@ -209,8 +255,10 @@ const ThreadView: React.FC = () => {
               {comment.authorProfilePic ? <img src={comment.authorProfilePic} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : '🚲'}
             </Link>
             <div style={{ flex: 1 }}>
-               <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: 'white' }}>
-                 <Link to={`/profile/${comment.authorUsername}`} style={{ color: 'white', textDecoration: 'none' }}>{comment.authorUsername}</Link> <span style={{ color: '#444', fontWeight: 'normal', marginLeft: '0.5rem' }}>• {comment.createdAt?.toDate().toLocaleString()}</span>
+               <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: 'white', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                 <Link to={`/profile/${comment.authorUsername}`} style={{ color: 'white', textDecoration: 'none' }}>{comment.authorUsername}</Link> 
+                 {(comment.authorUsername === 'MattyFlip' || comment.authorUsername === 'mattyflip') && <span style={{ background: '#ff0000', color: 'white', fontSize: '0.45rem', padding: '1px 2px', borderRadius: '2px', fontWeight: 900 }}>ADMIN</span>}
+                 <span style={{ color: '#444', fontWeight: 'normal' }}>• {comment.createdAt?.toDate().toLocaleString()}</span>
                </div>
                <div style={{ color: '#ccc', fontSize: '0.95rem', marginTop: '0.4rem', lineHeight: '1.5' }}>{comment.text}</div>
                
@@ -290,10 +338,21 @@ const ThreadView: React.FC = () => {
                >🪫</button>
             </div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: '0.7rem', color: '#444', textTransform: 'uppercase', fontWeight: 'bold', marginBottom: '1rem' }}>
-                Posted by <Link to={`/profile/${thread.authorUsername.replace(/\s+/g, '_')}`} style={{ color: '#888', textDecoration: 'none' }}>{thread.authorUsername}</Link> • {thread.createdAt?.toDate().toLocaleString()}
+              <div style={{ fontSize: '0.7rem', color: '#444', textTransform: 'uppercase', fontWeight: 'bold', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                Posted by <Link to={`/profile/${thread.authorUsername.replace(/\s+/g, '_')}`} style={{ color: '#888', textDecoration: 'none' }}>{thread.authorUsername}</Link> 
+                {(thread.authorUsername === 'MattyFlip' || thread.authorUsername === 'mattyflip') && <span style={{ background: '#ff0000', color: 'white', fontSize: '0.5rem', padding: '1px 3px', borderRadius: '2px', fontWeight: 900 }}>ADMIN</span>}
+                • {thread.createdAt?.toDate().toLocaleString()}
               </div>
-              <h1 style={{ color: 'white', margin: 0, fontSize: '1.8rem', lineHeight: '1.3' }}>{thread.title}</h1>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <h1 style={{ color: 'white', margin: 0, fontSize: '1.8rem', lineHeight: '1.3' }}>{thread.title}</h1>
+                {isAdmin && (
+                  <button 
+                    onClick={handleDeleteThread}
+                    style={{ background: 'none', border: 'none', color: '#ff4444', cursor: 'pointer', fontSize: '1.2rem', padding: '0.5rem' }}
+                    title="Delete Thread as Moderator"
+                  >🗑️</button>
+                )}
+              </div>
               {thread.body && (
                 <div style={{ color: '#ccc', fontSize: '1.1rem', lineHeight: '1.6', marginTop: '1.5rem', whiteSpace: 'pre-wrap' }}>
                   {thread.body}

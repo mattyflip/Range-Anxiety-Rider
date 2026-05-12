@@ -40,6 +40,11 @@ const Profile: React.FC = () => {
 
   const isAdmin = user?.email?.toLowerCase() === 'mattyfliptv@gmail.com';
   const [showAuthModal, setShowAuthModal] = useState(false);
+
+  const promptForModerationReason = (action: string) => {
+    const reason = window.prompt(`Reason for ${action}:`, "Violates community guidelines");
+    return reason;
+  };
   const [showInstallTutorial, setShowInstallTutorial] = useState(false);
   const [userPosts, setUserPosts] = useState<Post[]>([]);
   const [userReviews, setUserReviews] = useState<Review[]>([]);
@@ -181,6 +186,14 @@ const Profile: React.FC = () => {
 
   const handleSaveProfile = async () => {
     if (!user || !profileData || isSavingProfile) return;
+    
+    let reason = "";
+    if (isAdmin && !isOwner) {
+      const r = promptForModerationReason("profile edit");
+      if (r === null) return;
+      reason = r;
+    }
+
     setIsSavingProfile(true);
     try {
       const normalizedUsername = editUsername.trim().replace(/\s+/g, '_');
@@ -211,6 +224,17 @@ const Profile: React.FC = () => {
       }
 
       await updateDoc(doc(db, "users", profileData.id), updateData);
+
+      if (isAdmin && !isOwner) {
+        await createNotification(
+          profileData.id,
+          user.uid,
+          "System Admin",
+          'moderation',
+          profileData.id,
+          `Your profile was edited by a moderator. Reason: ${reason}`
+        );
+      }
 
       setShowEditModal(false);
       alert("Profile updated!");
@@ -353,7 +377,12 @@ const Profile: React.FC = () => {
                   </label>
                 )}
               </div>
-              <h1 style={{ color: 'white', margin: 0 }}>{profileData.username || 'Anonymous Rider'}</h1>
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.6rem' }}>
+                <h1 style={{ color: 'white', margin: 0 }}>{profileData.username || 'Anonymous Rider'}</h1>
+                {(profileData.email?.toLowerCase() === 'mattyfliptv@gmail.com' || profileData.username === 'MattyFlip' || profileData.username === 'mattyflip') && (
+                  <span style={{ background: '#ff0000', color: 'white', fontSize: '0.65rem', padding: '2px 6px', borderRadius: '4px', fontWeight: 900 }}>ADMIN</span>
+                )}
+              </div>
               {canEdit && (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}>
                   <button onClick={() => setShowEditModal(true)} style={{ background: 'none', border: '1px solid #444', color: '#888', borderRadius: '4px', padding: '0.3rem 0.8rem', fontSize: '0.7rem', cursor: 'pointer' }}>Edit Profile</button>
@@ -408,9 +437,18 @@ const Profile: React.FC = () => {
                     {isAdmin && (
                       <button 
                         onClick={async () => {
-                          if (window.confirm("Delete this post as moderator?")) {
-                            await deleteDoc(doc(db, "posts", post.id));
-                          }
+                          const reason = promptForModerationReason("post deletion");
+                          if (reason === null) return;
+
+                          await deleteDoc(doc(db, "posts", post.id));
+                          await createNotification(
+                            post.authorId,
+                            user.uid,
+                            "System Admin",
+                            'moderation',
+                            'deleted_post',
+                            `Your post was removed by a moderator. Reason: ${reason}`
+                          );
                         }}
                         style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', background: 'rgba(0,0,0,0.6)', border: 'none', borderRadius: '4px', padding: '4px', cursor: 'pointer' }}
                       >🗑️</button>
@@ -428,9 +466,18 @@ const Profile: React.FC = () => {
                     {isAdmin && (
                       <button 
                         onClick={async () => {
-                          if (window.confirm("Delete this review as moderator?")) {
-                             await deleteDoc(doc(db, "rider_reviews", review.id));
-                          }
+                          const reason = promptForModerationReason("review deletion");
+                          if (reason === null) return;
+                          
+                          await deleteDoc(doc(db, "rider_reviews", review.id));
+                          await createNotification(
+                            review.reviewerId,
+                            user.uid,
+                            "System Admin",
+                            'moderation',
+                            'deleted_review',
+                            `Your review for ${profileData.username} was removed. Reason: ${reason}`
+                          );
                         }}
                         style={{ position: 'absolute', top: '1.2rem', right: '1.2rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem' }}
                       >🗑️</button>

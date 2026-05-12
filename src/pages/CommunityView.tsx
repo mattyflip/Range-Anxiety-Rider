@@ -29,6 +29,11 @@ const CommunityView: React.FC = () => {
 
   const isAdmin = user?.email?.toLowerCase() === 'mattyfliptv@gmail.com';
 
+  const promptForModerationReason = (action: string) => {
+    const reason = window.prompt(`Reason for ${action}:`, "Violates community guidelines");
+    return reason;
+  };
+
   const [showCreateThread, setShowCreatePost] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newBody, setNewBody] = useState('');
@@ -131,9 +136,19 @@ const CommunityView: React.FC = () => {
 
   const handleDeleteThread = async (thread: Thread) => {
     if (!isAdmin || !communityId) return;
-    if (!window.confirm("Are you sure you want to delete this thread?")) return;
+    const reason = promptForModerationReason("thread deletion");
+    if (reason === null) return;
+
     try {
       await deleteDoc(doc(db, `communities/${communityId}/threads`, thread.id));
+      await createNotification(
+        thread.authorId,
+        user.uid,
+        "System Admin",
+        'moderation',
+        'deleted_thread',
+        `Your thread was removed by a moderator. Reason: ${reason}`
+      );
       alert("Thread deleted by Admin.");
     } catch (e) {
       console.error("Delete failed", e);
@@ -158,7 +173,10 @@ const CommunityView: React.FC = () => {
                    <button onClick={() => handleVote(thread, -1)} style={{ background: 'none', border: 'none', color: thread.downvotedBy?.includes(user?.uid) ? '#f87171' : '#444', cursor: 'pointer', fontSize: '1.2rem' }}>🪫</button>
                 </div>
                 <div style={{ flex: 1 }}>
-                   <div style={{ fontSize: '0.65rem', color: '#555', textTransform: 'uppercase', fontWeight: 'bold', marginBottom: '0.5rem' }}>Posted by <Link to={`/profile/${thread.authorUsername.replace(/\s+/g, '_')}`} style={{ color: '#777', textDecoration: 'none' }}>{thread.authorUsername}</Link></div>
+                   <div style={{ fontSize: '0.65rem', color: '#555', textTransform: 'uppercase', fontWeight: 'bold', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                     Posted by <Link to={`/profile/${thread.authorUsername.replace(/\s+/g, '_')}`} style={{ color: '#777', textDecoration: 'none' }}>{thread.authorUsername}</Link>
+                     {(thread.authorUsername === 'MattyFlip' || thread.authorUsername === 'mattyflip') && <span style={{ background: '#ff0000', color: 'white', fontSize: '0.5rem', padding: '1px 3px', borderRadius: '2px', fontWeight: 900 }}>ADMIN</span>}
+                   </div>
                    <Link to={`/forum/c/${communityId}/t/${thread.id}`} style={{ textDecoration: 'none' }}><h2 style={{ color: 'white', margin: '0 0 0.5rem 0', fontSize: '1.2rem', lineHeight: '1.4' }}>{thread.title}</h2></Link>
                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                       <div style={{ fontSize: '0.75rem', color: '#666', fontWeight: 'bold' }}>💬 {thread.commentCount} Comments</div>

@@ -181,6 +181,7 @@ const NavBar: React.FC<NavBarProps> = ({ user, onShowInstall, onShowAuth }) => {
                           {n.type === 'comment' && ' commented on your post'}
                           {n.type === 'upvote' && ' upvoted your thread'}
                           {n.type === 'review' && ' left you a rider review'}
+                          {n.type === 'moderation' && ` moderated your content: ${n.content}`}
                         </div>
                         <div style={{ fontSize: '0.6rem', color: '#555', marginTop: '0.3rem' }}>
                           {n.createdAt?.toDate().toLocaleString()}

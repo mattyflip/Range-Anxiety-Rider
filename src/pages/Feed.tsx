@@ -59,6 +59,11 @@ const Feed: React.FC = () => {
   const [adminEditingPost, setAdminEditingPost] = useState<Post | null>(null);
   const [adminEditValue, setAdminEditValue] = useState('');
 
+  const promptForModerationReason = (action: string) => {
+    const reason = window.prompt(`Reason for ${action}:`, "Violates community guidelines");
+    return reason;
+  };
+
   // Cropper states
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
@@ -192,9 +197,19 @@ const Feed: React.FC = () => {
 
   const handleDeletePost = async (post: Post) => {
     if (!isAdmin) return;
-    if (!window.confirm("Are you sure you want to delete this post?")) return;
+    const reason = promptForModerationReason("deletion");
+    if (reason === null) return; 
+
     try {
       await deleteDoc(doc(db, "posts", post.id));
+      await createNotification(
+        post.authorId,
+        user.uid,
+        "System Admin",
+        'moderation',
+        'deleted_post',
+        `Your post was removed. Reason: ${reason}`
+      );
       alert("Post deleted by Admin.");
     } catch (e) {
       console.error("Delete failed", e);
@@ -203,10 +218,21 @@ const Feed: React.FC = () => {
 
   const handleSaveAdminEdit = async () => {
     if (!isAdmin || !adminEditingPost) return;
+    const reason = promptForModerationReason("edit");
+    if (reason === null) return;
+
     try {
       await updateDoc(doc(db, "posts", adminEditingPost.id), {
         caption: adminEditValue
       });
+      await createNotification(
+        adminEditingPost.authorId,
+        user.uid,
+        "System Admin",
+        'moderation',
+        adminEditingPost.id,
+        `Your post caption was edited by a moderator. Reason: ${reason}`
+      );
       setAdminEditingPost(null);
       alert("Post updated by Admin.");
     } catch (e) {
@@ -253,7 +279,10 @@ const Feed: React.FC = () => {
                     {post.authorProfilePic ? <img src={post.authorProfilePic} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : '🚲'}
                   </Link>
                   <div style={{ flex: 1 }}>
-                    <Link to={`/profile/${post.authorUsername.replace(/\s+/g, '_')}`} style={{ fontWeight: 'bold', color: 'white', fontSize: '0.9rem', textDecoration: 'none' }}>{post.authorUsername}</Link>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <Link to={`/profile/${post.authorUsername.replace(/\s+/g, '_')}`} style={{ fontWeight: 'bold', color: 'white', fontSize: '0.9rem', textDecoration: 'none' }}>{post.authorUsername}</Link>
+                      {(post.authorUsername === 'MattyFlip' || post.authorUsername === 'mattyflip') && <span style={{ background: '#ff0000', color: 'white', fontSize: '0.55rem', padding: '1px 4px', borderRadius: '3px', fontWeight: 900 }}>ADMIN</span>}
+                    </div>
                     <div style={{ color: '#666', fontSize: '0.7rem' }}>{post.createdAt?.toDate().toLocaleString()}</div>
                   </div>
                   {isAdmin && (
