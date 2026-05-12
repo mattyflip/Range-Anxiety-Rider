@@ -49,9 +49,12 @@ const Profile: React.FC = () => {
   // Edit Profile states
   const [showEditModal, setShowEditModal] = useState(false);
   const [editUsername, setEditUsername] = useState('');
+  const [editFullName, setEditFullName] = useState('');
   const [editBio, setEditBio] = useState('');
   const [editCity, setEditCity] = useState('');
   const [editHomeRegion, setEditHomeRegion] = useState('');
+  const [editBirthday, setEditBirthday] = useState('');
+  const [editIsPro, setEditIsPro] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
 
   // Review states
@@ -98,9 +101,12 @@ const Profile: React.FC = () => {
         const data = snap.docs[0].data();
         setProfileData({ ...data, id: snap.docs[0].id });
         setEditUsername(data.username || '');
+        setEditFullName(data.fullName || '');
         setEditBio(data.bio || '');
         setEditCity(data.city || '');
         setEditHomeRegion(data.homeRegion || '');
+        setEditBirthday(data.birthday || '');
+        setEditIsPro(data.isPro || false);
         if (user && data.followers) setIsFollowing(data.followers.includes(user.uid));
         if (postsUnsub) postsUnsub();
         postsUnsub = fetchUserPosts(snap.docs[0].id);
@@ -112,9 +118,12 @@ const Profile: React.FC = () => {
             const data = origSnap.docs[0].data();
             setProfileData({ ...data, id: origSnap.docs[0].id });
             setEditUsername(data.username || '');
+            setEditFullName(data.fullName || '');
             setEditBio(data.bio || '');
             setEditCity(data.city || '');
             setEditHomeRegion(data.homeRegion || '');
+            setEditBirthday(data.birthday || '');
+            setEditIsPro(data.isPro || false);
             if (user && data.followers) setIsFollowing(data.followers.includes(user.uid));
             if (postsUnsub) postsUnsub();
             postsUnsub = fetchUserPosts(origSnap.docs[0].id);
@@ -126,9 +135,12 @@ const Profile: React.FC = () => {
                 const data = uSnap.data();
                 setProfileData({ ...data, id: uSnap.id });
                 setEditUsername(data.username || '');
+                setEditFullName(data.fullName || '');
                 setEditBio(data.bio || '');
                 setEditCity(data.city || '');
                 setEditHomeRegion(data.homeRegion || '');
+                setEditBirthday(data.birthday || '');
+                setEditIsPro(data.isPro || false);
                 if (user && data.followers) setIsFollowing(data.followers.includes(user.uid));
                 if (postsUnsub) postsUnsub();
                 postsUnsub = fetchUserPosts(uSnap.id);
@@ -184,13 +196,21 @@ const Profile: React.FC = () => {
          }
       }
 
-      await updateDoc(doc(db, "users", profileData.id), {
+      const updateData: any = {
         username: normalizedUsername,
         usernameLowercase: normalizedUsername.toLowerCase(),
+        fullName: editFullName,
         bio: editBio,
         city: editCity,
-        homeRegion: editHomeRegion
-      });
+        homeRegion: editHomeRegion,
+        birthday: editBirthday
+      };
+
+      if (isAdmin) {
+        updateData.isPro = editIsPro;
+      }
+
+      await updateDoc(doc(db, "users", profileData.id), updateData);
 
       setShowEditModal(false);
       alert("Profile updated!");
@@ -485,22 +505,59 @@ const Profile: React.FC = () => {
 
       {showEditModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.9)', zIndex: 5000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', overflowY: 'auto' }}>
-          <div style={{ background: '#1a1a1a', width: '100%', maxWidth: '450px', padding: '2rem', borderRadius: '24px', border: '1px solid #333' }}>
-            <h2 style={{ color: 'white', marginTop: 0 }}>Edit Profile</h2>
+          <div style={{ background: '#1a1a1a', width: '100%', maxWidth: '500px', padding: '2rem', borderRadius: '24px', border: '1px solid #333' }}>
+            <h2 style={{ color: 'white', marginTop: 0 }}>Edit Profile {isAdmin && "(MODERATOR)"}</h2>
             
-            <div className="form-group" style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', color: '#888', fontSize: '0.7rem', marginBottom: '0.3rem' }}>Username</label>
-              <input type="text" value={editUsername} onChange={e => setEditUsername(e.target.value)} style={{ width: '100%', padding: '0.6rem', background: '#222', border: '1px solid #444', borderRadius: '4px', color: 'white' }} />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div className="form-group" style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', color: '#888', fontSize: '0.7rem', marginBottom: '0.3rem' }}>Username</label>
+                <input type="text" value={editUsername} onChange={e => setEditUsername(e.target.value)} style={{ width: '100%', padding: '0.6rem', background: '#222', border: '1px solid #444', borderRadius: '4px', color: 'white' }} />
+              </div>
+              <div className="form-group" style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', color: '#888', fontSize: '0.7rem', marginBottom: '0.3rem' }}>Full Name</label>
+                <input type="text" value={editFullName} onChange={e => setEditFullName(e.target.value)} style={{ width: '100%', padding: '0.6rem', background: '#222', border: '1px solid #444', borderRadius: '4px', color: 'white' }} />
+              </div>
             </div>
 
             <div className="form-group" style={{ marginBottom: '1rem' }}>
               <label style={{ display: 'block', color: '#888', fontSize: '0.7rem', marginBottom: '0.3rem' }}>Bio</label>
-              <textarea value={editBio} onChange={e => setEditBio(e.target.value)} style={{ width: '100%', height: '80px', padding: '0.6rem', background: '#222', border: '1px solid #444', borderRadius: '4px', color: 'white', fontFamily: 'inherit' }} />
+              <textarea value={editBio} onChange={e => setEditBio(e.target.value)} style={{ width: '100%', height: '60px', padding: '0.6rem', background: '#222', border: '1px solid #444', borderRadius: '4px', color: 'white', fontFamily: 'inherit' }} />
             </div>
 
-            <div className="form-group" style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', color: '#888', fontSize: '0.7rem', marginBottom: '0.3rem' }}>City</label>
-              <input type="text" value={editCity} onChange={e => setEditCity(e.target.value)} style={{ width: '100%', padding: '0.6rem', background: '#222', border: '1px solid #444', borderRadius: '4px', color: 'white' }} />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div className="form-group" style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', color: '#888', fontSize: '0.7rem', marginBottom: '0.3rem' }}>City</label>
+                <input type="text" value={editCity} onChange={e => setEditCity(e.target.value)} style={{ width: '100%', padding: '0.6rem', background: '#222', border: '1px solid #444', borderRadius: '4px', color: 'white' }} />
+              </div>
+              <div className="form-group" style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', color: '#888', fontSize: '0.7rem', marginBottom: '0.3rem' }}>Home State/Region</label>
+                <input type="text" value={editHomeRegion} onChange={e => setEditHomeRegion(e.target.value)} style={{ width: '100%', padding: '0.6rem', background: '#222', border: '1px solid #444', borderRadius: '4px', color: 'white' }} />
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div className="form-group" style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', color: '#888', fontSize: '0.7rem', marginBottom: '0.3rem' }}>Birthday</label>
+                <input type="date" value={editBirthday} onChange={e => setEditBirthday(e.target.value)} style={{ width: '100%', padding: '0.6rem', background: '#222', border: '1px solid #444', borderRadius: '4px', color: 'white' }} />
+              </div>
+              {isAdmin && (
+                <div className="form-group" style={{ marginBottom: '1rem' }}>
+                  <label style={{ display: 'block', color: '#888', fontSize: '0.7rem', marginBottom: '0.3rem' }}>PRO Status</label>
+                  <select value={editIsPro ? 'true' : 'false'} onChange={e => setEditIsPro(e.target.value === 'true')} style={{ width: '100%', padding: '0.6rem', background: '#222', border: '1px solid #444', borderRadius: '4px', color: 'white' }}>
+                    <option value="false">Free User</option>
+                    <option value="true">PRO (Paid)</option>
+                  </select>
+                </div>
+              )}
+            </div>
+
+            <div style={{ borderTop: '1px solid #333', marginTop: '1rem', paddingTop: '1rem' }}>
+               <label style={{ display: 'block', color: '#555', fontSize: '0.6rem', textTransform: 'uppercase', marginBottom: '0.5rem' }}>System Information (Read-Only)</label>
+               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                  <div style={{ fontSize: '0.7rem', color: '#888' }}><span style={{ color: '#555' }}>Email:</span> {profileData.email}</div>
+                  <div style={{ fontSize: '0.7rem', color: '#888' }}><span style={{ color: '#555' }}>UID:</span> {profileData.id}</div>
+                  <div style={{ fontSize: '0.7rem', color: '#888' }}><span style={{ color: '#555' }}>Joined:</span> {profileData.createdAt?.toDate().toLocaleDateString()}</div>
+               </div>
             </div>
 
             <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
