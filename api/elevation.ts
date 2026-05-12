@@ -33,29 +33,48 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Ensure path is prefixed with enc: if it's an encoded polyline
     const finalPath = pathParam.includes('|') ? pathParam : `enc:${pathParam}`;
 
-    const response = await axios.get('https://maps.googleapis.com/maps/api/elevation/json', {
-      params: {
-        path: finalPath,
-        samples: 100,
-        key: GOOGLE_API_KEY
-      }
-    });
+    console.log('Calling Google Elevation API with path length:', finalPath.length);
+    
+    let response;
+    try {
+      response = await axios.get('https://maps.googleapis.com/maps/api/elevation/json', {
+        params: {
+          path: finalPath,
+          samples: 100,
+          key: GOOGLE_API_KEY
+        }
+      });
+    } catch (googleError: any) {
+      console.error('Google Elevation API raw error:', googleError.response?.data || googleError.message);
+      return res.status(googleError.response?.status || 400).json({ 
+        error: 'Google API rejected the request', 
+        details: googleError.response?.data 
+      });
+    }
+
+    if (response.data.status !== 'OK') {
+      console.error('Google Elevation API returned status:', response.data.status, response.data.error_message);
+      return res.status(400).json({ error: response.data.status, message: response.data.error_message });
+    }
 
     // If the frontend expects the full Google response
     if (req.method === 'GET') {
       return res.status(200).json(response.data);
     }
 
-    // If the frontend expects a calculated gain (some versions of MapHome.tsx do this)
+    // Calculate gain AND loss
     const results = response.data.results;
     let gain = 0;
+    let loss = 0;
     for (let i = 1; i < results.length; i++) {
       const diff = results[i].elevation - results[i-1].elevation;
       if (diff > 0) gain += diff;
+      else loss += Math.abs(diff);
     }
 
     return res.status(200).json({ 
       gain: gain * 3.28084, // Return in feet
+      loss: loss * 3.28084, // Return in feet
       results: response.data.results 
     });
 
