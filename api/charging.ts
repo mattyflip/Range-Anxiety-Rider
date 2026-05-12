@@ -56,14 +56,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       headers: { 'User-Agent': 'RangeAnxietyApp' }
     });
     
-    const formattedPois = response.data.map((poi: any) => ({
-      id: `ocm-${poi.ID}`,
-      name: poi.AddressInfo.Title,
-      address: `${poi.AddressInfo.AddressLine1}${poi.AddressInfo.Town ? ', ' + poi.AddressInfo.Town : ''}`,
-      position: { lat: poi.AddressInfo.Latitude, lng: poi.AddressInfo.Longitude },
-      type: 'charging station',
-      details: poi.Connections?.map((e: any) => e.ConnectionType?.Title).filter(Boolean).join(', ') || 'Standard Outlet'
-    }));
+    const formattedPois = response.data.map((poi: any) => {
+      const connections = poi.Connections?.map((c: any) => {
+        const type = c.ConnectionType?.Title || 'Unknown';
+        const kw = c.PowerKW ? `${c.PowerKW}kW` : '';
+        const qty = c.Quantity ? `x${c.Quantity}` : '';
+        return `${type}${kw ? ' (' + kw + ')' : ''}${qty ? ' ' + qty : ''}`;
+      }).filter(Boolean);
+
+      return {
+        id: `ocm-${poi.ID}`,
+        name: poi.AddressInfo.Title,
+        address: `${poi.AddressInfo.AddressLine1}${poi.AddressInfo.Town ? ', ' + poi.AddressInfo.Town : ''}`,
+        position: { lat: poi.AddressInfo.Latitude, lng: poi.AddressInfo.Longitude },
+        type: 'charging station',
+        details: connections && connections.length > 0 ? connections.join(' | ') : 'Standard Wall Outlet'
+      };
+    });
 
     return res.status(200).json({ pois: formattedPois });
   } catch (error: any) {

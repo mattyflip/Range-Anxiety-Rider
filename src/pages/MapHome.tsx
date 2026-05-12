@@ -1939,10 +1939,15 @@ function MapHome() {
               ))}
               {selectedPoi && (
                 <InfoWindow position={selectedPoi.position} onCloseClick={() => setSelectedPoi(null)}>
-                  <div style={{ padding: '0.5rem', color: '#333' }}>
+                  <div style={{ padding: '0.5rem', color: '#333', maxWidth: '200px' }}>
                     <h4 style={{ margin: 0 }}>{selectedPoi.name}</h4>
-                    <p style={{ margin: '0.2rem 0', fontSize: '0.8rem' }}>{selectedPoi.address}</p>
-                    <button onClick={() => { addPOIAsWaypoint(selectedPoi); setSelectedPoi(null); }} style={{ width: '100%', marginTop: '0.5rem', padding: '0.2rem', backgroundColor: '#ff6600', color: 'white', border: 'none', cursor: 'pointer' }}>Add Stop</button>
+                    <p style={{ margin: '0.2rem 0', fontSize: '0.75rem', color: '#666' }}>{selectedPoi.address}</p>
+                    {selectedPoi.details && (
+                      <div style={{ marginTop: '0.5rem', padding: '0.4rem', background: '#f0f0f0', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold', color: '#ff6600' }}>
+                        ⚡ {selectedPoi.details}
+                      </div>
+                    )}
+                    <button onClick={() => { addPOIAsWaypoint(selectedPoi); setSelectedPoi(null); }} style={{ width: '100%', marginTop: '0.8rem', padding: '0.4rem', backgroundColor: '#ff6600', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Add to Route</button>
                   </div>
                 </InfoWindow>
               )}
