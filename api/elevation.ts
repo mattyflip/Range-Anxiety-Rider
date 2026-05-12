@@ -10,7 +10,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).end();
   }
 
-  const GOOGLE_API_KEY = process.env.VITE_GOOGLE_MAPS_API_KEY;
+  // Use a dedicated backend key if available to avoid referer restrictions
+  // If not found, fall back to the VITE key (which may have restrictions)
+  const GOOGLE_API_KEY = process.env.GOOGLE_MAPS_BACKEND_KEY || process.env.VITE_GOOGLE_MAPS_API_KEY;
 
   try {
     let pathParam = '';

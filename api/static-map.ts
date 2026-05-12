@@ -8,8 +8,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: 'Polyline is required' });
   }
 
-  // Use the same API key as the frontend
-  const apiKey = process.env.VITE_GOOGLE_MAPS_API_KEY;
+  // Use a dedicated backend key if available to avoid referer restrictions
+  const apiKey = process.env.GOOGLE_MAPS_BACKEND_KEY || process.env.VITE_GOOGLE_MAPS_API_KEY;
 
   if (!apiKey) {
     return res.status(500).json({ error: 'Google Maps API Key not configured on server' });
