@@ -212,15 +212,15 @@ const Profile: React.FC = () => {
       const updateData: any = {
         username: normalizedUsername,
         usernameLowercase: normalizedUsername.toLowerCase(),
-        fullName: editFullName,
         bio: editBio,
         city: editCity,
-        homeRegion: editHomeRegion,
-        birthday: editBirthday
+        homeRegion: editHomeRegion
       };
 
       if (isAdmin) {
         updateData.isPro = editIsPro;
+        updateData.fullName = editFullName;
+        updateData.birthday = editBirthday;
       }
 
       await updateDoc(doc(db, "users", profileData.id), updateData);
@@ -343,8 +343,27 @@ const Profile: React.FC = () => {
 
   const removeBike = async (bike: any) => {
     if (!user || !profileData || !canEdit) return;
+    
+    let reason = "";
+    if (isAdmin && !isOwner) {
+      const r = promptForModerationReason("bike removal");
+      if (r === null) return;
+      reason = r;
+    }
+
     try {
       await updateDoc(doc(db, "users", profileData.id), { bikes: arrayRemove(bike) });
+      
+      if (isAdmin && !isOwner) {
+        await createNotification(
+          profileData.id,
+          user.uid,
+          "System Admin",
+          'moderation',
+          'bike_removed',
+          `A bike (${bike.name}) was removed from your garage by a moderator. Reason: ${reason}`
+        );
+      }
     } catch (e) { console.error("Bike removal failed", e); }
   };
 
@@ -561,8 +580,8 @@ const Profile: React.FC = () => {
                 <input type="text" value={editUsername} onChange={e => setEditUsername(e.target.value)} style={{ width: '100%', padding: '0.6rem', background: '#222', border: '1px solid #444', borderRadius: '4px', color: 'white' }} />
               </div>
               <div className="form-group" style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', color: '#888', fontSize: '0.7rem', marginBottom: '0.3rem' }}>Full Name</label>
-                <input type="text" value={editFullName} onChange={e => setEditFullName(e.target.value)} style={{ width: '100%', padding: '0.6rem', background: '#222', border: '1px solid #444', borderRadius: '4px', color: 'white' }} />
+                <label style={{ display: 'block', color: '#888', fontSize: '0.7rem', marginBottom: '0.3rem' }}>Full Name {!isAdmin && "(Read-Only)"}</label>
+                <input type="text" value={editFullName} onChange={e => setEditFullName(e.target.value)} disabled={!isAdmin} style={{ width: '100%', padding: '0.6rem', background: '#222', border: '1px solid #444', borderRadius: '4px', color: isAdmin ? 'white' : '#666' }} />
               </div>
             </div>
 
@@ -573,7 +592,7 @@ const Profile: React.FC = () => {
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
               <div className="form-group" style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', color: '#888', fontSize: '0.7rem', marginBottom: '0.3rem' }}>City</label>
+                <label style={{ display: 'block', color: '#888', fontSize: '0.7rem', marginBottom: '0.3rem' }}>City (Optional)</label>
                 <input type="text" value={editCity} onChange={e => setEditCity(e.target.value)} style={{ width: '100%', padding: '0.6rem', background: '#222', border: '1px solid #444', borderRadius: '4px', color: 'white' }} />
               </div>
               <div className="form-group" style={{ marginBottom: '1rem' }}>
@@ -584,8 +603,8 @@ const Profile: React.FC = () => {
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
               <div className="form-group" style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', color: '#888', fontSize: '0.7rem', marginBottom: '0.3rem' }}>Birthday</label>
-                <input type="date" value={editBirthday} onChange={e => setEditBirthday(e.target.value)} style={{ width: '100%', padding: '0.6rem', background: '#222', border: '1px solid #444', borderRadius: '4px', color: 'white' }} />
+                <label style={{ display: 'block', color: '#888', fontSize: '0.7rem', marginBottom: '0.3rem' }}>Birthday {!isAdmin && "(Read-Only)"}</label>
+                <input type="date" value={editBirthday} onChange={e => setEditBirthday(e.target.value)} disabled={!isAdmin} style={{ width: '100%', padding: '0.6rem', background: '#222', border: '1px solid #444', borderRadius: '4px', color: isAdmin ? 'white' : '#666' }} />
               </div>
               {isAdmin && (
                 <div className="form-group" style={{ marginBottom: '1rem' }}>
