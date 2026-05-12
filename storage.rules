@@ -13,38 +13,43 @@ service firebase.storage {
       return request.auth != null && request.auth.uid == userId;
     }
 
+    // Helper: Admin check
+    function isAdmin() {
+      return request.auth.token.email.lower() == 'mattyfliptv@gmail.com';
+    }
+
     // --- Profile Pictures ---
     match /profile_pics/{userId}/{allPaths=**} {
-      allow read: if true; // Publicly viewable profiles
-      allow write: if isOwner(userId);
-      allow delete: if isOwner(userId);
+      allow read: if true; 
+      allow write: if isOwner(userId) || isAdmin();
+      allow delete: if isOwner(userId) || isAdmin();
     }
 
     // --- Bike Garage Photos ---
     match /bikes/{userId}/{allPaths=**} {
       allow read: if true;
-      allow write: if isOwner(userId);
-      allow delete: if isOwner(userId);
+      allow write: if isOwner(userId) || isAdmin();
+      allow delete: if isOwner(userId) || isAdmin();
     }
 
     // --- Community Feed Posts ---
     match /posts/{userId}/{allPaths=**} {
       allow read: if true;
-      allow write: if isOwner(userId);
-      allow delete: if isOwner(userId) || request.auth.token.email == 'mattyfliptv@gmail.com';
+      allow write: if isOwner(userId) || isAdmin();
+      allow delete: if isOwner(userId) || isAdmin();
     }
 
     // --- Shared Trip Snapshots ---
     match /trips/{userId}/{allPaths=**} {
       allow read: if true;
-      allow write: if isOwner(userId);
-      allow delete: if isOwner(userId) || request.auth.token.email == 'mattyfliptv@gmail.com';
+      allow write: if isOwner(userId) || isAdmin();
+      allow delete: if isOwner(userId) || isAdmin();
     }
 
     // --- Ad Banner Uploads (Admin Only) ---
     match /ads/{allPaths=**} {
       allow read: if true;
-      allow write, delete: if request.auth.token.email == 'mattyfliptv@gmail.com';
+      allow write, delete: if isAdmin();
     }
   }
 }

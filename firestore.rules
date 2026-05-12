@@ -8,30 +8,33 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Helper to check if the user owns the document (for user profiles)
+    // Helper to check if the user is the admin
+    function isAdmin() {
+      return request.auth.token.email.lower() == 'mattyfliptv@gmail.com';
+    }
+
+    // Helper to check if the user owns the document
     function isOwner(userId) {
       return request.auth.uid == userId;
     }
 
     // --- Users Collection ---
     match /users/{userId} {
-      // Allow reading basic info for social features, but restrict sensitive fields
-      // NOTE: Granular field-level security can be added here if needed
       allow read: if isSignedIn(); 
-      allow write: if isOwner(userId);
+      allow write: if isOwner(userId) || isAdmin();
     }
 
     // --- Community Feed ---
     match /posts/{postId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn();
-      allow update, delete: if isSignedIn() && (request.auth.uid == resource.data.authorId || request.auth.token.email == 'mattyfliptv@gmail.com');
+      allow update, delete: if isSignedIn() && (request.auth.uid == resource.data.authorId || isAdmin());
       
       // Post Comments
       match /comments/{commentId} {
         allow read: if isSignedIn();
         allow create: if isSignedIn();
-        allow update, delete: if isSignedIn() && (request.auth.uid == resource.data.authorId || request.auth.token.email == 'mattyfliptv@gmail.com');
+        allow update, delete: if isSignedIn() && (request.auth.uid == resource.data.authorId || isAdmin());
       }
     }
 
@@ -39,65 +42,72 @@ service cloud.firestore {
     match /communities/{communityId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn();
-      allow update, delete: if isSignedIn() && (request.auth.uid == resource.data.creatorId || request.auth.token.email == 'mattyfliptv@gmail.com');
+      allow update, delete: if isSignedIn() && (request.auth.uid == resource.data.creatorId || isAdmin());
 
       // Threads within a community
       match /threads/{threadId} {
         allow read: if isSignedIn();
         allow create: if isSignedIn();
-        allow update, delete: if isSignedIn() && (request.auth.uid == resource.data.authorId || request.auth.token.email == 'mattyfliptv@gmail.com');
+        allow update, delete: if isSignedIn() && (request.auth.uid == resource.data.authorId || isAdmin());
 
         // Comments within a thread
         match /comments/{commentId} {
           allow read: if isSignedIn();
           allow create: if isSignedIn();
-          allow update, delete: if isSignedIn() && (request.auth.uid == resource.data.authorId || request.auth.token.email == 'mattyfliptv@gmail.com');
+          allow update, delete: if isSignedIn() && (request.auth.uid == resource.data.authorId || isAdmin());
         }
       }
     }
 
     // --- Social Interactions ---
-    match /followers/{followId} {
-      // ID format is usually "followerId_followingId"
+    match /rider_reviews/{reviewId} {
       allow read: if isSignedIn();
-      allow write: if isSignedIn() && request.auth.uid == request.resource.data.followerId;
-      allow delete: if isSignedIn() && request.auth.uid == resource.data.followerId;
-    }
-
-    match /user_reviews/{reviewId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn() && request.auth.uid == request.resource.data.authorId;
-      allow update, delete: if isSignedIn() && (request.auth.uid == resource.data.authorId || request.auth.token.email == 'mattyfliptv@gmail.com');
+      allow create: if isSignedIn() && request.resource.data.reviewerId == request.auth.uid;
+      allow update, delete: if isSignedIn() && (resource.data.reviewerId == request.auth.uid || isAdmin());
+      
+      // Comments on reviews
+      match /comments/{commentId} {
+        allow read: if isSignedIn();
+        allow create: if isSignedIn();
+        allow update, delete: if isSignedIn() && (resource.data.authorId == request.auth.uid || isAdmin());
+      }
     }
 
     // --- Group Rides Collection ---
     match /group_rides/{rideId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn();
-      allow update, delete: if isSignedIn() && (request.auth.uid == resource.data.creatorId || request.auth.token.email == 'mattyfliptv@gmail.com');
+      allow update, delete: if isSignedIn() && (request.auth.uid == resource.data.creatorId || isAdmin());
       
       match /participants/{participantId} {
         allow read: if isSignedIn();
-        allow write: if isSignedIn() && request.auth.uid == participantId;
-        allow delete: if isSignedIn() && (request.auth.uid == participantId || request.auth.uid == get(/databases/$(database)/documents/group_rides/$(rideId)).data.creatorId);
+        allow write: if isSignedIn() && (request.auth.uid == participantId || isAdmin());
+        allow delete: if isSignedIn() && (request.auth.uid == participantId || isAdmin() || request.auth.uid == get(/databases/$(database)/documents/group_rides/$(rideId)).data.creatorId);
+      }
+
+      match /requests/{requestId} {
+        allow read: if isSignedIn();
+        allow create: if isSignedIn();
+        allow delete: if isSignedIn() && (request.auth.uid == requestId || isAdmin() || request.auth.uid == get(/databases/$(database)/documents/group_rides/$(rideId)).data.creatorId);
       }
     }
 
     // --- System Status & Marketing ---
     match /system/status {
       allow read: if true;
-      allow write: if request.auth.token.email == 'mattyfliptv@gmail.com';
+      allow write: if isAdmin();
     }
 
     match /marketing_emails/{docId} {
       allow create: if true;
-      allow read, update, delete: if false;
+      allow read: if isAdmin();
+      allow update, delete: if isAdmin();
     }
     
     match /bike_submissions/{docId} {
       allow create: if isSignedIn();
-      allow read, update, delete: if false;
+      allow read: if isAdmin();
+      allow update, delete: if isAdmin();
     }
   }
 }
-

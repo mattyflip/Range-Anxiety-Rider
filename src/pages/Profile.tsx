@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { db, auth, storage } from '../firebase'
-import { doc, collection, query, where, onSnapshot, updateDoc, arrayRemove, getDoc, getDocs, addDoc, serverTimestamp, arrayUnion } from 'firebase/firestore'
+import { doc, collection, query, where, onSnapshot, updateDoc, arrayRemove, getDoc, getDocs, addDoc, serverTimestamp, arrayUnion, deleteDoc } from 'firebase/firestore'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import NavBar from '../components/NavBar'
 import InstallTutorial from '../components/InstallTutorial'
@@ -37,6 +37,8 @@ const Profile: React.FC = () => {
   const [profileData, setProfileData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
+
+  const isAdmin = user?.email?.toLowerCase() === 'mattyfliptv@gmail.com';
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showInstallTutorial, setShowInstallTutorial] = useState(false);
   const [userPosts, setUserPosts] = useState<Post[]>([]);
@@ -283,12 +285,12 @@ const Profile: React.FC = () => {
 
   const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !user) return;
+    if (!file || !user || !profileData) return;
     try {
-      const imageRef = ref(storage, `profiles/${user.uid}.jpg`);
+      const imageRef = ref(storage, `profiles/${profileData.id}.jpg`);
       await uploadBytes(imageRef, file);
       const imageUrl = await getDownloadURL(imageRef);
-      await updateDoc(doc(db, "users", user.uid), { profilePic: imageUrl });
+      await updateDoc(doc(db, "users", profileData.id), { profilePic: imageUrl });
       alert("Profile picture updated!");
     } catch (e) {
       console.error("Upload failed", e);
@@ -296,15 +298,16 @@ const Profile: React.FC = () => {
   };
 
   const removeBike = async (bike: any) => {
-    if (!user || !profileData || user.uid !== profileData.id) return;
+    if (!user || !profileData || !canEdit) return;
     try {
-      await updateDoc(doc(db, "users", user.uid), { bikes: arrayRemove(bike) });
+      await updateDoc(doc(db, "users", profileData.id), { bikes: arrayRemove(bike) });
     } catch (e) { console.error("Bike removal failed", e); }
   };
 
   if (loading) return <div style={{ color: 'white', padding: '2rem', textAlign: 'center' }}>Loading profile...</div>;
 
   const isOwner = user && profileData && user.uid === profileData.id;
+  const canEdit = isOwner || isAdmin;
 
   return (
     <div className="container" style={{ minHeight: '100vh', background: '#121212', overflowY: 'auto' }}>
@@ -323,7 +326,7 @@ const Profile: React.FC = () => {
                 <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: '#333', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '3rem', border: '2px solid #ff6600', overflow: 'hidden' }}>
                   {profileData.profilePic ? <img src={profileData.profilePic} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : '🚲'}
                 </div>
-                {isOwner && (
+                {canEdit && (
                   <label style={{ position: 'absolute', bottom: 0, right: 0, background: '#ff6600', width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', border: '2px solid #121212', overflow: 'hidden' }}>
                     <span style={{ fontSize: '1rem' }}>📷</span>
                     <input type="file" accept="image/*" onChange={handleImageSelect} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }} />
@@ -331,8 +334,11 @@ const Profile: React.FC = () => {
                 )}
               </div>
               <h1 style={{ color: 'white', margin: 0 }}>{profileData.username || 'Anonymous Rider'}</h1>
-              {isOwner && (
-                <button onClick={() => setShowEditModal(true)} style={{ background: 'none', border: '1px solid #444', color: '#888', borderRadius: '4px', padding: '0.3rem 0.8rem', fontSize: '0.7rem', marginTop: '0.5rem', cursor: 'pointer' }}>Edit Profile</button>
+              {canEdit && (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}>
+                  <button onClick={() => setShowEditModal(true)} style={{ background: 'none', border: '1px solid #444', color: '#888', borderRadius: '4px', padding: '0.3rem 0.8rem', fontSize: '0.7rem', cursor: 'pointer' }}>Edit Profile</button>
+                  {isAdmin && <span style={{ color: '#ff4444', fontSize: '0.6rem', border: '1px solid #ff4444', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold', textTransform: 'uppercase' }}>Moderator Mode</span>}
+                </div>
               )}
               {profileData.isPro && (
                 <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: 'linear-gradient(45deg, #ffd700, #ffae00)', padding: '2px 10px', borderRadius: '20px', marginTop: '0.8rem', boxShadow: '0 0 10px rgba(255, 215, 0, 0.3)' }}>
@@ -366,7 +372,7 @@ const Profile: React.FC = () => {
                         <div style={{ fontWeight: 'bold', color: 'white', fontSize: '0.85rem' }}>{bike.name}</div>
                         <div style={{ fontSize: '0.7rem', color: '#888' }}>{bike.specs.voltage}V {bike.specs.capacityAh}Ah</div>
                       </div>
-                      {isOwner && <button onClick={() => removeBike(bike)} style={{ position: 'absolute', bottom: '0.5rem', right: '0.5rem', background: 'none', border: 'none', color: '#444', cursor: 'pointer', fontSize: '0.8rem' }}>✕</button>}
+                      {canEdit && <button onClick={() => removeBike(bike)} style={{ position: 'absolute', bottom: '0.5rem', right: '0.5rem', background: 'none', border: 'none', color: isAdmin ? '#ff4444' : '#444', cursor: 'pointer', fontSize: '0.8rem' }}>✕</button>}
                     </div>
                   ))}
                 </div>
@@ -377,8 +383,18 @@ const Profile: React.FC = () => {
               <h3 style={{ color: '#ff6600', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '0.1em', marginBottom: '1.5rem' }}>Shared Trips</h3>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 {userPosts.map(post => (
-                  <div key={post.id} style={{ background: '#1a1a1a', borderRadius: '16px', border: '1px solid #333', overflow: 'hidden' }}>
+                  <div key={post.id} style={{ background: '#1a1a1a', borderRadius: '16px', border: '1px solid #333', overflow: 'hidden', position: 'relative' }}>
                     <img src={post.imageUrl} style={{ width: '100%', aspectRatio: '1/1', objectFit: 'cover' }} alt="Ride" />
+                    {isAdmin && (
+                      <button 
+                        onClick={async () => {
+                          if (window.confirm("Delete this post as moderator?")) {
+                            await deleteDoc(doc(db, "posts", post.id));
+                          }
+                        }}
+                        style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', background: 'rgba(0,0,0,0.6)', border: 'none', borderRadius: '4px', padding: '4px', cursor: 'pointer' }}
+                      >🗑️</button>
+                    )}
                   </div>
                 ))}
               </div>
@@ -388,7 +404,17 @@ const Profile: React.FC = () => {
               <h3 style={{ color: '#ff6600', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '0.1em', marginBottom: '1.5rem' }}>Community Reviews</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 {userReviews.map(review => (
-                  <div key={review.id} style={{ background: '#1a1a1a', padding: '1.2rem', borderRadius: '16px', border: '1px solid #333' }}>
+                  <div key={review.id} style={{ background: '#1a1a1a', padding: '1.2rem', borderRadius: '16px', border: '1px solid #333', position: 'relative' }}>
+                    {isAdmin && (
+                      <button 
+                        onClick={async () => {
+                          if (window.confirm("Delete this review as moderator?")) {
+                             await deleteDoc(doc(db, "rider_reviews", review.id));
+                          }
+                        }}
+                        style={{ position: 'absolute', top: '1.2rem', right: '1.2rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem' }}
+                      >🗑️</button>
+                    )}
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.8rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
                         <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#333', overflow: 'hidden' }}>{review.reviewerProfilePic ? <img src={review.reviewerProfilePic} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Reviewer" /> : '🚲'}</div>
@@ -406,9 +432,19 @@ const Profile: React.FC = () => {
                         {reviewComments[review.id]?.map(c => (
                           <div key={c.id} style={{ display: 'flex', gap: '0.6rem', marginBottom: '0.8rem' }}>
                             <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#333', overflow: 'hidden' }}>{c.authorProfilePic ? <img src={c.authorProfilePic} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Commenter" /> : '🚲'}</div>
-                            <div style={{ background: '#222', padding: '0.6rem 0.8rem', borderRadius: '12px', flex: 1 }}>
+                            <div style={{ background: '#222', padding: '0.6rem 0.8rem', borderRadius: '12px', flex: 1, position: 'relative' }}>
                               <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'white' }}>{c.authorUsername}</div>
                               <div style={{ fontSize: '0.85rem', color: '#bbb' }}>{c.text}</div>
+                              {isAdmin && (
+                                <button 
+                                  onClick={async () => {
+                                    if (window.confirm("Delete this comment as moderator?")) {
+                                      await deleteDoc(doc(db, `rider_reviews/${review.id}/comments`, c.id));
+                                    }
+                                  }}
+                                  style={{ position: 'absolute', top: '0.4rem', right: '0.4rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.7rem' }}
+                                >🗑️</button>
+                              )}
                             </div>
                           </div>
                         ))}
