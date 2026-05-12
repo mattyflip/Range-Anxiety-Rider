@@ -1228,6 +1228,14 @@ function MapHome() {
     }
   };
 
+  const handlePoiClick = (poi: POI) => {
+    setSelectedPoi(poi);
+    if (mapRef.current) {
+      mapRef.current.panTo(poi.position);
+      mapRef.current.setZoom(15);
+    }
+  };
+
   const addPOIAsWaypoint = (poi: POI) => { 
     setTrip(prev => ({ ...prev, waypoints: [...prev.waypoints, poi.address] })); 
     setResponse(null); 
@@ -1921,7 +1929,7 @@ function MapHome() {
                   key={poi.id} 
                   position={poi.position} 
                   title={poi.name} 
-                  onClick={() => setSelectedPoi(poi)} 
+                  onClick={() => handlePoiClick(poi)} 
                   icon={poi.type === 'charging station' ? {
                     path: google.maps.SymbolPath.CIRCLE,
                     fillColor: '#d93025', // Red
