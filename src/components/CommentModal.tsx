@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { db } from '../firebase'
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, getDoc, doc } from 'firebase/firestore'
+import { createNotification } from '../utils/notifications'
 
 interface Comment {
   id: string;
@@ -13,11 +14,12 @@ interface Comment {
 
 interface CommentModalProps {
   postId: string;
+  postAuthorId?: string;
   onClose: () => void;
   user: any;
 }
 
-const CommentModal: React.FC<CommentModalProps> = ({ postId, onClose, user }) => {
+const CommentModal: React.FC<CommentModalProps> = ({ postId, postAuthorId, onClose, user }) => {
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [loading, setLoading] = useState(true);
@@ -54,6 +56,18 @@ const CommentModal: React.FC<CommentModalProps> = ({ postId, onClose, user }) =>
         text: newComment,
         createdAt: serverTimestamp()
       });
+
+      // Notify post author
+      if (postAuthorId && postAuthorId !== user.uid) {
+        await createNotification(
+          postAuthorId,
+          user.uid,
+          userData.username || "Rider",
+          'comment',
+          postId,
+          newComment
+        );
+      }
 
       setNewComment('');
     } catch (e) {

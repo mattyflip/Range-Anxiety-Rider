@@ -5,6 +5,7 @@ import { useParams, Link } from 'react-router-dom'
 import NavBar from '../components/NavBar'
 import InstallTutorial from '../components/InstallTutorial'
 import AuthModal from '../components/AuthModal'
+import { createNotification } from '../utils/notifications'
 
 interface ForumComment {
   id: string;
@@ -95,7 +96,7 @@ const ThreadView: React.FC = () => {
   };
 
   const handleSubmitComment = async (parentId: string | null = null) => {
-    if (!replyText.trim() || !user || !communityId || !threadId) return;
+    if (!replyText.trim() || !user || !communityId || !threadId || !thread) return;
 
     try {
       const userSnap = await getDoc(doc(db, "users", user.uid));
@@ -109,6 +110,18 @@ const ThreadView: React.FC = () => {
         parentId,
         createdAt: serverTimestamp()
       });
+
+      // Notify thread author
+      if (thread.authorId !== user.uid) {
+        await createNotification(
+          thread.authorId,
+          user.uid,
+          userData.username || "Rider",
+          'comment',
+          threadId,
+          replyText
+        );
+      }
 
       // Update comment count on thread
       await updateDoc(doc(db, `communities/${communityId}/threads`, threadId), {
@@ -139,21 +152,24 @@ const ThreadView: React.FC = () => {
     
     try {
       if (incrementVal === 1) {
+        if (!hasUpvoted && thread.authorId !== user.uid) {
+           const userSnap = await getDoc(doc(db, "users", user.uid));
+           const userData = userSnap.exists() ? userSnap.data() : {};
+           await createNotification(thread.authorId, user.uid, userData.username || "Rider", 'upvote', threadId);
+        }
+
         if (hasUpvoted) {
-          // Remove upvote
           await updateDoc(threadRef, {
             score: increment(-1),
             upvotedBy: arrayRemove(userId)
           });
         } else if (hasDownvoted) {
-          // Switch from downvote to upvote
           await updateDoc(threadRef, {
             score: increment(2),
             downvotedBy: arrayRemove(userId),
             upvotedBy: arrayUnion(userId)
           });
         } else {
-          // New upvote
           await updateDoc(threadRef, {
             score: increment(1),
             upvotedBy: arrayUnion(userId)
@@ -161,20 +177,17 @@ const ThreadView: React.FC = () => {
         }
       } else {
         if (hasDownvoted) {
-          // Remove downvote
           await updateDoc(threadRef, {
             score: increment(1),
             downvotedBy: arrayRemove(userId)
           });
         } else if (hasUpvoted) {
-          // Switch from upvote to downvote
           await updateDoc(threadRef, {
             score: increment(-2),
             upvotedBy: arrayRemove(userId),
             downvotedBy: arrayUnion(userId)
           });
         } else {
-          // New downvote
           await updateDoc(threadRef, {
             score: increment(-1),
             downvotedBy: arrayUnion(userId)

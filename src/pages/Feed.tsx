@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { db, auth, storage } from '../firebase'
 import { collection, query, orderBy, onSnapshot, doc, getDoc, updateDoc, arrayUnion, arrayRemove, addDoc, serverTimestamp, deleteDoc } from 'firebase/firestore'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
@@ -10,7 +10,7 @@ import UniversalSearch from '../components/UniversalSearch'
 import Cropper from 'react-easy-crop'
 import { getCroppedImg } from '../utils/imageUtils'
 import CommentModal from '../components/CommentModal'
-import AdBanner from '../components/AdBanner'
+import { createNotification } from '../utils/notifications'
 
 interface Post {
   id: string;
@@ -98,30 +98,97 @@ const Feed: React.FC = () => {
     const q = query(collection(db, "posts"), orderBy("createdAt", "desc"));
     const unsubscribe = onSnapshot(q, (snap) => {
       const fetchedPosts: Post[] = [];
-      snap.forEach(docSnap => {
-        fetchedPosts.push({ id: docSnap.id, ...docSnap.data() } as Post);
-      });
-
-      // CURATED FEED LOGIC: 
-      // Prioritize followed users, then sort by date
-      const sorted = fetchedPosts.sort((a, b) => {
-        const following = userData?.following || [];
-        const aFollowed = following.includes(a.authorId);
-        const bFollowed = following.includes(b.authorId);
-
-        if (aFollowed && !bFollowed) return -1;
-        if (!aFollowed && bFollowed) return 1;
-
-        const timeA = a.createdAt?.toMillis() || 0;
-        const timeB = b.createdAt?.toMillis() || 0;
-        return timeB - timeA;
-      });
-
-      setPosts(sorted);
+      snap.forEach(docSnap => fetchedPosts.push({ id: docSnap.id, ...docSnap.data() } as Post));
+      setPosts(fetchedPosts);
       setLoading(false);
     });
     return () => unsubscribe();
-  }, [userData?.following]);
+  }, []);
+
+  const handleLike = async (post: Post) => {
+    if (!user) {
+      setShowAuthModal(true);
+      return;
+    }
+    const postRef = doc(db, "posts", post.id);
+    const isLiked = post.likes.includes(user.uid);
+    try {
+      await updateDoc(postRef, {
+        likes: isLiked ? arrayRemove(user.uid) : arrayUnion(user.uid)
+      });
+
+      // Notify if it's a new like
+      if (!isLiked && post.authorId !== user.uid) {
+        await createNotification(
+          post.authorId,
+          user.uid,
+          userData?.username || "Rider",
+          'like',
+          post.id
+        );
+      }
+    } catch (e) {
+      console.error("Like error:", e);
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    if (file.size > 10 * 1024 * 1024) {
+      alert("File is too large. Please upload an image under 10MB.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setSelectedImage(event.target?.result as string);
+      setShowCropper(true);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const onCropComplete = useCallback((_croppedArea: any, croppedAreaPixels: any) => {
+    setCroppedAreaPixels(croppedAreaPixels);
+  }, []);
+
+  const handleCreatePost = async () => {
+    if (!selectedImage || !user || !userData || isPosting) return;
+
+    setIsPosting(true);
+    try {
+      const croppedImageBase64 = await getCroppedImg(selectedImage, croppedAreaPixels);
+      
+      const response = await fetch(croppedImageBase64);
+      const blob = await response.blob();
+
+      const imageRef = ref(storage, `posts/${user.uid}/${Date.now()}.jpg`);
+      await uploadBytes(imageRef, blob);
+      const imageUrl = await getDownloadURL(imageRef);
+
+      await addDoc(collection(db, "posts"), {
+        authorId: user.uid,
+        authorUsername: userData.username || user.email?.split('@')[0],
+        authorProfilePic: userData.profilePic || "",
+        imageUrl,
+        caption: newCaption,
+        likes: [],
+        commentsEnabled: allowComments,
+        createdAt: serverTimestamp()
+      });
+
+      setShowCreatePost(false);
+      setNewCaption('');
+      setSelectedImage(null);
+      setShowCropper(false);
+    } catch (e) {
+      console.error("Post creation failed", e);
+      alert("Failed to create post. Please check your connection.");
+    } finally {
+      setIsPosting(false);
+    }
+  };
 
   const handleDeletePost = async (post: Post) => {
     if (!isAdmin) return;
@@ -131,7 +198,6 @@ const Feed: React.FC = () => {
       alert("Post deleted by Admin.");
     } catch (e) {
       console.error("Delete failed", e);
-      alert("Failed to delete post.");
     }
   };
 
@@ -149,290 +215,118 @@ const Feed: React.FC = () => {
     }
   };
 
-  const handleLike = async (post: Post) => {
-    if (!user) {
-      setShowAuthModal(true);
-      return;
-    }
-    const postRef = doc(db, "posts", post.id);
-    const isLiked = post.likes.includes(user.uid);
-    try {
-      await updateDoc(postRef, {
-        likes: isLiked ? arrayRemove(user.uid) : arrayUnion(user.uid)
-      });
-    } catch (e) {
-      console.error("Like error:", e);
-    }
-  };
-
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (file.size > 10 * 1024 * 1024) {
-      alert("Image is too large. Please select a photo under 10MB.");
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      setSelectedImage(event.target?.result as string);
-      setShowCropper(true);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const onCropComplete = useCallback((_croppedArea: any, croppedAreaPixels: any) => {
-    setCroppedAreaPixels(croppedAreaPixels);
-  }, []);
-
-  const handleApplyCrop = async () => {
-    if (selectedImage && croppedAreaPixels) {
-      try {
-        const croppedImage = await getCroppedImg(selectedImage, croppedAreaPixels);
-        setSelectedImage(croppedImage);
-        setShowCropper(false);
-      } catch (e) {
-        console.error(e);
-      }
-    }
-  };
-
-  const handleCreatePost = async () => {
-    if (!user || !selectedImage) return;
-
-    if (!userData?.username || !userData?.profilePic) {
-      alert("Please complete your profile (set a username and upload a profile picture) before posting to the community!");
-      return;
-    }
-
-    setIsPosting(true);
-    try {
-      const response = await fetch(selectedImage);
-      const blob = await response.blob();
-
-      const imageRef = ref(storage, `posts/${user.uid}/${Date.now()}.png`);
-      await uploadBytes(imageRef, blob);
-      const imageUrl = await getDownloadURL(imageRef);
-
-      await addDoc(collection(db, "posts"), {
-        authorId: user.uid,
-        authorUsername: userData.username,
-        authorProfilePic: userData.profilePic,
-        imageUrl,
-        caption: newCaption || "",
-        likes: [],
-        commentsEnabled: allowComments,
-        createdAt: serverTimestamp()
-      });
-
-      setNewCaption('');
-      setSelectedImage(null);
-      setShowCreatePost(false);
-      alert("Post shared with the community!");
-    } catch (e: any) {
-      console.error("Post creation failed", e);
-      alert(`Failed to share: ${e.message}`);
-    } finally {
-      setIsPosting(false);
-    }
-  };
+  if (authLoading) return <div style={{ minHeight: '100vh', background: '#121212' }} />;
 
   return (
-    <div className="container" style={{ minHeight: '100vh', background: '#121212' }}>
+    <div className="container" style={{ minHeight: '100vh', background: '#121212', overflowY: 'auto' }}>
       <NavBar 
         user={user} 
         onShowInstall={() => setShowInstallTutorial(true)} 
         onShowAuth={() => setShowAuthModal(true)}
       />
 
-      <main style={{ padding: '2rem', maxWidth: '600px', margin: '0 auto' }}>
-        {!user && !authLoading ? (
-          <div style={{ textAlign: 'center', padding: '4rem 0' }}>
-            <div style={{ fontSize: '4rem', marginBottom: '1.5rem' }}>🔒</div>
-            <h2 style={{ color: 'white', marginBottom: '1rem' }}>Member Only Feed</h2>
-            <p style={{ color: '#888', marginBottom: '2rem', fontSize: '1.1rem' }}>Join the community to see shared trips, follow other riders, and get inspired for your next ride.</p>
+      <main style={{ padding: '2rem 1.5rem', maxWidth: '600px', margin: '0 auto' }}>
+        <UniversalSearch />
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', marginTop: '2rem' }}>
+          <h1 style={{ color: 'white', margin: 0, fontSize: '1.5rem' }}>Community Feed</h1>
+          {user && (
             <button 
-              onClick={() => setShowAuthModal(true)}
-              style={{ padding: '1rem 2.5rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold', fontSize: '1.1rem', cursor: 'pointer', boxShadow: '0 10px 20px rgba(255,102,0,0.2)' }}
+              onClick={() => setShowCreatePost(true)}
+              style={{ background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px', padding: '0.8rem 1.5rem', fontWeight: 'bold', cursor: 'pointer' }}
             >
-              Create Account to Enter
+              + Create Post
             </button>
-          </div>
+          )}
+        </div>
+
+        {loading ? (
+          <div style={{ color: '#666', textAlign: 'center', padding: '4rem 0' }}>Loading feed...</div>
+        ) : posts.length === 0 ? (
+          <div style={{ color: '#444', textAlign: 'center', padding: '4rem 0' }}>No posts yet. Be the first to share your trip!</div>
         ) : (
-          <>
-            <div style={{ marginBottom: '2rem' }}>
-              <UniversalSearch />
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-              <h2 style={{ color: '#ff6600', textTransform: 'uppercase', fontSize: '1rem', letterSpacing: '0.2em', margin: 0 }}>Community Feed</h2>
-              {user && (
-                <button 
-                  onClick={() => {
-                    if (!userData?.username || !userData?.profilePic) {
-                       alert("Please complete your profile (username and photo) first!");
-                       return;
-                    }
-                    setShowCreatePost(true);
-                  }}
-                  style={{ background: '#ff6600', color: 'white', border: 'none', padding: '0.6rem 1.2rem', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
-                >
-                  + Create Post
-                </button>
-              )}
-            </div>
-
-            {loading ? (
-              <div style={{ color: '#666', textAlign: 'center' }}>Loading feed...</div>
-            ) : posts.length === 0 ? (
-              <div style={{ color: '#666', textAlign: 'center', padding: '3rem' }}>
-                <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🏜️</div>
-                <p>No posts yet. Be the first to share a trip!</p>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                {posts.map((post, index) => (
-                  <React.Fragment key={post.id}>
-                    <article style={{ background: '#1a1a1a', borderRadius: '24px', border: '1px solid #333', overflow: 'hidden' }}>
-                      <div 
-                        style={{ padding: '1rem', display: 'flex', alignItems: 'center', gap: '0.8rem', cursor: 'pointer' }}
-                        onClick={() => navigate(`/profile/${post.authorUsername.replace(/\s+/g, '_')}`)}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
+            {posts.map(post => (
+              <article key={post.id} style={{ background: '#1a1a1a', borderRadius: '24px', border: '1px solid #333', overflow: 'hidden' }}>
+                <div style={{ padding: '1.2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  <Link to={`/profile/${post.authorUsername.replace(/\s+/g, '_')}`} style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#333', overflow: 'hidden', display: 'block' }}>
+                    {post.authorProfilePic ? <img src={post.authorProfilePic} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : '🚲'}
+                  </Link>
+                  <div style={{ flex: 1 }}>
+                    <Link to={`/profile/${post.authorUsername.replace(/\s+/g, '_')}`} style={{ fontWeight: 'bold', color: 'white', fontSize: '0.9rem', textDecoration: 'none' }}>{post.authorUsername}</Link>
+                    <div style={{ color: '#666', fontSize: '0.7rem' }}>{post.createdAt?.toDate().toLocaleString()}</div>
+                  </div>
+                  {isAdmin && (
+                    <div style={{ display: 'flex', gap: '0.8rem' }}>
+                      <button 
+                        onClick={() => { setAdminEditingPost(post); setAdminEditValue(post.caption); }}
+                        style={{ background: 'none', border: 'none', color: '#ffcc00', fontSize: '1.2rem', cursor: 'pointer' }}
+                        title="Edit Post"
                       >
-                        <div style={{ 
-                          width: '40px', 
-                          height: '40px', 
-                          borderRadius: '50%', 
-                          background: '#333', 
-                          display: 'flex', 
-                          alignItems: 'center', 
-                          justifyContent: 'center',
-                          overflow: 'hidden',
-                          border: '1px solid #333'
-                        }}>
-                          {post.authorProfilePic ? (
-                            <img src={post.authorProfilePic} alt={post.authorUsername} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                          ) : '🚲'}
-                        </div>
-                        <div style={{ fontWeight: 'bold', color: 'white' }}>{post.authorUsername}</div>
-                      </div>
-                      
-                      <div 
-                        style={{ width: '100%', aspectRatio: '1/1', overflow: 'hidden', cursor: 'pointer' }}
-                        onClick={() => setSelectedFullPost(post)}
+                        ✏️
+                      </button>
+                      <button 
+                        onClick={() => handleDeletePost(post)}
+                        style={{ background: 'none', border: 'none', color: '#ff4444', fontSize: '1.2rem', cursor: 'pointer' }}
+                        title="Delete Post"
                       >
-                        <img src={post.imageUrl} alt="Trip Report" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      </div>
-                      
-                      <div style={{ padding: '1.2rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', marginBottom: '1rem' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                            <button 
-                              onClick={() => handleLike(post)}
-                              style={{ 
-                                background: 'none', 
-                                border: 'none', 
-                                color: post.likes.includes(user?.uid) ? '#ff6600' : 'white', 
-                                fontSize: '1.5rem', 
-                                cursor: 'pointer',
-                                padding: 0
-                              }}
-                            >
-                              {post.likes.includes(user?.uid) ? '🧡' : '🤍'}
-                            </button>
-                            <span style={{ color: '#888', fontSize: '0.9rem' }}>{post.likes.length}</span>
-                          </div>
+                        🗑️
+                      </button>
+                    </div>
+                  )}
+                </div>
 
-                          {(post.commentsEnabled !== false) && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                              <button 
-                                onClick={() => setActiveCommentPost(post)}
-                                style={{ 
-                                  background: 'none', 
-                                  border: 'none', 
-                                  color: 'white', 
-                                  fontSize: '1.5rem', 
-                                  cursor: 'pointer',
-                                  padding: 0
-                                }}
-                              >
-                                💬
-                              </button>
-                            </div>
-                          )}
+                <div style={{ width: '100%', aspectRatio: '1/1', background: '#000', cursor: 'pointer' }} onClick={() => setSelectedFullPost(post)}>
+                  <img src={post.imageUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Ride" />
+                </div>
 
-                          {post.tripData && (
-                            <button 
-                              onClick={() => handleLoadRoute(post)}
-                              style={{ 
-                                background: 'rgba(255,102,0,0.1)', 
-                                border: '1px solid #ff6600', 
-                                color: '#ff6600', 
-                                padding: '0.4rem 0.8rem', 
-                                borderRadius: '8px', 
-                                fontSize: '0.75rem', 
-                                fontWeight: 'bold', 
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.4rem'
-                              }}
-                            >
-                              📍 Load Route
-                            </button>
-                          )}
-
-                          {isAdmin && (
-                            <div style={{ display: 'flex', gap: '1rem', marginLeft: 'auto' }}>
-                               <button 
-                                 onClick={() => { setAdminEditingPost(post); setAdminEditValue(post.caption); }}
-                                 style={{ background: 'none', border: 'none', color: '#ffcc00', fontSize: '1rem', cursor: 'pointer' }}
-                                 title="Edit Post"
-                               >
-                                 ✏️
-                               </button>
-                               <button 
-                                 onClick={() => handleDeletePost(post)}
-                                 style={{ background: 'none', border: 'none', color: '#ff4444', fontSize: '1rem', cursor: 'pointer' }}
-                                 title="Delete Post"
-                               >
-                                 🗑️
-                               </button>
-                            </div>
-                          )}
-                        </div>
-                        
-                        <p style={{ color: '#ccc', margin: 0, fontSize: '0.95rem', lineHeight: '1.4' }}>
-                          <span style={{ fontWeight: 'bold', color: 'white', marginRight: '0.5rem' }}>{post.authorUsername}</span>
-                          {post.caption}
-                        </p>
-                        
-                        <div style={{ color: '#444', fontSize: '0.7rem', marginTop: '1rem', textTransform: 'uppercase' }}>
-                          {post.createdAt?.toDate().toLocaleDateString()}
-                        </div>
-                      </div>
-                    </article>
-
-                    {(index + 1) % 3 === 0 && (
-                      <div style={{ marginBottom: '2rem' }}>
-                        <AdBanner isPro={userData?.isPro || false} />
-                      </div>
+                <div style={{ padding: '1.2rem' }}>
+                  <div style={{ display: 'flex', gap: '1.2rem', marginBottom: '1rem' }}>
+                    <button 
+                      onClick={() => handleLike(post)}
+                      style={{ background: 'none', border: 'none', color: post.likes.includes(user?.uid) ? '#ff4444' : 'white', fontSize: '1.5rem', cursor: 'pointer', padding: 0 }}
+                    >
+                      {post.likes.includes(user?.uid) ? '🧡' : '🤍'}
+                    </button>
+                    {post.commentsEnabled !== false && (
+                      <button onClick={() => setActiveCommentPost(post)} style={{ background: 'none', border: 'none', color: 'white', fontSize: '1.5rem', cursor: 'pointer', padding: 0 }}>💬</button>
                     )}
-                  </React.Fragment>
-                ))}
-              </div>
-            )}
-          </>
+                    {post.tripData && (
+                      <button 
+                        onClick={() => handleLoadRoute(post)}
+                        style={{ marginLeft: 'auto', background: 'rgba(255,102,0,0.1)', border: '1px solid #ff6600', color: '#ff6600', padding: '0.4rem 1rem', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.75rem' }}
+                      >
+                        📍 Use Route
+                      </button>
+                    )}
+                  </div>
+                  <div style={{ color: 'white', fontWeight: 'bold', fontSize: '0.85rem', marginBottom: '0.5rem' }}>{post.likes.length} Likes</div>
+                  <p style={{ color: '#ccc', fontSize: '0.95rem', lineHeight: '1.5', margin: 0 }}>
+                    <span style={{ fontWeight: 'bold', color: 'white', marginRight: '0.5rem' }}>{post.authorUsername}</span>
+                    {post.caption}
+                  </p>
+                </div>
+              </article>
+            ))}
+          </div>
         )}
       </main>
 
       {showCreatePost && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.9)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', backdropFilter: 'blur(10px)' }}>
-          <div style={{ background: '#1a1a1a', padding: '2rem', borderRadius: '24px', border: '1px solid #333', maxWidth: '500px', width: '100%' }}>
-            <h3 style={{ color: 'white', marginTop: 0 }}>New Post</h3>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.9)', zIndex: 5000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+          <div style={{ background: '#1a1a1a', width: '100%', maxWidth: '500px', padding: '2rem', borderRadius: '24px', border: '1px solid #333' }}>
+            <h2 style={{ color: 'white', marginTop: 0 }}>Share a Trip</h2>
             
-            {showCropper && selectedImage ? (
-              <div style={{ position: 'relative', width: '100%', height: '300px', marginBottom: '1rem' }}>
+            {!selectedImage ? (
+              <div style={{ border: '2px dashed #333', borderRadius: '16px', height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
+                <div style={{ textAlign: 'center', color: '#666' }}>
+                  <div style={{ fontSize: '2rem' }}>📸</div>
+                  <div style={{ fontSize: '0.8rem', marginTop: '0.5rem' }}>Select your Route Card</div>
+                </div>
+                <input type="file" accept="image/*" onChange={handleFileSelect} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0, cursor: 'pointer' }} />
+              </div>
+            ) : showCropper ? (
+              <div style={{ position: 'relative', height: '300px', background: '#000', borderRadius: '16px', overflow: 'hidden' }}>
                 <Cropper
                   image={selectedImage}
                   crop={crop}
@@ -442,67 +336,40 @@ const Feed: React.FC = () => {
                   onCropComplete={onCropComplete}
                   onZoomChange={setZoom}
                 />
-                <button 
-                  onClick={handleApplyCrop}
-                  style={{ position: 'absolute', bottom: '1rem', right: '1rem', background: '#ff6600', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', zIndex: 1200 }}
-                >
-                  Apply Crop
-                </button>
               </div>
             ) : (
-              <div style={{ 
-                width: '100%', height: '250px', background: '#222', 
-                borderRadius: '12px', border: '2px dashed #444', 
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                overflow: 'hidden', cursor: 'pointer', position: 'relative'
-              }}>
-                {selectedImage ? (
-                  <img src={selectedImage} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : (
-                  <span style={{ color: '#666' }}>Tap to select photo</span>
-                )}
-                <input 
-                  type="file" 
-                  accept="image/*" 
-                  onChange={handleImageSelect} 
-                  style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer', zIndex: 5 }} 
-                />
+              <div style={{ width: '100%', aspectRatio: '1/1', borderRadius: '16px', overflow: 'hidden' }}>
+                 <img src={selectedImage} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               </div>
+            )}
+
+            {showCropper && (
+              <button 
+                onClick={() => setShowCropper(false)}
+                style={{ width: '100%', marginTop: '1rem', padding: '0.8rem', background: '#34a853', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer' }}
+              >
+                Apply Crop
+              </button>
             )}
 
             {!showCropper && (
               <>
                 <textarea 
-                  placeholder="Write a caption (optional)..."
                   value={newCaption}
                   onChange={e => setNewCaption(e.target.value)}
-                  style={{ width: '100%', background: '#222', border: '1px solid #444', borderRadius: '8px', color: 'white', padding: '1rem', marginTop: '1.5rem', height: '100px', fontFamily: 'inherit' }}
+                  placeholder="Tell the community about your ride..."
+                  style={{ width: '100%', background: '#222', border: '1px solid #333', borderRadius: '12px', color: 'white', padding: '1rem', marginTop: '1.5rem', minHeight: '80px', fontFamily: 'inherit' }}
                 />
-
-                <div style={{ marginTop: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-                  <input 
-                    type="checkbox" 
-                    id="allow-comments" 
-                    checked={allowComments} 
-                    onChange={e => setAllowComments(e.target.checked)}
-                    style={{ width: 'auto' }}
-                  />
-                  <label htmlFor="allow-comments" style={{ margin: 0, textTransform: 'none', fontSize: '0.9rem', color: '#ccc' }}>Allow community comments</label>
+                
+                <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                  <input type="checkbox" id="allow-comments" checked={allowComments} onChange={e => setAllowComments(e.target.checked)} style={{ width: 'auto' }} />
+                  <label htmlFor="allow-comments" style={{ margin: 0, textTransform: 'none', fontSize: '0.85rem', color: '#888' }}>Allow comments</label>
                 </div>
 
-                <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
-                  <button 
-                    onClick={() => setShowCreatePost(false)}
-                    style={{ flex: 1, padding: '1rem', background: '#333', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
-                  >
-                    Cancel
-                  </button>
-                  <button 
-                    onClick={handleCreatePost}
-                    disabled={isPosting || !selectedImage}
-                    style={{ flex: 2, padding: '1rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', opacity: (isPosting || !selectedImage) ? 0.5 : 1 }}
-                  >
-                    {isPosting ? 'Posting...' : 'Post to Community'}
+                <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
+                  <button onClick={() => { setShowCreatePost(false); setSelectedImage(null); }} style={{ flex: 1, padding: '1rem', background: '#333', color: 'white', border: 'none', borderRadius: '12px', cursor: 'pointer' }}>Cancel</button>
+                  <button onClick={handleCreatePost} disabled={isPosting || !selectedImage} style={{ flex: 2, padding: '1rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold', opacity: isPosting ? 0.5 : 1 }}>
+                    {isPosting ? 'Posting...' : 'Share Ride'}
                   </button>
                 </div>
               </>
@@ -511,29 +378,16 @@ const Feed: React.FC = () => {
         </div>
       )}
 
-      {activeCommentPost && (
-        <CommentModal 
-          postId={activeCommentPost.id} 
-          user={user} 
-          onClose={() => setActiveCommentPost(null)} 
-        />
-      )}
-
       {selectedFullPost && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.98)', zIndex: 4000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
           <button 
-            onClick={() => {
-              setSelectedFullPost(null);
-              if (location.search.includes('post=')) {
-                navigate('/feed', { replace: true });
-              }
-            }}
+            onClick={() => setSelectedFullPost(null)}
             style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', background: 'none', border: 'none', color: 'white', fontSize: '2rem', cursor: 'pointer', zIndex: 4001 }}
           >
             ✕
           </button>
           
-          <div style={{ width: '100%', maxWidth: '600px', padding: '1rem', maxHeight: '95vh', overflowY: 'auto' }}>
+          <div style={{ width: '100%', maxWidth: '600px', padding: '1rem' }}>
              <img src={selectedFullPost.imageUrl} alt="Full View" style={{ width: '100%', borderRadius: '24px', boxShadow: '0 20px 50px rgba(0,0,0,0.8)' }} />
              <div style={{ marginTop: '1.5rem', padding: '0 1rem' }}>
                 <p style={{ color: '#ccc', fontSize: '1.1rem', lineHeight: '1.6' }}>
@@ -541,32 +395,17 @@ const Feed: React.FC = () => {
                   {selectedFullPost.caption}
                 </p>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '1rem' }}>
-                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                      <button 
-                        onClick={() => handleLike(selectedFullPost)}
-                        style={{ background: 'none', border: 'none', color: selectedFullPost.likes.includes(user?.uid) ? '#ff6600' : 'white', fontSize: '1.8rem', cursor: 'pointer', padding: 0 }}
-                      >
-                        {selectedFullPost.likes.includes(user?.uid) ? '🧡' : '🤍'}
-                      </button>
-                      <span style={{ color: '#888', fontWeight: 'bold' }}>{selectedFullPost.likes.length}</span>
-                   </div>
-
+                   <span style={{ color: '#ff6600', fontWeight: 'bold' }}>🧡 {selectedFullPost.likes.length} Likes</span>
                    {selectedFullPost.tripData && (
                      <button 
                        onClick={() => handleLoadRoute(selectedFullPost)}
-                       style={{ background: 'rgba(255,102,0,0.1)', border: '1px solid #ff6600', color: '#ff6600', padding: '0.6rem 1.2rem', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                       style={{ background: 'rgba(255,102,0,0.1)', border: '1px solid #ff6600', color: '#ff6600', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
                      >
                        📍 Load Route
                      </button>
                    )}
-
                    {(selectedFullPost.commentsEnabled !== false) && (
-                     <button 
-                       onClick={() => { setActiveCommentPost(selectedFullPost); setSelectedFullPost(null); }} 
-                       style={{ background: '#333', border: 'none', color: 'white', padding: '0.6rem 1.2rem', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
-                     >
-                       💬 View Comments
-                     </button>
+                     <button onClick={() => { setActiveCommentPost(selectedFullPost); setSelectedFullPost(null); }} style={{ background: '#333', border: 'none', color: 'white', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>View Comments</button>
                    )}
                 </div>
              </div>
@@ -574,9 +413,19 @@ const Feed: React.FC = () => {
         </div>
       )}
 
+      {activeCommentPost && (
+        <CommentModal 
+          postId={activeCommentPost.id} 
+          postAuthorId={activeCommentPost.authorId}
+          user={user} 
+          onClose={() => setActiveCommentPost(null)} 
+        />
+      )}
+
       {showInstallTutorial && <InstallTutorial onClose={() => setShowInstallTutorial(false)} />}
       {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
-
+      
+      {/* Admin Edit Modal */}
       {adminEditingPost && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.9)', zIndex: 6000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
           <div style={{ background: '#1a1a1a', width: '100%', maxWidth: '450px', padding: '2rem', borderRadius: '24px', border: '1px solid #333' }}>

@@ -1841,9 +1841,9 @@ function MapHome() {
                 <Polyline 
                   path={activeRide.leaderTrail}
                   options={{
-                    strokeColor: '#34a853',
-                    strokeOpacity: 0.8,
-                    strokeWeight: 4,
+                    strokeColor: '#ff6600', // Orange trail for the leader
+                    strokeOpacity: 0.9,
+                    strokeWeight: 6, // Made slightly thicker for better visibility
                     icons: [{
                       icon: { path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW },
                       offset: '100%',
