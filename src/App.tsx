@@ -7,6 +7,7 @@ import ForumHub from './pages/ForumHub'
 import CommunityView from './pages/CommunityView'
 import ThreadView from './pages/ThreadView'
 import About from './pages/About'
+import Notifications from './pages/Notifications'
 
 function App() {
   return (
@@ -15,6 +16,7 @@ function App() {
         <Route path="/" element={<MapHome />} />
         <Route path="/how-it-works" element={<About />} />
         <Route path="/feed" element={<Feed />} />
+        <Route path="/notifications" element={<Notifications />} />
         <Route path="/profile/:username" element={<Profile />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/forum" element={<ForumHub />} />
