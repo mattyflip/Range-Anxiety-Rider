@@ -77,14 +77,6 @@ interface SavedBike {
   image?: string;
 }
 
-interface TrailPolyline {
-  id: string;
-  name: string;
-  type: string;
-  difficulty?: string;
-  points: google.maps.LatLngLiteral[];
-}
-
 const STANDARD_BIKES: SavedBike[] = [
   // --- High Performance E-Motos & Motorcycles ---
   { name: "Surron Light Bee X (2025)", specs: { voltage: 60, capacityAh: 40, motorWatts: 8000, bikeWeightLbs: 125 } },
@@ -97,225 +89,36 @@ const STANDARD_BIKES: SavedBike[] = [
   { name: "Stark Varg Alpha", specs: { voltage: 360, capacityAh: 18, motorWatts: 60000, bikeWeightLbs: 260 } },
   { name: "Zero SR/F", specs: { voltage: 102, capacityAh: 170, motorWatts: 82000, bikeWeightLbs: 500 } },
   { name: "Zero DSR/X", specs: { voltage: 102, capacityAh: 170, motorWatts: 75000, bikeWeightLbs: 545 } },
-  { name: "Zero FX", specs: { voltage: 102, capacityAh: 70, motorWatts: 34000, bikeWeightLbs: 289 } },
-  { name: "Energica Ego+ RS", specs: { voltage: 300, capacityAh: 72, motorWatts: 126000, bikeWeightLbs: 573 } },
-  { name: "Energica Experia", specs: { voltage: 300, capacityAh: 75, motorWatts: 75000, bikeWeightLbs: 573 } },
   { name: "LiveWire One", specs: { voltage: 350, capacityAh: 44, motorWatts: 75000, bikeWeightLbs: 562 } },
-  { name: "LiveWire S2 Del Mar", specs: { voltage: 102, capacityAh: 103, motorWatts: 63000, bikeWeightLbs: 436 } },
-  { name: "E Ride Pro SS", specs: { voltage: 72, capacityAh: 40, motorWatts: 12000, bikeWeightLbs: 139 } },
-  { name: "Cake Bukk", specs: { voltage: 72, capacityAh: 40, motorWatts: 16000, bikeWeightLbs: 196 } },
-  { name: "Cake Kalk OR", specs: { voltage: 52, capacityAh: 50, motorWatts: 11000, bikeWeightLbs: 165 } },
-  { name: "UBCO 2x2 Adventure", specs: { voltage: 50, capacityAh: 62, motorWatts: 2000, bikeWeightLbs: 156 } },
   { name: "Onyx RCR", specs: { voltage: 72, capacityAh: 41, motorWatts: 5000, bikeWeightLbs: 145 } },
 
   // --- Premium & Lightweight E-Bikes ---
   { name: "Specialized Turbo Levo (Gen 3)", specs: { voltage: 36, capacityAh: 19.4, motorWatts: 565, bikeWeightLbs: 50 } },
-  { name: "Specialized Turbo Levo SL 2", specs: { voltage: 48, capacityAh: 6.6, motorWatts: 320, bikeWeightLbs: 39 } },
   { name: "Specialized Turbo Vado 5.0", specs: { voltage: 36, capacityAh: 19.7, motorWatts: 565, bikeWeightLbs: 58 } },
-  { name: "Specialized Turbo Creo 2", specs: { voltage: 48, capacityAh: 6.6, motorWatts: 320, bikeWeightLbs: 30 } },
-  { name: "Specialized Turbo Porto", specs: { voltage: 36, capacityAh: 19.7, motorWatts: 565, bikeWeightLbs: 85 } },
   { name: "Trek Fuel EXe", specs: { voltage: 50, capacityAh: 7.2, motorWatts: 250, bikeWeightLbs: 41 } },
-  { name: "Trek Rail 9.9", specs: { voltage: 36, capacityAh: 20.8, motorWatts: 250, bikeWeightLbs: 49 } },
-  { name: "Trek Allant+ 9.9s", specs: { voltage: 36, capacityAh: 17.3, motorWatts: 250, bikeWeightLbs: 51 } },
-  { name: "Giant Trance X Advanced E+ Elite", specs: { voltage: 36, capacityAh: 11.1, motorWatts: 250, bikeWeightLbs: 42 } },
   { name: "Giant Reign E+", specs: { voltage: 36, capacityAh: 22.2, motorWatts: 250, bikeWeightLbs: 54 } },
-  { name: "Giant Revolt E+", specs: { voltage: 36, capacityAh: 13.8, motorWatts: 250, bikeWeightLbs: 40 } },
-  { name: "Santa Cruz Heckler", specs: { voltage: 36, capacityAh: 20, motorWatts: 250, bikeWeightLbs: 48 } },
-  { name: "Yeti 160E", specs: { voltage: 36, capacityAh: 17.5, motorWatts: 250, bikeWeightLbs: 52 } },
-  { name: "Gazelle Eclipse C380", specs: { voltage: 36, capacityAh: 20.8, motorWatts: 250, bikeWeightLbs: 59 } },
-  { name: "Tern Orox", specs: { voltage: 36, capacityAh: 22.2, motorWatts: 250, bikeWeightLbs: 74 } },
-  { name: "Tern GSD S00", specs: { voltage: 36, capacityAh: 13.8, motorWatts: 250, bikeWeightLbs: 82 } },
-  { name: "Canyon Strive:ON", specs: { voltage: 36, capacityAh: 20.8, motorWatts: 600, bikeWeightLbs: 53 } },
-  { name: "Orbea Rise LT", specs: { voltage: 36, capacityAh: 11.6, motorWatts: 250, bikeWeightLbs: 37 } },
-  { name: "Rocky Mountain Altitude Powerplay", specs: { voltage: 48, capacityAh: 15, motorWatts: 700, bikeWeightLbs: 54 } },
-  { name: "Cannondale Moterra Neo", specs: { voltage: 36, capacityAh: 20.8, motorWatts: 250, bikeWeightLbs: 55 } },
 
   // --- Commuter & Everyday Utility ---
   { name: "Aventon Aventure.3", specs: { voltage: 48, capacityAh: 15, motorWatts: 750, bikeWeightLbs: 77 } },
-  { name: "Aventon Level.2", specs: { voltage: 48, capacityAh: 14, motorWatts: 500, bikeWeightLbs: 62 } },
-  { name: "Aventon Soltera.2", specs: { voltage: 36, capacityAh: 9.6, motorWatts: 350, bikeWeightLbs: 46 } },
-  { name: "Aventon Abound", specs: { voltage: 48, capacityAh: 15, motorWatts: 750, bikeWeightLbs: 81 } },
   { name: "Rad Power Radster Road", specs: { voltage: 48, capacityAh: 15, motorWatts: 750, bikeWeightLbs: 75 } },
-  { name: "Rad Power RadWagon 5", specs: { voltage: 48, capacityAh: 15, motorWatts: 750, bikeWeightLbs: 86 } },
-  { name: "Rad Power RadRunner 3 Plus", specs: { voltage: 48, capacityAh: 14, motorWatts: 750, bikeWeightLbs: 75 } },
-  { name: "Rad Power RadExpand 5 Plus", specs: { voltage: 48, capacityAh: 15, motorWatts: 750, bikeWeightLbs: 72 } },
   { name: "Lectric XP 3.0", specs: { voltage: 48, capacityAh: 10.4, motorWatts: 500, bikeWeightLbs: 64 } },
-  { name: "Lectric ONE", specs: { voltage: 48, capacityAh: 14, motorWatts: 750, bikeWeightLbs: 55 } },
-  { name: "Lectric XPeak", specs: { voltage: 48, capacityAh: 14, motorWatts: 750, bikeWeightLbs: 71 } },
   { name: "Ride1Up Revv 1 DRT", specs: { voltage: 52, capacityAh: 20, motorWatts: 750, bikeWeightLbs: 93 } },
-  { name: "Ride1Up Portola", specs: { voltage: 48, capacityAh: 13.4, motorWatts: 750, bikeWeightLbs: 59 } },
-  { name: "Juiced Scrambler FS", specs: { voltage: 52, capacityAh: 19.2, motorWatts: 750, bikeWeightLbs: 78 } },
-  { name: "Juiced Scorpion X2", specs: { voltage: 52, capacityAh: 15.6, motorWatts: 1000, bikeWeightLbs: 77 } },
   { name: "Super73-S2 Legacy", specs: { voltage: 48, capacityAh: 20, motorWatts: 750, bikeWeightLbs: 73 } },
-  { name: "Super73-R Adventure", specs: { voltage: 48, capacityAh: 20, motorWatts: 1000, bikeWeightLbs: 88 } },
-  { name: "Himiway A7 Pro", specs: { voltage: 48, capacityAh: 15, motorWatts: 500, bikeWeightLbs: 65 } },
-  { name: "Engwe X26", specs: { voltage: 48, capacityAh: 29.2, motorWatts: 1000, bikeWeightLbs: 90 } },
-  { name: "Velotric Nomad 1", specs: { voltage: 48, capacityAh: 14.7, motorWatts: 750, bikeWeightLbs: 72 } },
 
-  // --- Specialized & High Torque ---
-  { name: "Wired Freedom", specs: { voltage: 60, capacityAh: 20, motorWatts: 2400, bikeWeightLbs: 88 } },
-  { name: "Solar Eclipse 2.0", specs: { voltage: 72, capacityAh: 45, motorWatts: 10000, bikeWeightLbs: 130 } },
-  { name: "Roadrunner Pro", specs: { voltage: 60, capacityAh: 30, motorWatts: 4000, bikeWeightLbs: 105 } },
-  { name: "QuietKat Apex Pro", specs: { voltage: 48, capacityAh: 16, motorWatts: 1000, bikeWeightLbs: 70 } },
-  { name: "Bakcou Mule", specs: { voltage: 48, capacityAh: 21, motorWatts: 1000, bikeWeightLbs: 68 } },
-  { name: "VanMoof S5", specs: { voltage: 42, capacityAh: 11, motorWatts: 250, bikeWeightLbs: 50 } },
-  { name: "Cowboy Cruiser", specs: { voltage: 36, capacityAh: 10, motorWatts: 250, bikeWeightLbs: 42 } },
-  { name: "Propella 7S v4", specs: { voltage: 36, capacityAh: 7, motorWatts: 250, bikeWeightLbs: 37 } },
-  { name: "Tenways CGO600 Pro", specs: { voltage: 36, capacityAh: 10, motorWatts: 250, bikeWeightLbs: 35 } },
-  { name: "Blix Dubbel", specs: { voltage: 48, capacityAh: 14, motorWatts: 750, bikeWeightLbs: 70 } },
-  { name: "Riese & Müller Load 75", specs: { voltage: 36, capacityAh: 27.7, motorWatts: 250, bikeWeightLbs: 84 } },
-  { name: "Flyer L885 (Radio Flyer)", specs: { voltage: 48, capacityAh: 15, motorWatts: 500, bikeWeightLbs: 73 } },
-  { name: "Biktrix Juggernaut", specs: { voltage: 52, capacityAh: 17.5, motorWatts: 1000, bikeWeightLbs: 75 } },
-  { name: "Luna Sur-Ron X", specs: { voltage: 60, capacityAh: 32, motorWatts: 6000, bikeWeightLbs: 110 } },
-  { name: "Fiido Titan", specs: { voltage: 48, capacityAh: 14.5, motorWatts: 750, bikeWeightLbs: 65 } },
-  { name: "Heybike Mars 2.0", specs: { voltage: 48, capacityAh: 12.5, motorWatts: 750, bikeWeightLbs: 66 } },
-  { name: "Gotrax Tundra", specs: { voltage: 48, capacityAh: 20, motorWatts: 750, bikeWeightLbs: 75 } },
-  { name: "Mokwheel Basalt", specs: { voltage: 48, capacityAh: 19.6, motorWatts: 750, bikeWeightLbs: 79 } },
-  { name: "Denago Commute 1", specs: { voltage: 48, capacityAh: 13.6, motorWatts: 500, bikeWeightLbs: 62 } },
-  { name: "Wallke H6", specs: { voltage: 48, capacityAh: 35, motorWatts: 750, bikeWeightLbs: 90 } },
-
-  // --- Utility & Value ---
-  { name: "Bafang BBSHD Custom Build", specs: { voltage: 52, capacityAh: 17.5, motorWatts: 1000, bikeWeightLbs: 65 } },
-  { name: "Vvolt Centauri", specs: { voltage: 36, capacityAh: 10.4, motorWatts: 250, bikeWeightLbs: 48 } },
-  { name: "Priority Current", specs: { voltage: 48, capacityAh: 10.4, motorWatts: 500, bikeWeightLbs: 53 } },
-  { name: "FLX Baby Maker II", specs: { voltage: 36, capacityAh: 10, motorWatts: 350, bikeWeightLbs: 35 } },
-  { name: "Ariel Rider Kepler", specs: { voltage: 52, capacityAh: 20, motorWatts: 1000, bikeWeightLbs: 73 } },
-  { name: "Ariel Rider Grizzly", specs: { voltage: 52, capacityAh: 35, motorWatts: 2000, bikeWeightLbs: 105 } },
-  { name: "Ride1Up LMT'D", specs: { voltage: 48, capacityAh: 14, motorWatts: 750, bikeWeightLbs: 53 } },
-  { name: "Sondors MadMod (2024)", specs: { voltage: 48, capacityAh: 21, motorWatts: 750, bikeWeightLbs: 80 } },
-  { name: "Wing Freedom 2", specs: { voltage: 36, capacityAh: 14, motorWatts: 350, bikeWeightLbs: 39 } },
-  { name: "Eurowheel X1", specs: { voltage: 48, capacityAh: 15, motorWatts: 750, bikeWeightLbs: 65 } },
-  { name: "Trojan Horse", specs: { voltage: 72, capacityAh: 30, motorWatts: 5000, bikeWeightLbs: 135 } },
-  { name: "Monday Motorbikes Anza", specs: { voltage: 48, capacityAh: 14, motorWatts: 750, bikeWeightLbs: 65 } },
-  { name: "Super73-Z1", specs: { voltage: 36, capacityAh: 11.6, motorWatts: 500, bikeWeightLbs: 56 } },
-  { name: "Lectric XP Lite 2.0", specs: { voltage: 48, capacityAh: 7.8, motorWatts: 300, bikeWeightLbs: 47 } },
-  { name: "Aventon Sinch.2", specs: { voltage: 48, capacityAh: 14, motorWatts: 500, bikeWeightLbs: 68 } },
-  { name: "Eunorau Fat-HS", specs: { voltage: 48, capacityAh: 14, motorWatts: 1000, bikeWeightLbs: 80 } },
-  { name: "Magicycle Deer", specs: { voltage: 52, capacityAh: 20, motorWatts: 750, bikeWeightLbs: 92 } },
-  { name: "KBO Breeze", specs: { voltage: 48, capacityAh: 16, motorWatts: 500, bikeWeightLbs: 62 } },
-  { name: "Himiway Zebra", specs: { voltage: 48, capacityAh: 20, motorWatts: 750, bikeWeightLbs: 79 } },
-  { name: "Rad Power RadRover 6 Plus", specs: { voltage: 48, capacityAh: 14, motorWatts: 750, bikeWeightLbs: 73 } },
-
-  // --- ELECTRIC SCOOTERS: Commuter & Portable ---
+  // --- ELECTRIC SCOOTERS ---
   { name: "Segway Ninebot Max G2", specs: { voltage: 36, capacityAh: 15.3, motorWatts: 450, bikeWeightLbs: 53 } },
-  { name: "Segway Ninebot Max G30P", specs: { voltage: 36, capacityAh: 15.3, motorWatts: 350, bikeWeightLbs: 42 } },
-  { name: "NIU KQi3 Max", specs: { voltage: 48, capacityAh: 13, motorWatts: 450, bikeWeightLbs: 46 } },
-  { name: "NIU KQi3 Pro", specs: { voltage: 48, capacityAh: 10, motorWatts: 350, bikeWeightLbs: 44 } },
-  { name: "NIU KQi Air (Carbon)", specs: { voltage: 48, capacityAh: 9.4, motorWatts: 350, bikeWeightLbs: 26 } },
-  { name: "Apollo Go", specs: { voltage: 36, capacityAh: 15, motorWatts: 700, bikeWeightLbs: 46 } },
-  { name: "Apollo Air 2024", specs: { voltage: 36, capacityAh: 10, motorWatts: 350, bikeWeightLbs: 38 } },
-  { name: "VMAX VX2 Pro GT", specs: { voltage: 48, capacityAh: 16.5, motorWatts: 500, bikeWeightLbs: 45 } },
-  { name: "Fluid Mosquito", specs: { voltage: 48, capacityAh: 9.6, motorWatts: 500, bikeWeightLbs: 29 } },
-  { name: "Unagi Model One Voyager", specs: { voltage: 36, capacityAh: 10, motorWatts: 500, bikeWeightLbs: 29 } },
-  { name: "Gotrax G5", specs: { voltage: 48, capacityAh: 9.6, motorWatts: 500, bikeWeightLbs: 44 } },
-  { name: "Hiboy S2 Pro", specs: { voltage: 36, capacityAh: 11.6, motorWatts: 500, bikeWeightLbs: 36 } },
-  { name: "Xiaomi Scooter 4 Pro", specs: { voltage: 36, capacityAh: 12.4, motorWatts: 350, bikeWeightLbs: 37 } },
-  { name: "Segway F2 Pro", specs: { voltage: 36, capacityAh: 12.8, motorWatts: 450, bikeWeightLbs: 41 } },
-  { name: "Inmotion S1F", specs: { voltage: 54, capacityAh: 12.5, motorWatts: 500, bikeWeightLbs: 53 } },
-  { name: "Navee S65", specs: { voltage: 48, capacityAh: 12.7, motorWatts: 500, bikeWeightLbs: 54 } },
-  { name: "Okai Neon Ultra", specs: { voltage: 48, capacityAh: 14.7, motorWatts: 500, bikeWeightLbs: 52 } },
-  { name: "TurboAnt X7 Max", specs: { voltage: 36, capacityAh: 10, motorWatts: 350, bikeWeightLbs: 34 } },
-  { name: "Pure Advance Plus", specs: { voltage: 37, capacityAh: 12, motorWatts: 500, bikeWeightLbs: 35 } },
-
-  // --- ELECTRIC SCOOTERS: Performance & Long Range ---
-  { name: "EMOVE Cruiser S", specs: { voltage: 52, capacityAh: 30, motorWatts: 1000, bikeWeightLbs: 52 } },
   { name: "Apollo City Pro 2024", specs: { voltage: 48, capacityAh: 20, motorWatts: 1000, bikeWeightLbs: 65 } },
-  { name: "Apollo Phantom V3", specs: { voltage: 52, capacityAh: 23, motorWatts: 1200, bikeWeightLbs: 77 } },
-  { name: "Kaabo Mantis King GT", specs: { voltage: 60, capacityAh: 24, motorWatts: 1100, bikeWeightLbs: 74 } },
-  { name: "Kaabo Mantis 10 Lite", specs: { voltage: 48, capacityAh: 13, motorWatts: 800, bikeWeightLbs: 55 } },
-  { name: "Vsett 10+ (25.6Ah)", specs: { voltage: 60, capacityAh: 25.6, motorWatts: 1400, bikeWeightLbs: 79 } },
-  { name: "Vsett 9+ (21Ah)", specs: { voltage: 48, capacityAh: 21, motorWatts: 650, bikeWeightLbs: 55 } },
-  { name: "Dualtron Victor Luxury", specs: { voltage: 60, capacityAh: 24, motorWatts: 4000, bikeWeightLbs: 73 } },
-  { name: "Dualtron Eagle Pro", specs: { voltage: 60, capacityAh: 22.4, motorWatts: 3600, bikeWeightLbs: 66 } },
-  { name: "Nami Klima Max", specs: { voltage: 60, capacityAh: 30, motorWatts: 1000, bikeWeightLbs: 79 } },
-  { name: "Inmotion Climber", specs: { voltage: 36, capacityAh: 14.7, motorWatts: 900, bikeWeightLbs: 46 } },
-  { name: "Segway GT1", specs: { voltage: 48, capacityAh: 20, motorWatts: 1500, bikeWeightLbs: 101 } },
-  { name: "Solar P1 3.0", specs: { voltage: 52, capacityAh: 18, motorWatts: 1200, bikeWeightLbs: 57 } },
-  { name: "Varla Eagle One V2.0", specs: { voltage: 52, capacityAh: 20.8, motorWatts: 1000, bikeWeightLbs: 82 } },
-  { name: "Teverun Blade Mini Pro", specs: { voltage: 48, capacityAh: 15.6, motorWatts: 500, bikeWeightLbs: 55 } },
-  { name: "Yume Swift", specs: { voltage: 48, capacityAh: 22.5, motorWatts: 1200, bikeWeightLbs: 60 } },
-  { name: "Kukirin G2 Master", specs: { voltage: 52, capacityAh: 20.8, motorWatts: 1000, bikeWeightLbs: 73 } },
-  { name: "Joyor S10-S", specs: { voltage: 60, capacityAh: 18, motorWatts: 1000, bikeWeightLbs: 59 } },
-  { name: "Nanrobot D6+", specs: { voltage: 52, capacityAh: 26, motorWatts: 1000, bikeWeightLbs: 77 } },
-  { name: "Nanrobot Lightning", specs: { voltage: 48, capacityAh: 18, motorWatts: 800, bikeWeightLbs: 65 } },
-
-  // --- HYPER SCOOTERS: Ultra Performance ---
-  { name: "Dualtron X Limited", specs: { voltage: 84, capacityAh: 60, motorWatts: 2000, bikeWeightLbs: 183 } },
   { name: "Dualtron Thunder 3", specs: { voltage: 72, capacityAh: 40, motorWatts: 2500, bikeWeightLbs: 126 } },
-  { name: "Dualtron Storm Limited", specs: { voltage: 84, capacityAh: 45, motorWatts: 2500, bikeWeightLbs: 111 } },
-  { name: "Kaabo Wolf King GTR", specs: { voltage: 72, capacityAh: 35, motorWatts: 2000, bikeWeightLbs: 139 } },
-  { name: "Kaabo Wolf Warrior 11 GT", specs: { voltage: 60, capacityAh: 35, motorWatts: 1200, bikeWeightLbs: 115 } },
   { name: "Nami Burn-E 2 Max", specs: { voltage: 72, capacityAh: 40, motorWatts: 1500, bikeWeightLbs: 103 } },
-  { name: "Inmotion RS", specs: { voltage: 72, capacityAh: 40, motorWatts: 2000, bikeWeightLbs: 128 } },
-  { name: "Teverun Fighter Supreme 7260R", specs: { voltage: 72, capacityAh: 60, motorWatts: 2500, bikeWeightLbs: 121 } },
-  { name: "Segway GT2", specs: { voltage: 52, capacityAh: 30, motorWatts: 1500, bikeWeightLbs: 116 } },
-  { name: "Apollo Pro 2024", specs: { voltage: 52, capacityAh: 30, motorWatts: 1200, bikeWeightLbs: 93 } },
-  { name: "RoadRunner RX7", specs: { voltage: 72, capacityAh: 40, motorWatts: 1800, bikeWeightLbs: 130 } },
-  { name: "Inokim OXO", specs: { voltage: 60, capacityAh: 25.6, motorWatts: 1000, bikeWeightLbs: 74 } },
-  { name: "Vsett 11+ Super 72", specs: { voltage: 72, capacityAh: 35, motorWatts: 2000, bikeWeightLbs: 128 } },
-  { name: "Weped Sonic X", specs: { voltage: 84, capacityAh: 50, motorWatts: 2500, bikeWeightLbs: 110 } },
-  { name: "Rion Thrust", specs: { voltage: 84, capacityAh: 30, motorWatts: 2500, bikeWeightLbs: 64 } },
-  { name: "Slack Core 920R", specs: { voltage: 72, capacityAh: 45, motorWatts: 2500, bikeWeightLbs: 105 } },
-  { name: "Bronco Xtreme 11", specs: { voltage: 72, capacityAh: 35, motorWatts: 2500, bikeWeightLbs: 106 } },
-  { name: "Yume X11+", specs: { voltage: 60, capacityAh: 31.5, motorWatts: 3000, bikeWeightLbs: 110 } },
-  { name: "Solar P1 Pro", specs: { voltage: 60, capacityAh: 26, motorWatts: 2000, bikeWeightLbs: 85 } },
-  { name: "Teverun Fighter Eleven+", specs: { voltage: 60, capacityAh: 35, motorWatts: 2500, bikeWeightLbs: 84 } },
+  { name: "Inmotion RS", specs: { voltage: 72, capacityAh: 40, motorWatts: 2000, bikeWeightLbs: 128 } }
+];
 
-  // --- ELECTRIC SCOOTERS: Off-Road & Specialized ---
-  { name: "Bakcou Timberwolf", specs: { voltage: 48, capacityAh: 21, motorWatts: 750, bikeWeightLbs: 85 } },
-  { name: "Gotrax GX3", specs: { voltage: 54, capacityAh: 25, motorWatts: 1000, bikeWeightLbs: 94 } },
-  { name: "Kukirin G3 Pro", specs: { voltage: 52, capacityAh: 23, motorWatts: 1200, bikeWeightLbs: 88 } },
-  { name: "OKAI Panther", specs: { voltage: 60, capacityAh: 25, motorWatts: 1000, bikeWeightLbs: 92 } },
-  { name: "Dualtron City", specs: { voltage: 60, capacityAh: 25, motorWatts: 4000, bikeWeightLbs: 91 } },
-  { name: "Solar EQ", specs: { voltage: 48, capacityAh: 20, motorWatts: 1000, bikeWeightLbs: 55 } },
-  { name: "Teverun Fighter Mini", specs: { voltage: 52, capacityAh: 20, motorWatts: 1000, bikeWeightLbs: 65 } },
-  { name: "Nami Burn-E 2 (Standard)", specs: { voltage: 72, capacityAh: 28, motorWatts: 1000, bikeWeightLbs: 100 } },
-  { name: "Yume M11", specs: { voltage: 60, capacityAh: 31.5, motorWatts: 3500, bikeWeightLbs: 110 } },
-  { name: "Dualtron Spider 2", specs: { voltage: 60, capacityAh: 24, motorWatts: 3900, bikeWeightLbs: 57 } },
-
-  // --- SEATED SCOOTERS & INTERNATIONAL ---
-  { name: "EMOVE RoadRunner Pro", specs: { voltage: 60, capacityAh: 30, motorWatts: 2000, bikeWeightLbs: 105 } },
-  { name: "EMOVE RoadRunner SE", specs: { voltage: 48, capacityAh: 15, motorWatts: 500, bikeWeightLbs: 55 } },
-  { name: "Ather 450 Apex", specs: { voltage: 51, capacityAh: 73, motorWatts: 7000, bikeWeightLbs: 238 } },
-  { name: "Ola S1 Pro Gen 3", specs: { voltage: 72, capacityAh: 55, motorWatts: 11000, bikeWeightLbs: 275 } },
-  { name: "Bajaj Chetak Premium", specs: { voltage: 50, capacityAh: 60, motorWatts: 4000, bikeWeightLbs: 290 } },
-  { name: "TVS iQube ST", specs: { voltage: 52, capacityAh: 35, motorWatts: 4400, bikeWeightLbs: 291 } },
-  { name: "Vespa Elettrica 70", specs: { voltage: 48, capacityAh: 86, motorWatts: 3600, bikeWeightLbs: 286 } },
-  { name: "Razor EcoSmart Metro", specs: { voltage: 36, capacityAh: 7, motorWatts: 500, bikeWeightLbs: 67 } },
-  { name: "Fiido Q1S", specs: { voltage: 36, capacityAh: 10, motorWatts: 250, bikeWeightLbs: 38 } },
-  { name: "Cycleboard Rover", specs: { voltage: 60, capacityAh: 20, motorWatts: 1800, bikeWeightLbs: 83 } },
-
-  // --- ADDITIONAL TOP MODELS ---
-  { name: "Kaabo Mantis King GT", specs: { voltage: 60, capacityAh: 24, motorWatts: 1100, bikeWeightLbs: 74 } },
-  { name: "Teverun Fighter Supreme 7260R", specs: { voltage: 72, capacityAh: 60, motorWatts: 2500, bikeWeightLbs: 121 } },
-  { name: "Solar P1 Pro", specs: { voltage: 60, capacityAh: 26, motorWatts: 2000, bikeWeightLbs: 85 } },
-  { name: "Apollo Dash", specs: { voltage: 36, capacityAh: 10, motorWatts: 350, bikeWeightLbs: 30 } },
-  { name: "NIU KQi2 Pro", specs: { voltage: 36, capacityAh: 7.6, motorWatts: 300, bikeWeightLbs: 40 } },
-  { name: "Gotrax G4", specs: { voltage: 36, capacityAh: 10.4, motorWatts: 350, bikeWeightLbs: 37 } },
-  { name: "Gotrax GX1", specs: { voltage: 48, capacityAh: 15, motorWatts: 600, bikeWeightLbs: 76 } },
-  { name: "VMAX VX5 Pro", specs: { voltage: 36, capacityAh: 7.8, motorWatts: 400, bikeWeightLbs: 35 } },
-  { name: "TurboAnt M10 Lite", specs: { voltage: 36, capacityAh: 7.5, motorWatts: 350, bikeWeightLbs: 31 } },
-  { name: "isinwheel S9 Pro", specs: { voltage: 36, capacityAh: 7.5, motorWatts: 350, bikeWeightLbs: 34 } },
-  { name: "WERHY H7 Pro", specs: { voltage: 36, capacityAh: 10, motorWatts: 350, bikeWeightLbs: 33 } },
-  { name: "Acer AES015 Series 5", specs: { voltage: 36, capacityAh: 15, motorWatts: 350, bikeWeightLbs: 41 } },
-  { name: "OKAI Neon", specs: { voltage: 36, capacityAh: 9.8, motorWatts: 250, bikeWeightLbs: 35 } },
-  { name: "Xiaomi Scooter 4 Ultra", specs: { voltage: 48, capacityAh: 12, motorWatts: 500, bikeWeightLbs: 54 } },
-  { name: "Segway P100S", specs: { voltage: 48, capacityAh: 23, motorWatts: 650, bikeWeightLbs: 72 } },
-  { name: "Apollo Phantom V2", specs: { voltage: 52, capacityAh: 23, motorWatts: 1200, bikeWeightLbs: 77 } },
-  { name: "Dualtron Spider", specs: { voltage: 60, capacityAh: 17.5, motorWatts: 3000, bikeWeightLbs: 44 } },
-  { name: "Kaabo Wolf Warrior X", specs: { voltage: 60, capacityAh: 21, motorWatts: 1100, bikeWeightLbs: 75 } },
-  { name: "Inmotion L9", specs: { voltage: 54, capacityAh: 12.5, motorWatts: 500, bikeWeightLbs: 53 } },
-  { name: "Joyor Y6-S", specs: { voltage: 48, capacityAh: 18, motorWatts: 500, bikeWeightLbs: 52 } },
-  { name: "Yume S10", specs: { voltage: 48, capacityAh: 21, motorWatts: 1000, bikeWeightLbs: 60 } },
-  { name: "Solar P1", specs: { voltage: 52, capacityAh: 18, motorWatts: 1200, bikeWeightLbs: 57 } }
-  ];
 interface POI {
   id: string;
   name: string;
   address: string;
   position: google.maps.LatLngLiteral;
   type: string;
-  details?: string;
 }
 
 const center = { lat: 40.7128, lng: -74.0060 };
@@ -332,29 +135,27 @@ function MapHome() {
   const metricsCardRef = useRef<HTMLDivElement>(null);
 
   const [unitSystem, setUnitSystem] = useState<'imperial' | 'metric'>('imperial');
-
   const [specs, setSpecs] = useState<BikeSpecs>({ voltage: 48, capacityAh: 15, motorWatts: 750, bikeWeightLbs: 65 });
   const [riderWeightLbs, setRiderWeightLbs] = useState<number | ''>(200);
-  
-  // Advanced Factors
   const [ambientTempF, setAmbientTempF] = useState<number | ''>(70);
   const [tireType, setTireType] = useState<'road' | 'knobby'>('road');
-  const [tirePressurePsi, setTirePressurePsi] = useState<number | ''>(''); // Empty assumes optimal
+  const [tirePressurePsi, setTirePressurePsi] = useState<number | ''>(''); 
 
   const [trip, setTrip] = useState<TripDetails>({ origin: '', destination: '', waypoints: [], returnWaypoints: [] });
-  const [controlType, setControlType] = useState<'switch' | 'pas'>('pas');
   const [mode, setMode] = useState<'eco' | 'normal' | 'sport'>('normal');
-  const [pasLevel, setPasLevel] = useState<number>(3); // 1-5 default
-
-  const [ridingStyle, setRidingStyle] = useState<'relaxed' | 'aggressive'>('relaxed');        
+  const [pasLevel, setPasLevel] = useState<number>(3);
+  const [ridingStyle, setRidingStyle] = useState<'relaxed' | 'aggressive'>('relaxed');
+  const [controlType, setControlType] = useState<'switch' | 'pas'>('pas');
   const [isRoundTrip, setIsRoundTrip] = useState(false);
   const [isCustomReturn, setIsCustomReturn] = useState(false);
   const [targetSpeedMph, setTargetSpeedMph] = useState<number | ''>(20);
+  
   const [batteryInputMode, setBatteryInputMode] = useState<'percent' | 'voltage'>('percent'); 
   const [capacityInputMode, setCapacityInputMode] = useState<'ah' | 'wh'>('ah');
   const [startBattery, setStartBattery] = useState<number | ''>(100);
   const [startVoltage, setStartVoltage] = useState<number | ''>(54.6);
-  const [response, setResponse] = useState<google.maps.DirectionsResult | null>(null);        
+  
+  const [response, setResponse] = useState<google.maps.DirectionsResult | null>(null);
   const [selectedRouteIndex, setSelectedRouteIndex] = useState(0);
   const [metrics, setMetrics] = useState<RouteMetrics | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -389,124 +190,7 @@ function MapHome() {
   const [pendingBikeAutoSelect, setPendingBikeAutoSelect] = useState(false);
   const [settingsDirty, setSettingsDirty] = useState(true);
 
-  // Trails State
-  const [showTrails, setShowTrails] = useState(false);
-  const [trailPolylines, setTrailPolylines] = useState<TrailPolyline[]>([]);
-
-  // Navigation State
-  const [isNavigating, setIsNavigating] = useState(false);
-  const [voiceEnabled, setVoiceEnabled] = useState(true);
-  const [currentLegIndex, setCurrentLegIndex] = useState(0);
-  const [currentStepIndex, setCurrentStepIndex] = useState(0);
-  const [distToNextStep, setNextStepDist] = useState<string | null>(null);
-  const [hasAnnouncedNextStep, setHasAnnouncedNextStep] = useState(false);
-
-  const speak = (text: string) => {
-    if (voiceEnabled && 'speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 1.0;
-      utterance.pitch = 1.0;
-      window.speechSynthesis.speak(utterance);
-    }
-  };
-
-  const startNavigation = () => {
-    if (!response) return;
-    setIsNavigating(true);
-    setCurrentLegIndex(0);
-    setCurrentStepIndex(0);
-    setHasAnnouncedNextStep(false);
-    setShowMobileMenu(false);
-    
-    const firstStep = response.routes[selectedRouteIndex].legs[0].steps[0];
-    const instruction = firstStep.instructions.replace(/<[^>]*>?/gm, '');
-    speak(`Starting trip. ${instruction}`);
-    
-    if (mapRef.current) {
-      mapRef.current.setZoom(18);
-      mapRef.current.setTilt(45);
-    }
-  };
-
-  const stopNavigation = () => {
-    setIsNavigating(false);
-    if (mapRef.current) {
-      mapRef.current.setTilt(0);
-    }
-  };
-
-  // Tracking for Turn-by-Turn Navigation
-  useEffect(() => {
-    if (!isNavigating || !response) return;
-
-    let watchId: number;
-    if (navigator.geolocation) {
-      watchId = navigator.geolocation.watchPosition((pos) => {
-        const userLoc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        const heading = pos.coords.heading; // 0-360 degrees
-        
-        const route = response.routes[selectedRouteIndex];
-        const leg = route.legs[currentLegIndex];
-        const step = leg.steps[currentStepIndex];
-
-        if (mapRef.current) {
-           mapRef.current.panTo(userLoc);
-           if (heading !== null && heading !== undefined) {
-             mapRef.current.setHeading(heading);
-           }
-        }
-
-        const endLoc = { lat: step.end_location.lat(), lng: step.end_location.lng() };
-        const distToTurnMeters = google.maps.geometry.spherical.computeDistanceBetween(
-          new google.maps.LatLng(userLoc.lat, userLoc.lng),
-          new google.maps.LatLng(endLoc.lat, endLoc.lng)
-        );
-
-        const distFeet = distToTurnMeters * 3.28084;
-        if (unitSystem === 'imperial') {
-          if (distFeet > 528) setNextStepDist(`${(distFeet / 5280).toFixed(1)} mi`);
-          else setNextStepDist(`${Math.round(distFeet)} ft`);
-        } else {
-          if (distToTurnMeters > 1000) setNextStepDist(`${(distToTurnMeters / 1000).toFixed(1)} km`);
-          else setNextStepDist(`${Math.round(distToTurnMeters)} m`);
-        }
-
-        // Voice Guidance Logic: Announce when getting close to the turn
-        if (distFeet < 300 && !hasAnnouncedNextStep) {
-          const instruction = step.instructions.replace(/<[^>]*>?/gm, '');
-          speak(`In 300 feet, ${instruction}`);
-          setHasAnnouncedNextStep(true);
-        }
-
-        // Step Advancement: Move to next instruction when within 60 feet
-        if (distFeet < 60) {
-          if (currentStepIndex < leg.steps.length - 1) {
-            setCurrentStepIndex(currentStepIndex + 1);
-            setHasAnnouncedNextStep(false);
-            const nextStep = leg.steps[currentStepIndex + 1];
-            speak(nextStep.instructions.replace(/<[^>]*>?/gm, ''));
-          } else if (currentLegIndex < route.legs.length - 1) {
-            setCurrentLegIndex(currentLegIndex + 1);
-            setCurrentStepIndex(0);
-            setHasAnnouncedNextStep(false);
-          } else {
-            speak("You have arrived at your destination.");
-            stopNavigation();
-          }
-        }
-      }, (err) => console.error("Nav tracking error", err), { 
-        enableHighAccuracy: true,
-        maximumAge: 0,
-        timeout: 10000
-      });
-    }
-
-    return () => {
-      if (watchId !== undefined) navigator.geolocation.clearWatch(watchId);
-    };
-  }, [isNavigating, response, currentLegIndex, currentStepIndex, hasAnnouncedNextStep, selectedRouteIndex, unitSystem]);
-
+  // Group Rides
   const [activeRide, setActiveRide] = useState<GroupRide | null>(null);
   const [publicRides, setPublicRides] = useState<GroupRide[]>([]);
   const [selectedPublicRide, setSelectedPublicRide] = useState<GroupRide | null>(null);
@@ -518,247 +202,56 @@ function MapHome() {
   const [lastUploadedLocation, setLastUploadedLocation] = useState<google.maps.LatLngLiteral | null>(null);
   const lastUploadedLocRef = useRef<google.maps.LatLngLiteral | null>(null);
 
-  // Sync Public Rides
+  // Auth State
   useEffect(() => {
-    if (!user || !isPro) return;
-    const q = query(collection(db, "group_rides"), where("isPublic", "==", true), where("status", "==", "active"));
-    const unsubscribe = onSnapshot(q, (snap) => {
-      const rides: GroupRide[] = [];
-      const userLat = center.lat;
-      const userLng = center.lng;
-
-      snap.forEach(docSnap => {
-        const data = docSnap.data();
-        // Haversine formula for 20-mile radius
-        const R = 3958.8; // Miles
-        const dLat = (data.startLat - userLat) * Math.PI / 180;
-        const dLon = (data.startLng - userLng) * Math.PI / 180;
-        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                  Math.cos(userLat * Math.PI / 180) * Math.cos(data.startLat * Math.PI / 180) * 
-                  Math.sin(dLon/2) * Math.sin(dLon/2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-        const distance = R * c;
-
-        if (distance <= 20) {
-          rides.push({ id: docSnap.id, ...data } as GroupRide);
-        }
-      });
-      setPublicRides(rides);
-    });
-    return () => unsubscribe();
-  }, [user, isPro, center]);
-
-  // Sync Participants and Auto-End Logic
-  useEffect(() => {
-    if (!activeRide || !user) return;
-    const q = collection(db, `group_rides/${activeRide.id}/participants`);
-    const unsubscribe = onSnapshot(q, (snap) => {
-      const parts: Participant[] = [];
-      snap.forEach(docSnap => parts.push(docSnap.data() as Participant));
-      setRideParticipants(parts);
-
-      // Auto-End Check: Only the host monitors this
-      if (user.uid === activeRide.creatorId && parts.length > 0 && response) {
-        const dest = response.routes[0].legs[0].end_location;
-        const everyoneReached = parts.every(p => {
-          const dist = Math.sqrt(Math.pow(p.lat - dest.lat(), 2) + Math.pow(p.lng - dest.lng(), 2));
-          return dist < 0.001; // Approx 100 meters
-        });
-
-        if (everyoneReached && activeRide.status === 'active') {
-          console.log("Everyone reached destination. Ending ride...");
-          endRide();
-        }
-      }
-    });
-
-    // Listen to the RIDE itself to detect when it ends or if leader changes
-    const rideUnsub = onSnapshot(doc(db, "group_rides", activeRide.id), (snap) => {
-      if (snap.exists()) {
-        const data = snap.data();
-        if (data.status === 'offline') {
-          alert(`The ride has ended. Thank you for joining ${activeRide.name}!`);
-          setActiveRide(null);
-          setRideParticipants([]);
-        } else {
-          setActiveRide({ id: snap.id, ...data } as GroupRide);
-        }
-      }
-    });
-
-    // Host Only: Listen for Join Requests
-    let requestsUnsub: (() => void) | undefined;
-    if (user.uid === activeRide.creatorId) {
-      const qReq = collection(db, `group_rides/${activeRide.id}/requests`);
-      requestsUnsub = onSnapshot(qReq, (snap) => {
-        const reqs: any[] = [];
-        snap.forEach(docSnap => reqs.push({ id: docSnap.id, ...docSnap.data() }));
-        setJoinRequests(reqs);
-      });
-    }
-
-    return () => { unsubscribe(); rideUnsub(); if (requestsUnsub) requestsUnsub(); };
-  }, [activeRide?.id, user?.uid, response]);
-
-  const handleJoinRequest = async (request: any, action: 'accept' | 'decline') => {
-    if (!activeRide) return;
-    try {
-      if (action === 'accept') {
-        // Move to participants
-        await setDoc(doc(db, `group_rides/${activeRide.id}/participants`, request.userId), {
-          userId: request.userId,
-          name: request.name,
-          lat: request.lat || center.lat,
-          lng: request.lng || center.lng,
-          lastUpdatedAt: Date.now()
-        });
-      }
-      // Delete request in both cases
-      await deleteDoc(doc(db, `group_rides/${activeRide.id}/requests`, request.id));
-    } catch (e) { console.error("Join request handling failed", e); }
-  };
-
-  // Upload Location every 15s - ONLY ACTIVE DURING A RIDE
-  useEffect(() => {
-    if (!activeRide || !user) {
-      lastUploadedLocRef.current = null;
-      return;
-    }
-
-    const updateLocation = async () => {
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(async (pos) => {
-          const newLoc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-          const lastLoc = lastUploadedLocRef.current;
-          
-          const hasMoved = !lastLoc || 
-            Math.abs(newLoc.lat - lastLoc.lat) > 0.0001 || 
-            Math.abs(newLoc.lng - lastLoc.lng) > 0.0001;
-
-          if (hasMoved) {
-            try {
-              // Standard location update
-              await setDoc(doc(db, `group_rides/${activeRide.id}/participants`, user.uid), {
-                userId: user.uid,
-                name: username || user.email?.split('@')[0] || "Rider",
-                lat: newLoc.lat,
-                lng: newLoc.lng,
-                lastUpdatedAt: Date.now()
-              }, { merge: true });
-
-              // If user is the leader, add to the trail
-              if (activeRide.leaderId === user.uid) {
-                await updateDoc(doc(db, "group_rides", activeRide.id), {
-                  leaderTrail: arrayUnion(newLoc)
-                });
-              }
-
-              lastUploadedLocRef.current = newLoc;
-              setLastUploadedLocation(newLoc);
-            } catch (e) { console.error("Location upload failed:", e); }
-          }
-        });
-      }
-    };
-
-    updateLocation();
-    const interval = setInterval(updateLocation, 15000);
-    return () => clearInterval(interval);
-  }, [activeRide?.id, user?.uid, username]);
-
-  useEffect(() => {
-    let unsubscribeSnapshot: (() => void) | undefined;
-
-    const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       setAuthInitialized(true);
-
       if (currentUser) {
-        // Set up real-time listener for the user document
-        unsubscribeSnapshot = onSnapshot(doc(db, "users", currentUser.uid), (docSnap) => {
-          if (docSnap.exists()) {
-            const data = docSnap.data();
+        try {
+          const userDoc = await getDoc(doc(db, "users", currentUser.uid));
+          if (userDoc.exists()) {
+            const data = userDoc.data();
             setUserData(data);
             setIsPro(data.isPro || false);
             setIsHostTier(data.isHostTier || false);
             setHostTierExpiresAt(data.hostTierExpiresAt?.toMillis() || null);
             setUsername(data.username || '');
-            
-            // Auto-sync/Self-heal: Prohibit spaces in usernames
-            if (data.username && data.username.includes(' ')) {
-              const fixedName = data.username.replace(/\s+/g, '_');
-              updateDoc(docSnap.ref, {
-                username: fixedName,
-                usernameLowercase: fixedName.toLowerCase()
-              }).catch(e => console.error("Username space fix failed", e));
-              setUsername(fixedName);
-            } else if (data.username && !data.usernameLowercase) {
-              updateDoc(docSnap.ref, {
-                usernameLowercase: data.username.toLowerCase()
-              }).catch(e => console.error("Lowercase sync failed", e));
-            }
-
             if (data.bikes) setSavedBikes(data.bikes);
-          } else {
-            // Document doesn't exist, create it
-            const newUser = { 
-              email: currentUser.email, 
-              isPro: false, 
-              createdAt: new Date(), 
-              uid: currentUser.uid 
-            };
-            setDoc(doc(db, "users", currentUser.uid), newUser);
           }
-        }, (err) => {
-          console.error("Firestore snapshot error:", err);
-        });
+        } catch (e) { console.error("Firestore error:", e); }
       } else {
-        // User logged out
         setUserData(null);
         setIsPro(false);
         setIsHostTier(false);
-        setHostTierExpiresAt(null);
-        setActiveRide(null);
-        setRideParticipants([]);
         const local = localStorage.getItem('ebike-saved-bikes');
         if (local) setSavedBikes(JSON.parse(local));
-        
-        if (unsubscribeSnapshot) unsubscribeSnapshot();
       }
     });
-
-    return () => {
-      unsubscribeAuth();
-      if (unsubscribeSnapshot) unsubscribeSnapshot();
-    };
+    return () => unsubscribe();
   }, []);
 
-  // Onboarding Popup Logic
+  // Onboarding
   useEffect(() => {
     if (authInitialized) {
       const hasVisited = localStorage.getItem('ebike_portal_visited');
-      if (!hasVisited && !user) {
-        setShowWelcomeModal(true);
-      }
-      // Mark as visited if they are logged in OR have the flag
-      if (user || hasVisited) {
-        localStorage.setItem('ebike_portal_visited', 'true');
-      }
+      if (!hasVisited && !user) setShowWelcomeModal(true);
+      if (user || hasVisited) localStorage.setItem('ebike_portal_visited', 'true');
     }
   }, [authInitialized, user]);
 
-  // Default Map to Home State
+  // Default Map to Home
   useEffect(() => {
     if (userData?.homeRegion && mapRef.current) {
       const coords = STATE_COORDINATES[userData.homeRegion];
       if (coords) {
         mapRef.current.panTo(coords);
-        mapRef.current.setZoom(8); // Zoom out a bit to show the state area
+        mapRef.current.setZoom(8);
       }
     }
   }, [userData?.homeRegion]);
 
-  // Auto-scroll to stats when opening menu with results
+  // Auto-scroll to Stats
   useEffect(() => {
     if (showMobileMenu && metrics && metricsCardRef.current) {
       setTimeout(() => {
@@ -767,274 +260,54 @@ function MapHome() {
     }
   }, [showMobileMenu, metrics]);
 
-  // Load Route from External Source (Community Feed)
+  // Load Route from External
   useEffect(() => {
     const savedRoute = localStorage.getItem('ebike_load_route');
     if (savedRoute) {
       try {
         const data = JSON.parse(savedRoute);
-        setTrip({
-          origin: data.origin || "",
-          destination: data.destination || "",
-          waypoints: data.waypoints || [],
-          returnWaypoints: data.returnWaypoints || []
-        });
+        setTrip({ origin: data.origin || "", destination: data.destination || "", waypoints: data.waypoints || [], returnWaypoints: data.returnWaypoints || [] });
         setIsRoundTrip(data.isRoundTrip || false);
         setIsCustomReturn(data.isCustomReturn || false);
-        
-        // Open Trip Settings automatically
         setShowMobileMenu(true);
-        // Flag for bike auto-selection
         setPendingBikeAutoSelect(true);
-
-        // Remove from storage so it doesn't reload on every refresh
         localStorage.removeItem('ebike_load_route');
-        
-        // Trigger calculation if origin and destination are present
-        if (data.origin && data.destination) {
-          setTimeout(() => {
-            handleCalculate();
-          }, 1000);
-        }
-      } catch (e) {
-        console.error("Failed to load external route", e);
-      }
+        if (data.origin && data.destination) setTimeout(() => handleCalculate(), 1000);
+      } catch (e) { console.error("Failed to load external route", e); }
     }
   }, []);
 
-  // Intelligent Bike Auto-Selection after Loading Route
+  // Bike Auto-Selection
   useEffect(() => {
     if (pendingBikeAutoSelect && authInitialized) {
       if (savedBikes.length > 0) {
-        // Automatically load the first bike from their garage
         loadBike(savedBikes[0]);
         setPendingBikeAutoSelect(false);
-        // Trigger calculation with the new bike specs
-        setTimeout(() => {
-          handleCalculate();
-        }, 500);
+        setTimeout(() => handleCalculate(), 500);
       } else if (authInitialized) {
-        // If they have no bikes or aren't logged in, just clear the flag
         setPendingBikeAutoSelect(false);
       }
     }
-  }, [pendingBikeAutoSelect, savedBikes, authInitialized, user]);
+  }, [pendingBikeAutoSelect, savedBikes, authInitialized]);
 
-  // Generate Map Snapshot for Share Card
+  // Map Snapshot
   useEffect(() => {
     if (!response || !response.routes[selectedRouteIndex]) return;
-
     const polyline = response.routes[selectedRouteIndex].overview_polyline;
     const points = (polyline as any).points || polyline;
-    
-    // Use our server-side proxy to avoid CORS issues with html-to-image
     const proxyUrl = `/api/static-map?polyline=${encodeURIComponent(points)}`;
-
     const fetchSnapshot = async () => {
       try {
         const resp = await fetch(proxyUrl);
-        if (!resp.ok) throw new Error("Proxy failed");
+        if (!resp.ok) return;
         const blob = await resp.blob();
         const reader = new FileReader();
-        reader.onloadend = () => {
-          setMapSnapshot(reader.result as string);
-        };
+        reader.onloadend = () => setMapSnapshot(reader.result as string);
         reader.readAsDataURL(blob);
-      } catch (e) {
-        console.error("Static Map fetch failed", e);
-      }
+      } catch (e) { console.error("Static Map fetch failed", e); }
     };
-
     fetchSnapshot();
   }, [response, selectedRouteIndex]);
-
-  const handleUpgrade = async (tier: 'pro' | 'host' = 'pro') => {
-    console.log(`Initiating upgrade to ${tier}...`);
-    ReactGA.event({ category: "Conversion", action: "Initiate Upgrade", label: tier });
-    if (!user) { setShowAuthModal(true); return; }
-    try {
-      const resp = await axios.post('/api/create-checkout-session', { userId: user.uid, email: user.email, tier });
-      if (resp.data.url) { window.location.href = resp.data.url; }
-      else { throw new Error("No checkout URL returned from server."); }
-    } catch (err: any) {
-      console.error("Upgrade error:", err);
-      setError(`Checkout Error: ${err.response?.data?.error || err.message}`);
-    }
-  };
-
-  const endRide = async () => {
-    if (!user || !activeRide) return;
-    try {
-      await setDoc(doc(db, "group_rides", activeRide.id), { status: 'offline' }, { merge: true });
-      setActiveRide(null);
-      setRideParticipants([]);
-    } catch (e) { console.error("End ride failed:", e); }
-  };
-
-  const endAllPublicRides = async () => {
-    if (!user || user.email?.toLowerCase() !== 'mattyfliptv@gmail.com') return;
-    if (!window.confirm("Are you sure you want to end ALL public group rides?")) return;
-    
-    try {
-      const q = query(collection(db, "group_rides"), where("isPublic", "==", true), where("status", "==", "active"));
-      const snap = await getDocs(q);
-      const batchPromises = snap.docs.map(rideDoc => 
-        setDoc(doc(db, "group_rides", rideDoc.id), { status: 'offline' }, { merge: true })
-      );
-      await Promise.all(batchPromises);
-      alert(`Successfully ended ${snap.size} public rides.`);
-    } catch (e) { console.error("End all rides failed:", e); setError("Failed to end all public rides."); }
-  };
-
-  const createRide = async () => {
-    setRideError(null);
-    if (!user) { setShowAuthModal(true); return; }
-    if (!isHostTier) { setRideError("Only HOST TIER users can create rides."); return; }
-    
-    // Enforce single active ride
-    const activeCheckQ = query(collection(db, "group_rides"), where("creatorId", "==", user.uid), where("status", "==", "active"));
-    const activeSnap = await getDocs(activeCheckQ);
-    if (!activeSnap.empty) {
-      setRideError("You already have an active ride. Please end it before starting a new one.");
-      return;
-    }
-
-    if (!groupRideName) { setRideError("Please name your ride."); return; }
-    
-    try {
-      ReactGA.event({ category: "Engagement", action: "Create Group Ride", label: groupRideName });
-      const pin = Math.floor(1000 + Math.random() * 9000).toString();
-      const rideData = {
-        name: groupRideName,
-        isPublic: isPublicRide,
-        pin,
-        creatorId: user.uid,
-        createdAt: serverTimestamp(),
-        origin: trip.origin || "Current Location",
-        startLat: center.lat,
-        startLng: center.lng,
-        status: 'active'
-      };
-
-      const rideRef = await addDoc(collection(db, "group_rides"), rideData);
-      setActiveRide({ id: rideRef.id, ...rideData } as any);
-      setGroupRideName('');
-      await setDoc(doc(db, `group_rides/${rideRef.id}/participants`, user.uid), {
-        userId: user.uid,
-        name: username || "Host",
-        lat: center.lat,
-        lng: center.lng,
-        lastUpdatedAt: Date.now()
-      });
-    } catch (e: any) { 
-      setRideError(`Create ride failed: ${e.message}`); 
-    }
-  };
-
-  const joinRide = async (rideId?: string) => {
-    setRideError(null);
-    if (!user) { setShowAuthModal(true); return; }
-    if (!isPro) { setRideError("You must be at least a PRO user to join group rides."); return; }
-
-    try {
-      let rideDoc;
-      let targetRideId = rideId;
-      if (targetRideId) {
-        rideDoc = await getDoc(doc(db, "group_rides", targetRideId));
-      } else {
-        if (!joinPin) return;
-        const q = query(collection(db, "group_rides"), where("pin", "==", joinPin), where("status", "==", "active"));
-        const snap = await getDocs(q);
-        if (!snap.empty) {
-          rideDoc = snap.docs[0];
-          targetRideId = rideDoc.id;
-        }
-      }
-
-      if (rideDoc && rideDoc.exists() && targetRideId) {
-        const data = rideDoc.data();
-        
-        // Check if already a participant
-        const partSnap = await getDoc(doc(db, `group_rides/${targetRideId}/participants`, user.uid));
-        if (partSnap.exists()) {
-           setActiveRide({ id: targetRideId, ...data } as any);
-           setJoinPin('');
-           return;
-        }
-
-        // Submit Join Request with Rating Info
-        await setDoc(doc(db, `group_rides/${targetRideId}/requests`, user.uid), {
-          userId: user.uid,
-          name: username || user.email?.split('@')[0] || "Rider",
-          rating: userData?.averageRating || 0,
-          lat: center.lat,
-          lng: center.lng,
-          requestedAt: Date.now()
-        });
-
-        alert("Join request sent to the host! You'll be added once they approve you.");
-        setJoinPin('');
-      } else {
-        setRideError("Ride not found or invalid PIN.");
-      }
-    } catch (e) { console.error("Join request failed:", e); setRideError("Failed to send join request."); }
-  };
-
-  const setLeader = async (participantId: string) => {
-    if (!user || !activeRide || user.uid !== activeRide.creatorId) return;
-    try {
-      await updateDoc(doc(db, "group_rides", activeRide.id), { leaderId: participantId, leaderTrail: [] });
-    } catch (e) { console.error("Set leader failed:", e); }
-  };
-
-  const leaveRide = async () => {
-    if (!user || !activeRide) return;
-    try {
-      await deleteDoc(doc(db, `group_rides/${activeRide.id}/participants`, user.uid));
-      setActiveRide(null);
-      setRideParticipants([]);
-    } catch (e) { console.error("Leave ride failed:", e); }
-  };
-
-  const saveCurrentBike = async () => {
-    if (!user) {
-      setError("You must be signed in to save bikes to your library.");
-      setShowAuthModal(true);
-      return;
-    }
-    if (!newBikeName) return;
-    ReactGA.event({ category: "Engagement", action: "Save Bike", label: newBikeName });
-    const newBike = { 
-      id: Date.now().toString(), // Unique ID for reliable updates/matching
-      name: newBikeName, 
-      specs 
-    };
-    const updated = [...savedBikes, newBike];
-    setSavedBikes(updated);
-    
-    // 1. Save to personal list (cloud)
-    try { 
-      await setDoc(doc(db, "users", user.uid), { bikes: updated }, { merge: true }); 
-    } catch (e) { 
-      console.error("Cloud save failed:", e); 
-      setError("Failed to sync bike to the cloud."); 
-    }
-
-    // 2. Submit to Global Review List for Admin
-    try {
-      await addDoc(collection(db, "bike_submissions"), {
-        ...newBike,
-        submittedBy: user.email || "Unknown",
-        submittedAt: new Date().toISOString(),
-        status: "pending"
-      });
-    } catch (e) {
-      console.error("Global submission failed:", e);
-    }
-
-    setNewBikeName('');
-    alert(`"${newBikeName}" saved to your list and submitted for official review!`);
-  };
 
   const getBatteryLevels = (v: number) => {
     if (v >= 72) return { min: 60, max: 84 };
@@ -1045,115 +318,57 @@ function MapHome() {
     return { min: v * 0.8, max: v * 1.15 };
   };
 
-  const convertBattery = (mode: 'percent' | 'voltage', target: 'percent' | 'voltage') => {
-    if (mode === target) return;
+  const handleToggleBatteryMode = (newMode: 'percent' | 'voltage') => {
+    if (newMode === batteryInputMode) return;
     const { min, max } = getBatteryLevels(Number(specs.voltage));
-    if (target === 'voltage') {
-      // Percent to Voltage
+    if (newMode === 'voltage') {
       const p = Number(startBattery) / 100;
       const v = min + (p * (max - min));
       setStartVoltage(Number(v.toFixed(1)));
     } else {
-      // Voltage to Percent
       const v = Number(startVoltage);
       const p = ((v - min) / (max - min)) * 100;
       setStartBattery(Math.min(100, Math.max(0, Number(p.toFixed(0)))));
     }
-  };
-
-  const handleToggleBatteryMode = (newMode: 'percent' | 'voltage') => {
-    if (newMode === batteryInputMode) return;
-    convertBattery(batteryInputMode, newMode);
     setBatteryInputMode(newMode);
   };
 
+  const markDirty = () => { if (!settingsDirty) setSettingsDirty(true); };
+
+  const handleCalculate = () => { 
+    if (!trip.origin || !trip.destination) return; 
+    setIsLoading(true); setResponse(null); setMetrics(null); setError(null); setPois([]); 
+    setSettingsDirty(false); 
+  };
+
   const loadBike = (bike: SavedBike) => {
-    ReactGA.event({ category: "Engagement", action: "Load Bike", label: bike.name });
     setSpecs(bike.specs);
     setBikeSearchQuery(bike.name);
     setShowBikeResults(false);
-    if (bike.specs.voltage) {
-      setStartVoltage(getBatteryLevels(Number(bike.specs.voltage)).max);
-    }
-    // Simple heuristic to set control type
-    if (Number(bike.specs.voltage) >= 60 || (bike.name && (bike.name.includes("Onyx") || bike.name.includes("Sur-Ron") || bike.name.includes("Talaria")))) {
-      setControlType('switch');
-    } else {
-      setControlType('pas');
-    }
-  };
-
-  const onMapLoad = useCallback((map: google.maps.Map) => {
-    mapRef.current = map;
-  }, []);
-
-  const onMapClick = useCallback((e: google.maps.MapMouseEvent | google.maps.IconMouseEvent) => {
-    if ('placeId' in e && e.placeId) {
-      e.stop(); // Prevent default Google popup
-      if (!mapRef.current) return;
-      const service = new google.maps.places.PlacesService(mapRef.current);
-      service.getDetails({ placeId: e.placeId }, (place, status) => {
-        if (status === google.maps.places.PlacesServiceStatus.OK && place && place.geometry && place.geometry.location) {
-          const poi: POI = {
-            id: place.place_id || Math.random().toString(),
-            name: place.name || 'Selected Place',
-            address: place.formatted_address || '',
-            position: { lat: place.geometry.location.lat(), lng: place.geometry.location.lng() },
-            type: 'store'
-          };
-          setSelectedPoi(poi);
-          if (mapRef.current) {
-            mapRef.current.panTo(poi.position);
-          }
-        }
-      });
-    }
-  }, []);
-
-  const moveStop = (index: number, direction: 'up' | 'down') => {
-    setTrip(prev => {
-      const all = [prev.origin, ...prev.waypoints, prev.destination].filter(wp => wp.trim() !== "");
-      const newIndex = direction === 'up' ? index - 1 : index + 1;
-      if (newIndex < 0 || newIndex >= all.length) return prev;
-      
-      const temp = all[index];
-      all[index] = all[newIndex];
-      all[newIndex] = temp;
-      
-      return {
-        ...prev,
-        origin: all[0] || "",
-        waypoints: all.slice(1, all.length - 1),
-        destination: all.length > 1 ? all[all.length - 1] : ""
-      };
-    });
-    setSettingsDirty(true);
-    setResponse(null);
-  };
-
-  const removeStop = (index: number) => {
-    setTrip(prev => {
-      const all = [prev.origin, ...prev.waypoints, prev.destination].filter(wp => wp.trim() !== "");
-      all.splice(index, 1);
-      return {
-        ...prev,
-        origin: all[0] || "",
-        waypoints: all.slice(1, all.length - 1),
-        destination: all.length > 1 ? all[all.length - 1] : ""
-      };
-    });
-    setSettingsDirty(true);
-    setResponse(null);
+    if (bike.specs.voltage) setStartVoltage(getBatteryLevels(Number(bike.specs.voltage)).max);
+    setControlType(Number(bike.specs.voltage) >= 60 || bike.name.includes("Surron") || bike.name.includes("Talaria") || bike.name.includes("Onyx") ? 'switch' : 'pas');
+    markDirty();
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setTrip(prev => ({ ...prev, [name]: value }));
+    markDirty();
   };
 
   const handleSpecChange = (name: keyof BikeSpecs, value: string) => {
     const val = value === '' ? '' : parseFloat(value);
     setSpecs(prev => ({ ...prev, [name]: isNaN(Number(val)) ? '' : val }));
+    markDirty();
+  };
+
+  const useCurrentLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition((pos) => {
+        setTrip(prev => ({ ...prev, origin: `${pos.coords.latitude},${pos.coords.longitude}` }));
+        markDirty();
+      });
+    }
   };
 
   const directionsCallback = (result: google.maps.DirectionsResult | null, status: google.maps.DirectionsStatus) => {
@@ -1161,1641 +376,245 @@ function MapHome() {
       setResponse(result); 
       setSelectedRouteIndex(0);
       calculateMetrics(result, 0); 
-    }
-    else { console.error('Directions error:', status); setError(`Google Maps Directions Error: ${status}`); setIsLoading(false); }
-  };
-
-  const calculateBearing = (start: {lat: number, lng: number}, end: {lat: number, lng: number}) => {
-    const startLat = (start.lat * Math.PI) / 180;
-    const startLng = (start.lng * Math.PI) / 180;
-    const endLat = (end.lat * Math.PI) / 180;
-    const endLng = (end.lng * Math.PI) / 180;
-    const y = Math.sin(endLng - startLng) * Math.cos(endLat);
-    const x = Math.cos(startLat) * Math.sin(endLat) - Math.sin(startLat) * Math.cos(endLat) * Math.cos(endLng - startLng);
-    const bearing = (Math.atan2(y, x) * 180) / Math.PI;
-    return (bearing + 360) % 360;
+    } else { setError(`Maps Error: ${status}`); setIsLoading(false); }
   };
 
   const calculateMetrics = async (result: google.maps.DirectionsResult, routeIndex: number = 0) => {
     try {
-      let totalDistMeters = 0;
       const route = result.routes[routeIndex];
-      route.legs.forEach(leg => {
-        totalDistMeters += (leg.distance?.value || 0);
-      });
-
+      let totalDistMeters = 0;
+      route.legs.forEach(leg => totalDistMeters += (leg.distance?.value || 0));
       const distMiles = totalDistMeters / 1609.34;
       const path = route.overview_path.map(p => ({ lat: p.lat(), lng: p.lng() }));
-      const routeBearing = calculateBearing(path[0], path[path.length - 1]);
-
+      
       let gainFeet = 0;
       let lossFeet = 0;
-      try { 
-        // Use encoded polyline for high-resolution elevation sampling (100+ points)
-        let samplePath = route.overview_path;
-        // If path is too dense, sample it down to ~300 points to keep encoded string short
-        if (samplePath.length > 300) {
-          const skip = Math.ceil(samplePath.length / 300);
-          samplePath = samplePath.filter((_, i) => i % skip === 0 || i === samplePath.length - 1);
-        }
-        const encodedPath = google.maps.geometry.encoding.encodePath(samplePath);
-        const elevResp = await axios.post('/api/elevation', { encodedPath, samples: 100 }); 
-        
-        if (elevResp.data && typeof elevResp.data.gain === 'number') {
-          gainFeet = elevResp.data.gain;
-          lossFeet = elevResp.data.loss || 0; 
-        } else {
-          console.warn("Elevation API returned unexpected data:", elevResp.data);
-        }
-      } catch (e: any) { 
-        const errorData = e.response?.data;
-        const errorMessage = errorData?.message || e.message;
-        console.error("Elevation API call failed:", errorMessage); 
-        if (errorData?.error?.includes("REQUEST_DENIED") || e.message?.includes("referer restrictions")) {
-           alert(`Google Elevation API Error: Referer restrictions or disabled API. Please ensure the Elevation API is enabled and use a backend-dedicated API key in Vercel.`);
-        }
-      }
+      try {
+        const encodedPath = google.maps.geometry.encoding.encodePath(route.overview_path);
+        const elevResp = await axios.post('/api/elevation', { encodedPath, samples: 100 });
+        if (elevResp.data?.gain) { gainFeet = elevResp.data.gain; lossFeet = elevResp.data.loss || 0; }
+      } catch (e) { console.warn("Elevation API failed", e); }
 
-      let headwindMph = 0;
-      let windSpeed = 0;
-      let windDir = 0;
+      let windSpeed = 0, windDir = 0, headwindMph = 0;
       try {
         const weatherResp = await axios.get(`/api/weather?lat=${path[0].lat}&lng=${path[0].lng}`);
         windSpeed = weatherResp.data.wind_speed;
         windDir = weatherResp.data.wind_deg;
-        const angleDiff = (windDir - routeBearing + 360) % 360;
-        headwindMph = windSpeed * Math.cos((angleDiff * Math.PI) / 180);
+        // Simple bearing calculation
+        const y = Math.sin((path[path.length-1].lng - path[0].lng) * Math.PI / 180) * Math.cos(path[path.length-1].lat * Math.PI / 180);
+        const x = Math.cos(path[0].lat * Math.PI / 180) * Math.sin(path[path.length-1].lat * Math.PI / 180) - Math.sin(path[0].lat * Math.PI / 180) * Math.cos(path[path.length-1].lat * Math.PI / 180) * Math.cos((path[path.length-1].lng - path[0].lng) * Math.PI / 180);
+        const routeBearing = (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+        headwindMph = windSpeed * Math.cos((windDir - routeBearing) * Math.PI / 180);
       } catch (e) { console.warn("Weather API failed", e); }
 
-      // --- PHYSICS-BASED MODEL (Internally uses Imperial/SI) ---
-      const isMetric = unitSystem === 'metric';
-      
-      // Convert inputs to Imperial if they are provided in Metric
-      const bikeWeightLbs = isMetric ? (Number(specs.bikeWeightLbs) * 2.20462) : Number(specs.bikeWeightLbs);
-      const riderWeightLbsActual = isMetric ? (Number(riderWeightLbs) * 2.20462) : Number(riderWeightLbs);
-      const targetSpeedMphActual = isMetric ? (Number(targetSpeedMph) * 0.621371) : Number(targetSpeedMph);
-      const tempF = isMetric ? (Number(ambientTempF) * 9/5 + 32) : Number(ambientTempF);
-
-      const massKg = (bikeWeightLbs + riderWeightLbsActual) * 0.453592;
-      const velocityMps = targetSpeedMphActual * 0.44704;
-      
-      let Crr = tireType === 'road' ? 0.007 : 0.015;
-      if (tirePressurePsi !== '' && tirePressurePsi < 35) {
-        Crr += (35 - tirePressurePsi) / 5 * 0.002;
-      }
+      // Core Physics Calculation
+      const bikeWeight = Number(specs.bikeWeightLbs), riderWeight = Number(riderWeightLbs), targetSpeed = Number(targetSpeedMph);
+      const massKg = (bikeWeight + riderWeight) * 0.453592;
+      const velocityMps = targetSpeed * 0.44704;
+      const Crr = tireType === 'road' ? 0.007 : 0.015;
       const ForceRolling = Crr * massKg * 9.81;
-
-      const tempC = (tempF - 32) * 5 / 9;
-      const rho = 1.225 * (288.15 / (273.15 + tempC));
-      const CdA = 0.55;
-      const relativeVelocityMps = Math.max(0.1, velocityMps + (headwindMph * 0.44704));
-      const ForceDrag = 0.5 * rho * CdA * Math.pow(relativeVelocityMps, 2);
-
-      const gainMeters = gainFeet * 0.3048;
-      let thermalEfficiency = 1.0;
-      if (tempF < 60) thermalEfficiency -= (60 - tempF) * 0.003;
+      const ForceDrag = 0.5 * 1.2 * 0.55 * Math.pow(Math.max(0.1, velocityMps + headwindMph * 0.44704), 2);
       
-      let motorEfficiency = 0.80;
-      let modeStyleMultiplier = 1.0;
-      let humanPowerWatts = 0;
-
-      if (controlType === 'switch') {
-        if (mode === 'eco') { motorEfficiency = 0.85; modeStyleMultiplier = 0.95; }
-        else if (mode === 'sport') { motorEfficiency = 0.75; modeStyleMultiplier = 1.25; }
-      } else {
-        humanPowerWatts = Math.max(0, 150 - (pasLevel - 1) * 37.5);
-        motorEfficiency = 0.82;
-      }
-      
-      const combinedEfficiency = motorEfficiency * thermalEfficiency;
-      const WorkClimbJoules = massKg * 9.81 * gainMeters;
-      const WhClimb = (WorkClimbJoules / 3600) / combinedEfficiency;
-
-      const TotalPowerWatts = (ForceRolling + ForceDrag) * velocityMps;
-      const MotorPowerWatts = Math.max(0, TotalPowerWatts - humanPowerWatts);
-      
-      const WhPerMileFlat = (MotorPowerWatts / velocityMps) * (1609.34 / 3600) / combinedEfficiency;
-
-      const styleMultiplier = ridingStyle === 'aggressive' ? 1.2 : 1.0;
-      const estimatedWh = (distMiles * WhPerMileFlat * styleMultiplier * modeStyleMultiplier) + WhClimb;
-      
-      const totalWhRaw = (capacityInputMode === 'ah') ? (Number(specs.voltage) * Number(specs.capacityAh)) : Number(specs.capacityAh);
+      const motorEff = controlType === 'switch' ? (mode === 'eco' ? 0.85 : 0.80) : 0.82;
+      const totalWhRaw = capacityInputMode === 'ah' ? (Number(specs.voltage) * Number(specs.capacityAh)) : Number(specs.capacityAh);
       const totalWhUsable = totalWhRaw * 0.92;
       
-      const minV = getBatteryLevels(Number(specs.voltage)).min;
-      const maxV = getBatteryLevels(Number(specs.voltage)).max;
-      
-      const startWh = (batteryInputMode === 'percent')
-        ? (totalWhUsable * (Number(startBattery) / 100))
-        : (totalWhUsable * ((Number(startVoltage) - minV) / (maxV - minV)));
+      const TotalPowerWatts = (ForceRolling + ForceDrag) * velocityMps;
+      const MotorPowerWatts = Math.max(0, TotalPowerWatts - (controlType === 'pas' ? (150 - (pasLevel-1)*30) : 0));
+      const WhPerMile = (MotorPowerWatts / velocityMps) * (1609.34 / 3600) / motorEff;
+      const estimatedWh = (distMiles * WhPerMile) + ((massKg * 9.81 * gainFeet * 0.3048) / 3600 / motorEff);
 
+      const minV = getBatteryLevels(Number(specs.voltage)).min, maxV = getBatteryLevels(Number(specs.voltage)).max;
+      const startWh = batteryInputMode === 'percent' ? (totalWhUsable * (Number(startBattery)/100)) : (totalWhUsable * ((Number(startVoltage)-minV)/(maxV-minV)));
       const batteryPercentRemaining = ((startWh - estimatedWh) / totalWhUsable) * 100;
 
       let deathPoint: google.maps.LatLngLiteral | undefined = undefined;
       if (batteryPercentRemaining <= 0) {
-        // Approximate point of depletion along the path
         const avgWhPerMile = estimatedWh / distMiles;
         let cumulativeWh = 0;
-        let prevPoint = path[0];
-        
         for (let i = 1; i < path.length; i++) {
-          const p = path[i];
-          // Use Geometry library (already loaded in LIBRARIES)
-          const segmentDistMeters = google.maps.geometry.spherical.computeDistanceBetween(
-            new google.maps.LatLng(prevPoint.lat, prevPoint.lng),
-            new google.maps.LatLng(p.lat, p.lng)
-          );
-          const segmentDistMiles = segmentDistMeters / 1609.34;
-          cumulativeWh += segmentDistMiles * avgWhPerMile;
-          
-          if (cumulativeWh >= startWh) {
-            deathPoint = p;
-            break;
-          }
-          prevPoint = p;
+          const d = google.maps.geometry.spherical.computeDistanceBetween(new google.maps.LatLng(path[i-1]), new google.maps.LatLng(path[i])) / 1609.34;
+          cumulativeWh += d * avgWhPerMile;
+          if (cumulativeWh >= startWh) { deathPoint = path[i]; break; }
         }
       }
 
       setMetrics({
         distanceMiles: distMiles,
-        durationMin: distMiles / (targetSpeedMphActual || 15) * 60,
-        elevationGainFeet: gainFeet,
-        elevationLossFeet: lossFeet,
-        estimatedWh,
-        batteryPercentUsed: Math.max(0, batteryPercentRemaining),
-        recommendedSpeedMph: mode === 'eco' || pasLevel <= 2 ? 18 : 25,
-        deathPoint,
+        durationMin: distMiles / (targetSpeed || 15) * 60,
+        elevationGainFeet: gainFeet, elevationLossFeet: lossFeet,
+        estimatedWh, batteryPercentUsed: Math.max(0, batteryPercentRemaining),
+        recommendedSpeedMph: 20, deathPoint,
         windConditions: { speed: windSpeed, direction: windDir, headwindComponent: headwindMph }
       });
-      ReactGA.event({ category: "Engagement", action: "Calculation Success", label: `${distMiles.toFixed(1)} miles` });
       setIsLoading(false);
-    } catch (e: any) { console.error("Calculation error", e); setError("Failed to calculate metrics."); setIsLoading(false); }
-  };
-
-  // Clean up settingsDirty logic - moved to direct handlers to prevent focus loss
-  const markDirty = () => { if (!settingsDirty) setSettingsDirty(true); };
-
-  const handleCalculate = () => { 
-    if (!trip.origin || !trip.destination) return; 
-    ReactGA.event({ category: "Engagement", action: "Calculate Route", label: `${trip.origin} to ${trip.destination}` });
-    setIsLoading(true); setResponse(null); setMetrics(null); setError(null); setPois([]); 
-    setSettingsDirty(false); 
-  };
-  const useCurrentLocation = () => { if (navigator.geolocation) { navigator.geolocation.getCurrentPosition((pos) => { 
-    setTrip(prev => ({ ...prev, origin: `${pos.coords.latitude},${pos.coords.longitude}` })); 
-    markDirty();
-  }); } };
-
-  const searchPOIs = async (category: string) => {
-    if (!isLoaded || !mapRef.current) return;
-
-    if (category === 'charging' && !isPro && !isHostTier) {
-      alert("Charging station discovery is a PRO feature. Upgrade to unlock!");
-      handleUpgrade('pro');
-      return;
-    }
-
-    setPoiCategory(category);
-    
-    if (category === 'charging') {
-      try {
-        let resp;
-        if (response) {
-          const path = response.routes[0].overview_path.map(p => ({ lat: p.lat(), lng: p.lng() }));
-          resp = await axios.post('/api/charging', { path, category });
-        } else {
-          const c = mapRef.current.getCenter();
-          if (!c) return;
-          resp = await axios.post('/api/charging', { lat: c.lat(), lng: c.lng(), category });
-        }
-        if (resp.data.pois) setPois(resp.data.pois);
-      } catch (e) { console.error("POI search failed", e); }
-    } else {
-      // Use Google Places for other amenities
-      const service = new google.maps.places.PlacesService(mapRef.current!);
-      const request = {
-        location: mapRef.current!.getCenter()!,
-        radius: 5000, // 5km
-        query: category
-      };
-      
-      service.textSearch(request, (results, status) => {
-        if (status === google.maps.places.PlacesServiceStatus.OK && results) {
-          const formatted = results.map(place => ({
-            id: place.place_id || Math.random().toString(),
-            name: place.name || 'Unknown',
-            address: place.formatted_address || '',
-            position: { lat: place.geometry!.location!.lat(), lng: place.geometry!.location!.lng() },
-            type: category
-          }));
-          setPois(formatted);
-        }
-      });
-    }
-  };
-
-  const searchByMapCenter = async () => {
-    if (!mapRef.current || !poiCategory) return;
-    const c = mapRef.current.getCenter(); if (!c) return;
-    
-    if (poiCategory === 'charging' && !isPro && !isHostTier) {
-      alert("Charging station discovery is a PRO feature. Upgrade to unlock!");
-      handleUpgrade('pro');
-      return;
-    }
-
-    if (poiCategory === 'charging') {
-      try {
-        const resp = await axios.post('/api/charging', { lat: c.lat(), lng: c.lng(), category: poiCategory });
-        if (resp.data.pois) setPois(resp.data.pois);
-      } catch (e) { console.error("Radius search failed", e); }
-    } else {
-      searchPOIs(poiCategory);
-    }
-  };
-
-  const fetchOHVTrails = async () => {
-    if (!mapRef.current) return;
-    const zoom = mapRef.current.getZoom() || 0;
-    if (zoom < 12) return;
-
-    const bounds = mapRef.current.getBounds();
-    if (!bounds) return;
-
-    const sw = bounds.getSouthWest();
-    const ne = bounds.getNorthEast();
-    const bbox = `${sw.lat()},${sw.lng()},${ne.lat()},${ne.lng()}`;
-
-    const query = `
-      [out:json][timeout:25];
-      (
-        way["highway"~"track|path"]["motor_vehicle"~"yes|designated"](${bbox});
-        way["highway"~"track|path"]["atv"~"yes|designated"](${bbox});
-        way["highway"~"track|path"]["motorcycle"~"yes|designated"](${bbox});
-        way["route"="ohv"](${bbox});
-      );
-      out body;
-      >;
-      out skel qt;
-    `;
-
-    try {
-      const resp = await axios.get(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`);
-      const elements = resp.data.elements;
-      const nodes: { [key: number]: google.maps.LatLngLiteral } = {};
-      const ways: any[] = [];
-
-      elements.forEach((el: any) => {
-        if (el.type === 'node') nodes[el.id] = { lat: el.lat, lng: el.lon };
-        else if (el.type === 'way') ways.push(el);
-      });
-
-      const trailLines: TrailPolyline[] = ways.map((w: any) => ({
-        id: `osm-${w.id}`,
-        name: w.tags?.name || 'Unnamed Trail',
-        type: w.tags?.highway || 'trail',
-        difficulty: w.tags?.difficulty,
-        points: w.nodes.map((nodeId: number) => nodes[nodeId]).filter(Boolean)
-      }));
-
-      setTrailPolylines(trailLines);
-    } catch (e) {
-      console.error("Failed to fetch trails", e);
-    }
-  };
-
-  const onMapIdle = useCallback(() => {
-    if (showTrails) fetchOHVTrails();
-  }, [showTrails]);
-
-  const handlePoiClick = (poi: POI) => {
-    setSelectedPoi(poi);
-    if (mapRef.current) {
-      mapRef.current.panTo(poi.position);
-      mapRef.current.setZoom(15);
-    }
-  };
-
-  const addPOIAsWaypoint = (poi: POI) => { 
-    setTrip(prev => {
-      if (!prev.origin) {
-        return { ...prev, origin: poi.address };
-      } else if (!prev.destination) {
-        return { ...prev, destination: poi.address };
-      } else {
-        return { ...prev, waypoints: [...prev.waypoints, poi.address] };
-      }
-    });
-    setResponse(null); 
-    setMetrics(null); 
-    setIsLoading(true); // Trigger recalculation immediately
+    } catch (e) { console.error("Calc error", e); setIsLoading(false); }
   };
 
   const recenterMap = () => {
     if (mapRef.current) {
-      if (lastUploadedLocation) {
-        mapRef.current.panTo(lastUploadedLocation);
-        mapRef.current.setZoom(15);
-      } else if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition((pos) => {
-          const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-          mapRef.current?.panTo(loc);
-          mapRef.current?.setZoom(15);
-        });
-      }
+      if (lastUploadedLocation) mapRef.current.panTo(lastUploadedLocation);
+      else if (navigator.geolocation) navigator.geolocation.getCurrentPosition(pos => mapRef.current?.panTo({ lat: pos.coords.latitude, lng: pos.coords.longitude }));
     }
   };
 
   const downloadShareCard = async () => {
-    if (!shareCardRef.current || !metrics || !mapSnapshot) {
-      alert("Map data is still loading. Please wait a moment.");
-      return;
-    }
+    if (!shareCardRef.current || !metrics || !mapSnapshot) return;
     try {
-      setIsLoading(true);
-      const el = shareCardRef.current;
-      el.style.opacity = '1';
-      
-      // Wait longer for rendering and image decoding
-      await new Promise(resolve => setTimeout(resolve, 1500));
-
-      const dataUrl = await toPng(el, { 
-        cacheBust: true,
-        backgroundColor: "#121212",
-        pixelRatio: 2,
-        style: {
-          opacity: '1',
-          visibility: 'visible',
-        }
-      });
-
-      el.style.opacity = '0';
-      
-      if (!dataUrl) throw new Error("Generated image is empty");
-
-      const link = document.createElement('a');
-      link.download = `range-anxiety-trip-${Date.now()}.png`;
-      link.href = dataUrl;
-      link.click();
+      setIsLoading(true); shareCardRef.current.style.opacity = '1';
+      await new Promise(r => setTimeout(r, 1500));
+      const dataUrl = await toPng(shareCardRef.current, { cacheBust: true, backgroundColor: "#121212", pixelRatio: 2 });
+      shareCardRef.current.style.opacity = '0';
+      const link = document.createElement('a'); link.download = `trip-${Date.now()}.png`; link.href = dataUrl; link.click();
       setIsLoading(false);
-    } catch (err) {
-      console.error('Error sharing:', err);
-      setError("Failed to generate image report.");
-      setIsLoading(false);
-      if (shareCardRef.current) shareCardRef.current.style.opacity = '0';
-    }
+    } catch (e) { setIsLoading(false); }
   };
 
   const shareToCommunity = async () => {
-    if (!shareCardRef.current || !metrics || !user || !mapSnapshot) {
-      alert("Preparing share card data... please wait a second and try again.");
-      return;
-    }
-    
-    // Enforce profile completeness
-    if (!userData?.username || !userData?.profilePic) {
-      alert("Please complete your profile (set a username and upload a profile picture) before sharing to the community!");
-      return;
-    }
-
+    if (!shareCardRef.current || !metrics || !user || !mapSnapshot) return;
+    setIsLoading(true);
     try {
-      setIsLoading(true);
-      const el = shareCardRef.current;
-      el.style.opacity = '1';
-      
-      // Wait longer for map snapshot to be fully rendered in the DOM
-      await new Promise(resolve => setTimeout(resolve, 1500));
-
-      // Generate the high-res PNG
-      const dataUrl = await toPng(el, { 
-        cacheBust: true, 
-        backgroundColor: "#121212", 
-        pixelRatio: 2,
-        style: {
-          opacity: '1',
-          visibility: 'visible',
-        }
-      });
-      el.style.opacity = '0';
-
-      // Professional Storage upload for high-res images (Blaze Plan)
-      const response = await fetch(dataUrl);
-      const blob = await response.blob();
-
+      shareCardRef.current.style.opacity = '1';
+      await new Promise(r => setTimeout(r, 1500));
+      const dataUrl = await toPng(shareCardRef.current, { cacheBust: true, backgroundColor: "#121212", pixelRatio: 2 });
+      shareCardRef.current.style.opacity = '0';
+      const blob = await (await fetch(dataUrl)).blob();
       const imageRef = ref(storage, `trips/${user.uid}/${Date.now()}.png`);
       await uploadBytes(imageRef, blob);
       const imageUrl = await getDownloadURL(imageRef);
-
-      // Save the post with the Storage URL (text), not the image data
       await addDoc(collection(db, "posts"), {
-        authorId: user.uid,
-        authorUsername: userData.username,
-        authorProfilePic: userData.profilePic,
-        imageUrl, // Now a small URL string
-        caption: `Rode from ${trip.origin || 'Current Location'} to ${trip.destination}. ${metrics.distanceMiles.toFixed(1)} miles with ${metrics.batteryPercentUsed.toFixed(1)}% battery remaining!`,
-        likes: [],
-        commentsEnabled: commentsEnabled,
-        createdAt: serverTimestamp(),
-        // Location Metadata for Search
-        city: userData.city || "",
-        homeRegion: userData.homeRegion || "",
-        // Raw Trip Data for "Load Route" functionality
-        tripData: {
-          origin: trip.origin,
-          destination: trip.destination,
-          waypoints: trip.waypoints,
-          returnWaypoints: trip.returnWaypoints,
-          isRoundTrip,
-          isCustomReturn
-        }
+        authorId: user.uid, authorUsername: userData.username, authorProfilePic: userData.profilePic,
+        imageUrl, caption: `Rode ${metrics.distanceMiles.toFixed(1)} miles!`,
+        likes: [], commentsEnabled: true, createdAt: serverTimestamp(),
+        city: userData.city || "", homeRegion: userData.homeRegion || "",
+        tripData: { origin: trip.origin, destination: trip.destination, waypoints: trip.waypoints, isRoundTrip }
       });
-
-      alert("Successfully posted to the community feed!");
-      setIsLoading(false);
-      setShowSharePreview(false);
-    } catch (err: any) {
-      console.error('Sharing error:', err);
-      alert(`Failed to post: ${err.message}. Check your Cloud Shell CORS settings.`);
-      setIsLoading(false);
-    }
+      alert("Shared!"); setIsLoading(false); setShowSharePreview(false);
+    } catch (e) { setIsLoading(false); }
   };
 
-  const filteredBikes = [...STANDARD_BIKES, ...savedBikes].filter(b => 
-    b.name.toLowerCase().includes(bikeSearchQuery.toLowerCase())
-  );
+  const filteredBikes = [...STANDARD_BIKES, ...savedBikes].filter(b => b.name.toLowerCase().includes(bikeSearchQuery.toLowerCase()));
+
+  const onMapLoad = useCallback((map: google.maps.Map) => { mapRef.current = map; }, []);
 
   return (
     <div className="container">
-      <NavBar 
-        user={user} 
-        onShowInstall={() => setShowInstallTutorial(true)} 
-        onShowAuth={() => setShowAuthModal(true)}
-      />
-
+      <NavBar user={user} onShowInstall={() => setShowInstallTutorial(true)} onShowAuth={() => setShowAuthModal(true)} />
       <div className="main-layout">
         <aside className={`sidebar ${showMobileMenu ? 'mobile-visible' : ''}`}>
-          {error && <div style={{ background: 'rgba(217,48,37,0.1)', color: '#d93025', padding: '0.8rem', borderRadius: '8px', marginBottom: '1rem', fontSize: '0.8rem' }}>{error}</div>}
-          
           <div className="form-group">
-            <label style={{ color: 'var(--accent-color)', fontSize: '0.65rem' }}>Unit System</label>
+            <label>Unit System</label>
             <div className="mode-toggle">
-              <button className={unitSystem === 'imperial' ? 'active' : ''} onClick={() => {
-                if (unitSystem === 'metric' && targetSpeedMph !== '') {
-                  setTargetSpeedMph(parseFloat((targetSpeedMph * 0.621371).toFixed(1)));
-                }
-                setUnitSystem('imperial');
-              }}>Imperial (mi/lb)</button>
-              <button className={unitSystem === 'metric' ? 'active' : ''} onClick={() => {
-                if (unitSystem === 'imperial' && targetSpeedMph !== '') {
-                  setTargetSpeedMph(parseFloat((targetSpeedMph * 1.60934).toFixed(1)));
-                }
-                setUnitSystem('metric');
-              }}>Metric (km/kg)</button>
+              <button className={unitSystem === 'imperial' ? 'active' : ''} onClick={() => setUnitSystem('imperial')}>Imperial</button>
+              <button className={unitSystem === 'metric' ? 'active' : ''} onClick={() => setUnitSystem('metric')}>Metric</button>
             </div>
           </div>
-
-          <div className="form-group">
-            <label style={{ color: 'var(--accent-color)', fontSize: '0.65rem' }}>Voice Navigation</label>
-            <div className="mode-toggle">
-              <button className={voiceEnabled ? 'active' : ''} onClick={() => setVoiceEnabled(true)}>Enabled 🔊</button>
-              <button className={!voiceEnabled ? 'active' : ''} onClick={() => setVoiceEnabled(false)}>Muted 🔇</button>
-            </div>
-          </div>
-
           <section className="form-group" style={{ position: 'relative' }}>
-            <label>Search Bike Model</label>
-            <input type="text" placeholder="e.g. Onyx, Sur-Ron..." value={bikeSearchQuery} onFocus={() => setShowBikeResults(true)} onChange={(e) => { setBikeSearchQuery(e.target.value); setShowBikeResults(true); }} />
+            <label>Bike Model</label>
+            <input type="text" placeholder="Search..." value={bikeSearchQuery} onFocus={() => setShowBikeResults(true)} onChange={e => setBikeSearchQuery(e.target.value)} />
             {showBikeResults && bikeSearchQuery && (
-              <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: '#1a1a1a', border: '1px solid #333', borderRadius: '4px', zIndex: 1000, maxHeight: '200px', overflowY: 'auto' }}>
-                {filteredBikes.map((bike, idx) => (<div key={bike.id || idx} onClick={() => loadBike(bike)} style={{ padding: '0.8rem', cursor: 'pointer', borderBottom: '1px solid #222' }}>{bike.name}</div>))}
+              <div className="bike-results-dropdown" style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#1a1a1a', zIndex: 100, maxHeight: '200px', overflowY: 'auto', border: '1px solid #333' }}>
+                {filteredBikes.map(b => <div key={b.name} onClick={() => loadBike(b)} style={{ padding: '0.8rem', borderBottom: '1px solid #222', cursor: 'pointer' }}>{b.name}</div>)}
               </div>
             )}
-            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-              <input type="text" placeholder="Nickname to Save" value={newBikeName} onChange={(e) => setNewBikeName(e.target.value)} style={{ padding: '0.4rem' }} />
-              <button onClick={saveCurrentBike} style={{ padding: '0.4rem 0.8rem', backgroundColor: 'var(--accent-color)', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Save</button>
-            </div>
           </section>
-
-          <section className="form-group" style={{ marginBottom: '1.5rem' }}>
-            <label style={{ color: 'var(--accent-color)', fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Route Stops</label>
-            
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginTop: '0.8rem' }}>
-              {[trip.origin, ...trip.waypoints, trip.destination].filter(wp => wp.trim() !== "").map((stop, idx, allStops) => (
-                <div key={`${stop}-${idx}`} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '12px', padding: '0.8rem', border: '1px solid #333', boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.05)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <div style={{ 
-                        width: '8px', 
-                        height: '8px', 
-                        borderRadius: '50%', 
-                        background: idx === 0 ? '#34a853' : (idx === allStops.length - 1 ? '#d93025' : '#ff6600') 
-                      }} />
-                      <span style={{ fontSize: '0.6rem', color: '#888', fontWeight: 900, textTransform: 'uppercase' }}>
-                        {idx === 0 ? 'Start' : (idx === allStops.length - 1 ? 'Finish' : `Stop ${idx}`)}
-                      </span>
-                    </div>
-                    <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center' }}>
-                       <button onClick={() => moveStop(idx, 'up')} disabled={idx === 0} style={{ background: 'none', border: 'none', color: idx === 0 ? '#222' : '#888', cursor: 'pointer', fontSize: '1rem', padding: '2px' }}>▲</button>
-                       <button onClick={() => moveStop(idx, 'down')} disabled={idx === allStops.length - 1} style={{ background: 'none', border: 'none', color: idx === allStops.length - 1 ? '#222' : '#888', cursor: 'pointer', fontSize: '1rem', padding: '2px' }}>▼</button>
-                       <button onClick={() => removeStop(idx)} style={{ background: 'none', border: 'none', color: '#444', cursor: 'pointer', fontSize: '1.1rem', marginLeft: '4px' }}>✕</button>
-                    </div>
-                  </div>
-                  <div style={{ fontSize: '0.85rem', color: 'white', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: '2rem' }}>{stop}</div>
-                </div>
-              ))}
-
-              {/* Manual Entry Inputs */}
-              {!trip.origin && (
-                <div className="form-group" style={{ margin: 0 }}>
-                  <label style={{ fontSize: '0.6rem' }}>Set Starting Point</label>
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <input type="text" name="origin" placeholder="Type an address..." value={trip.origin} onChange={handleInputChange} style={{ flex: 1 }} />
-                    <button onClick={useCurrentLocation} style={{ padding: '0 0.8rem', background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer' }} title="Use GPS">📍</button>
-                  </div>
-                </div>
-              )}
-
-              {trip.origin && !trip.destination && (
-                <div className="form-group" style={{ margin: 0 }}>
-                  <label style={{ fontSize: '0.6rem' }}>Set Destination</label>
-                  <input type="text" name="destination" placeholder="Where to?" value={trip.destination} onChange={handleInputChange} />
-                </div>
-              )}
-
-              {trip.origin && trip.destination && (
-                <button 
-                  onClick={() => setTrip(p => ({ ...p, origin: p.destination, destination: p.origin }))} 
-                  style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer', fontSize: '0.65rem', textDecoration: 'underline', marginTop: '0.2rem' }}
-                >
-                  Swap Start/Finish
-                </button>
-              )}
-            </div>
-          </section>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>        
-            <section className="form-group"><label>Voltage (V)</label><input type="number" value={specs.voltage} onChange={(e) => handleSpecChange('voltage', e.target.value)} /></section>
-            <section className="form-group">
-              <label>Capacity ({capacityInputMode.toUpperCase()})</label>
-              <div className="mode-toggle" style={{ marginBottom: '0.5rem' }}>
-                <button className={capacityInputMode === 'ah' ? 'active' : ''} onClick={() => {
-                  if (capacityInputMode === 'wh' && specs.voltage && specs.capacityAh) {
-                    const ah = Number(specs.capacityAh) / Number(specs.voltage);
-                    setSpecs(prev => ({ ...prev, capacityAh: parseFloat(ah.toFixed(1)) }));
-                  }
-                  setCapacityInputMode('ah');
-                }}>Ah</button>
-                <button className={capacityInputMode === 'wh' ? 'active' : ''} onClick={() => {
-                  if (capacityInputMode === 'ah' && specs.voltage && specs.capacityAh) {
-                    const wh = Number(specs.voltage) * Number(specs.capacityAh);
-                    setSpecs(prev => ({ ...prev, capacityAh: parseFloat(wh.toFixed(0)) }));
-                  }
-                  setCapacityInputMode('wh');
-                }}>Wh</button>
-              </div>
-              <input type="number" value={specs.capacityAh} onChange={(e) => handleSpecChange('capacityAh', e.target.value)} />
-            </section>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>        
-            <section className="form-group"><label>Motor (W)</label><input type="number" value={specs.motorWatts} onChange={(e) => handleSpecChange('motorWatts', e.target.value)} /></section>
-            <section className="form-group"><label>Bike Wt ({unitSystem === 'imperial' ? 'lbs' : 'kg'})</label><input type="number" value={specs.bikeWeightLbs} onChange={(e) => handleSpecChange('bikeWeightLbs', e.target.value)} /></section>
-          </div>
-
-          <section className="form-group"><label>Rider Weight ({unitSystem === 'imperial' ? 'lbs' : 'kg'})</label><input type="number" value={riderWeightLbs} onChange={(e) => setRiderWeightLbs(parseFloat(e.target.value) || '')} /></section>
-
-          <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)', marginBottom: '1rem' }}>
-            <label style={{ color: 'var(--accent-color)', fontSize: '0.65rem' }}>Advanced Environment</label>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '0.5rem' }}>
-               <section className="form-group">
-                 <label>Temp ({unitSystem === 'imperial' ? '°F' : '°C'})</label>
-                 <input type="number" value={ambientTempF} onChange={(e) => setAmbientTempF(parseFloat(e.target.value) || '')} />
-               </section>
-               <section className="form-group">
-                 <label>Tire PSI</label>
-                 <input type="number" placeholder="Auto" value={tirePressurePsi} onChange={(e) => setTirePressurePsi(parseFloat(e.target.value) || '')} />
-               </section>
-            </div>
-            <section className="form-group">
-               <label>Tire Type</label>
-               <div className="mode-toggle">
-                  <button className={tireType === 'road' ? 'active' : ''} onClick={() => setTireType('road')}>Road</button>
-                  <button className={tireType === 'knobby' ? 'active' : ''} onClick={() => setTireType('knobby')}>Knobby</button>
-               </div>
-            </section>
-          </div>
-
           <section className="form-group">
-            <label>Power Control Type</label>
-            <div className="mode-toggle">
-              <button className={controlType === 'pas' ? 'active' : ''} onClick={() => setControlType('pas')}>Pedal Assist (PAS)</button>
-              <button className={controlType === 'switch' ? 'active' : ''} onClick={() => setControlType('switch')}>3-Speed Switch</button>
+            <label>Origin</label>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <input type="text" name="origin" value={trip.origin} onChange={handleInputChange} style={{ flex: 1 }} />
+              <button onClick={useCurrentLocation} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer' }}>📍</button>
             </div>
           </section>
-
-          {controlType === 'pas' ? (
-            <section className="form-group">
-              <label>Pedal Assist Level (1-5)</label>
-              <div className="mode-toggle" style={{ flexWrap: 'wrap' }}>
-                {[1, 2, 3, 4, 5].map(lv => (
-                  <button key={lv} className={pasLevel === lv ? 'active' : ''} onClick={() => setPasLevel(lv)} style={{ flex: 'none', width: '18%' }}>{lv}</button>
-                ))}
-              </div>
-              <p style={{ fontSize: '0.6rem', color: '#777', marginTop: '0.4rem' }}>* Assumes 150W human power at PAS 1, decreasing as PAS increases.</p>
-            </section>
-          ) : (
-            <section className="form-group">
-              <label>3-Speed Switch Mode</label>
-              <div className="mode-toggle">
-                <button className={mode === 'eco' ? 'active' : ''} onClick={() => setMode('eco')}>ECO</button>
-                <button className={mode === 'normal' ? 'active' : ''} onClick={() => setMode('normal')}>NORMAL</button>
-                <button className={mode === 'sport' ? 'active' : ''} onClick={() => setMode('sport')}>SPORT</button>
-              </div>
-            </section>
-          )}
-
           <section className="form-group">
-            <label>Current Battery Level</label>
-            <div className="mode-toggle" style={{ marginBottom: '0.5rem' }}>
-              <button className={batteryInputMode === 'percent' ? 'active' : ''} onClick={() => handleToggleBatteryMode('percent')}>%</button>
-              <button className={batteryInputMode === 'voltage' ? 'active' : ''} onClick={() => handleToggleBatteryMode('voltage')}>V</button>
-            </div>
-            <input type="number" value={batteryInputMode === 'percent' ? startBattery : startVoltage} onChange={(e) => batteryInputMode === 'percent' ? setStartBattery(parseFloat(e.target.value) || '') : setStartVoltage(parseFloat(e.target.value) || '')} />
+            <label>Destination</label>
+            <input type="text" name="destination" value={trip.destination} onChange={handleInputChange} />
           </section>
-
-          <section className="form-group"><label>Average Speed ({unitSystem === 'imperial' ? 'mph' : 'km/h'})</label><input type="number" value={targetSpeedMph} onChange={(e) => setTargetSpeedMph(parseFloat(e.target.value) || '')} /></section>
-
-          <section className="form-group">
-            <label>Trip Type</label>
-            <div className="mode-toggle">
-              <button className={!isRoundTrip ? 'active' : ''} onClick={() => setIsRoundTrip(false)}>One Way</button>
-              <button className={isRoundTrip ? 'active' : ''} onClick={() => setIsRoundTrip(true)}>Round Trip</button>
-            </div>
-            {isRoundTrip && (
-              <div style={{ marginTop: '0.8rem', padding: '0.8rem', background: '#222', borderRadius: '8px' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', textTransform: 'none' }}>
-                  <input type="checkbox" checked={isCustomReturn} onChange={e => setIsCustomReturn(e.target.checked)} style={{ width: 'auto' }} />
-                  Custom Return Route
-                </label>
-              </div>
-            )}
-          </section>
-
-          <section className="form-group">
-            <label>Style</label>
-            <div className="mode-toggle">
-              <button className={ridingStyle === 'relaxed' ? 'active' : ''} onClick={() => setRidingStyle('relaxed')}>Relaxed</button>
-              <button className={ridingStyle === 'aggressive' ? 'active' : ''} onClick={() => setRidingStyle('aggressive')}>Aggressive</button>
-            </div>
-          </section>
-
-          {metrics && (
-            <div ref={metricsCardRef} className="card metrics-card" style={{ marginTop: '1rem', borderLeft: '4px solid #ff6600', background: 'rgba(40,40,40,0.9)' }}>
-              <h3 style={{ fontSize: '0.9rem', color: '#ff6600' }}>ESTIMATED METRICS</h3>
-
-              {metrics.batteryPercentUsed <= 0 && (
-                <div style={{ background: 'rgba(217,48,37,0.2)', border: '1px solid #d93025', color: 'white', padding: '1rem', borderRadius: '12px', marginBottom: '1.5rem', textAlign: 'center' }}>
-                  <div style={{ fontSize: '1.2rem', marginBottom: '0.3rem' }}>⚠️ RANGE WARNING</div>
-                  <p style={{ fontSize: '0.75rem', margin: 0 }}>You won't make the full trip! Your battery will likely die at the <strong>☠️ Depletion Point</strong> marked on the map.</p>
-                </div>
-              )}
-
-              {response && response.routes.length > 1 && (
-                <div style={{ marginBottom: '1rem' }}>
-                  <label style={{ fontSize: '0.65rem', color: '#888' }}>SELECT ROUTE</label>
-                  <div className="mode-toggle" style={{ marginTop: '0.4rem' }}>
-                    {response.routes.map((_, idx) => (
-                      <button 
-                        key={idx} 
-                        className={selectedRouteIndex === idx ? 'active' : ''} 
-                        onClick={() => {
-                          setSelectedRouteIndex(idx);
-                          calculateMetrics(response, idx);
-                        }}
-                      >
-                        Route {idx + 1}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <p style={{ fontSize: '1.4rem', fontWeight: 'bold', color: 'white' }}>Battery Left: {metrics.batteryPercentUsed.toFixed(1)}%</p>
-              <p style={{ fontSize: '0.8rem', color: '#b0b0b0' }}>Est. End Voltage: {(getBatteryLevels(Number(specs.voltage)).min + (metrics.batteryPercentUsed / 100) * (getBatteryLevels(Number(specs.voltage)).max - getBatteryLevels(Number(specs.voltage)).min)).toFixed(1)}V</p>
-              
-              <div style={{ marginTop: '0.8rem', padding: '0.8rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginBottom: '0.4rem' }}>
-                  <span style={{ color: '#888' }}>Travel Time:</span>
-                  <span style={{ color: 'white', fontWeight: 'bold' }}>{Math.floor(metrics.durationMin / 60)}h {Math.round(metrics.durationMin % 60)}m</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginBottom: '0.4rem' }}>
-                  <span style={{ color: '#888' }}>Distance:</span>
-                  <span style={{ color: 'white' }}>
-                    {unitSystem === 'imperial' 
-                      ? `${metrics.distanceMiles.toFixed(1)} mi` 
-                      : `${(metrics.distanceMiles * 1.60934).toFixed(1)} km`}
-                  </span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginBottom: '0.4rem' }}>
-                  <span style={{ color: '#888' }}>Elevation Gain:</span>
-                  <span style={{ color: 'white' }}>
-                    {unitSystem === 'imperial' 
-                      ? `${metrics.elevationGainFeet.toFixed(0)} ft` 
-                      : `${(metrics.elevationGainFeet * 0.3048).toFixed(0)} m`}
-                  </span>
-                </div>
-                {metrics.windConditions && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#34a853' }}>
-                    <span>🌬️ Wind:</span>
-                    <span>
-                      {unitSystem === 'imperial' 
-                        ? `${metrics.windConditions.speed.toFixed(1)} mph` 
-                        : `${(metrics.windConditions.speed * 1.60934).toFixed(1)} km/h`} 
-                      ({metrics.windConditions.headwindComponent > 0 ? 'Headwind' : 'Tailwind'})
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              <div style={{ marginTop: '0.5rem', fontSize: '0.7rem', color: '#777', textAlign: 'center' }}>
-                {unitSystem === 'imperial' 
-                  ? `Wh/mile: ${(metrics.estimatedWh / metrics.distanceMiles).toFixed(1)}` 
-                  : `Wh/km: ${(metrics.estimatedWh / (metrics.distanceMiles * 1.60934)).toFixed(1)}`}
-              </div>
-
-              <button onClick={() => {
-                  let url = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(trip.origin)}&destination=${encodeURIComponent(trip.destination)}&travelmode=bicycling`;
-                  window.open(url, '_blank');
-              }} style={{ width: '100%', marginTop: '1rem', padding: '0.6rem', backgroundColor: '#34a853', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer' }}>🚀 Open Maps</button>
-              
-              <button onClick={() => {
-                  if (!isPro && !isHostTier) {
-                    alert("The Share Card feature is only available for PRO users.");
-                    handleUpgrade('pro');
-                    return;
-                  }
-                  ReactGA.event({ category: "Engagement", action: "Open Share Preview" });
-                  setShowSharePreview(true);
-              }} style={{ width: '100%', marginTop: '0.5rem', padding: '0.6rem', backgroundColor: '#444', color: 'white', border: 'none', borderRadius: '4px', fontSize: '0.8rem', cursor: 'pointer' }}>Save Image (PRO)</button>
-
-              <button 
-                onClick={startNavigation}
-                style={{ 
-                  width: '100%', 
-                  marginTop: '1.5rem', 
-                  padding: '1rem', 
-                  backgroundColor: '#ff6600', 
-                  color: 'white', 
-                  border: 'none', 
-                  borderRadius: '12px', 
-                  fontWeight: 900, 
-                  fontSize: '1.1rem', 
-                  cursor: 'pointer',
-                  boxShadow: '0 4px 20px rgba(255,102,0,0.4)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.1em'
-                }}
-              >
-                🏁 Start Trip
-              </button>
-            </div>
-          )}
-
-          <div style={{ marginTop: '1rem' }}>
-            <AdBanner isPro={isPro} />
-            {!isPro && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
-                <button onClick={() => handleUpgrade('pro')} style={{ width: '100%', background: 'none', border: 'none', color: '#ff6600', fontSize: '0.7rem', cursor: 'pointer', textDecoration: 'underline' }}>Go PRO / Remove Ads ($4.99)</button>
-                <button onClick={() => handleUpgrade('host')} style={{ width: '100%', padding: '0.6rem', background: 'linear-gradient(45deg, #ff6600, #ff9900)', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '0.75rem', cursor: 'pointer' }}>Unlock Group Rides & Host Tier ($9.99/mo)</button>
-              </div>
-            )}
-            {isPro && !isHostTier && (
-               <button onClick={() => handleUpgrade('host')} style={{ width: '100%', marginTop: '0.5rem', padding: '0.6rem', background: 'linear-gradient(45deg, #ff6600, #ff9900)', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '0.75rem', cursor: 'pointer' }}>Upgrade to Host Tier ($9.99/mo)</button>
-            )}
-            
-            {user && (
-              <div style={{ marginTop: '1rem', padding: '0.8rem', background: 'rgba(255,255,255,0.05)', borderRadius: '10px' }}>
-                <label style={{ fontSize: '0.6rem', color: '#888', textTransform: 'uppercase' }}>Social Profile</label>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '0.4rem' }}>
-                  <span style={{ fontSize: '0.9rem', color: 'white', fontWeight: 'bold' }}>{username || 'Anonymous Rider'}</span>
-                </div>
-              </div>
-            )}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <section className="form-group"><label>Volts</label><input type="number" value={specs.voltage} onChange={e => handleSpecChange('voltage', e.target.value)} /></section>
+            <section className="form-group"><label>Ah/Wh</label><input type="number" value={specs.capacityAh} onChange={e => handleSpecChange('capacityAh', e.target.value)} /></section>
           </div>
           
-            {rideError && <div style={{ background: 'rgba(217,48,37,0.1)', color: '#d93025', padding: '0.8rem', borderRadius: '8px', marginBottom: '1rem', fontSize: '0.8rem' }}>{rideError}</div>}
-            
-            <section className="form-group" style={{ marginTop: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '1.5rem' }}>
-              <label style={{ color: '#ff6600', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                 👥 Group Ride Tracker
-               {!isHostTier && <span style={{ fontSize: '0.6rem', background: '#333', padding: '2px 6px', borderRadius: '4px' }}>{isPro ? 'PRO' : 'HOST TIER'}</span>}
-               {isHostTier && hostTierExpiresAt && (
-                 <span style={{ fontSize: '0.55rem', color: '#888', marginLeft: 'auto' }}>
-                   Expires: {new Date(hostTierExpiresAt).toLocaleDateString()}
-                 </span>
-               )}
-            </label>
-            
-            {!isPro ? (
-              <div style={{ background: 'rgba(255,102,0,0.05)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(255,102,0,0.2)', marginTop: '0.5rem' }}>
-                 <p style={{ fontSize: '0.7rem', color: '#ccc', margin: 0 }}>Upgrade to PRO or HOST to join real-time group rides.</p>
-                 <button onClick={() => handleUpgrade('pro')} style={{ width: '100%', marginTop: '0.8rem', padding: '0.5rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer' }}>Upgrade</button>
+          {metrics && (
+            <div ref={metricsCardRef} className="card metrics-card" style={{ marginTop: '1.5rem', borderLeft: '4px solid #ff6600', padding: '1rem' }}>
+              {metrics.batteryPercentUsed <= 0 && (
+                <div style={{ background: 'rgba(217,48,37,0.2)', padding: '0.8rem', borderRadius: '8px', marginBottom: '1rem', color: '#ff4444', fontSize: '0.8rem', textAlign: 'center' }}>
+                  ⚠️ RANGE WARNING: Depletion point marked on map.
+                </div>
+              )}
+              <h3 style={{ fontSize: '0.8rem', color: '#ff6600', margin: '0 0 1rem 0' }}>TRIP STATS</h3>
+              <div style={{ fontSize: '1.5rem', fontWeight: 900 }}>{metrics.batteryPercentUsed.toFixed(1)}% Left</div>
+              <div style={{ fontSize: '0.8rem', color: '#888', marginTop: '0.5rem' }}>
+                {metrics.distanceMiles.toFixed(1)} miles • {Math.round(metrics.durationMin)} min
               </div>
-            ) : (
-              <div style={{ marginTop: '0.5rem' }}>
-                 {!activeRide ? (
-                   <>
-                     {isHostTier ? (
-                       <div className="form-group">
-                         <label style={{ fontSize: '0.65rem' }}>Host a New Ride</label>
-                         <div style={{ display: 'flex', gap: '0.5rem' }}>
-                           <input type="text" placeholder="Ride Name" value={groupRideName} onChange={e => setGroupRideName(e.target.value)} />
-                           <button onClick={createRide} style={{ padding: '0.4rem 0.8rem', backgroundColor: '#ff6600', border: 'none', borderRadius: '4px', cursor: 'pointer', color: 'white' }}>Host</button>
-                         </div>
-                         <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.4rem', fontSize: '0.65rem', textTransform: 'none' }}>
-                           <input type="checkbox" checked={isPublicRide} onChange={e => setIsPublicRide(e.target.checked)} style={{ width: 'auto' }} />
-                           Visible on public map
-                         </label>
-                       </div>
-                     ) : (
-                       <div style={{ padding: '0.5rem', border: '1px dashed #444', borderRadius: '8px', marginBottom: '1rem' }}>
-                          <p style={{ fontSize: '0.6rem', color: '#888', margin: 0 }}>You are a PRO user. You can join rides, but only HOSTS can create them.</p>
-                          <button onClick={() => handleUpgrade('host')} style={{ background: 'none', border: 'none', color: '#ff6600', fontSize: '0.65rem', cursor: 'pointer', padding: 0, textDecoration: 'underline', marginTop: '0.2rem' }}>Upgrade to Host</button>
-                       </div>
-                     )}
-                     <div className="form-group">
-                       <label style={{ fontSize: '0.65rem' }}>Join by ID/PIN</label>
-                       <div style={{ display: 'flex', gap: '0.5rem' }}>
-                         <input type="text" placeholder="PIN Code" value={joinPin} onChange={e => setJoinPin(e.target.value)} />
-                         <button onClick={() => joinRide()} style={{ padding: '0.4rem 0.8rem', backgroundColor: '#444', border: 'none', borderRadius: '4px', cursor: 'pointer', color: 'white' }}>Join</button>
-                       </div>
-                     </div>
-
-                     {publicRides.length > 0 && (
-                       <div className="form-group" style={{ marginTop: '1rem' }}>
-                         <label style={{ fontSize: '0.65rem', color: 'var(--accent-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                           📡 Nearby Public Rides
-                           {user?.email?.toLowerCase() === 'mattyfliptv@gmail.com' && (
-                             <button onClick={endAllPublicRides} style={{ background: 'none', border: 'none', color: '#d93025', fontSize: '0.6rem', cursor: 'pointer', textDecoration: 'underline' }}>End All</button>
-                           )}
-                         </label>
-                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.4rem' }}>
-                           {publicRides.map(ride => (
-                             <div key={ride.id} style={{ background: 'rgba(255,255,255,0.05)', padding: '0.6rem', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <span style={{ fontSize: '0.75rem', fontWeight: 'bold' }}>{ride.name}</span>
-                                <button onClick={() => joinRide(ride.id)} style={{ padding: '0.3rem 0.6rem', backgroundColor: '#34a853', color: 'white', border: 'none', borderRadius: '4px', fontSize: '0.65rem', cursor: 'pointer' }}>Join</button>
-                             </div>
-                           ))}
-                         </div>
-                       </div>
-                     )}
-                   </>
-                 ) : (
-                   <div style={{ background: 'rgba(52,168,83,0.1)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(52,168,83,0.3)' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <p style={{ margin: 0, fontWeight: 'bold', color: '#34a853' }}>LIVE: {activeRide.name}</p>
-                        <span style={{ fontSize: '0.6rem', color: '#888' }}>PIN: <span style={{ color: 'white', fontWeight: 'bold' }}>{activeRide.pin}</span></span>
-                      </div>
-
-                      <div style={{ marginTop: '0.8rem', display: 'flex', flexDirection: 'column', gap: '0.4rem', maxHeight: '150px', overflowY: 'auto' }}>
-                        {rideParticipants.map(p => (
-                          <div key={p.userId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.03)', padding: '0.4rem', borderRadius: '6px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: activeRide.creatorId === p.userId ? '#34a853' : '#ff6600' }} />
-                              <span style={{ fontSize: '0.75rem' }}>
-                                {p.name} {activeRide.leaderId === p.userId && '⭐️'}
-                              </span>
-                            </div>
-                            {user?.uid === activeRide.creatorId && activeRide.leaderId !== p.userId && (
-                              <button 
-                                onClick={() => setLeader(p.userId)}
-                                style={{ background: 'none', border: '1px solid #444', color: '#888', fontSize: '0.6rem', padding: '2px 6px', borderRadius: '4px', cursor: 'pointer' }}
-                              >
-                                Set Leader
-                              </button>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-
-                      {user?.uid === activeRide.creatorId && joinRequests.length > 0 && (
-                        <div style={{ marginTop: '1.5rem', borderTop: '1px solid #333', paddingTop: '1rem' }}>
-                          <label style={{ fontSize: '0.65rem', color: '#ffcc00', textTransform: 'uppercase', marginBottom: '0.5rem', display: 'block' }}>Pending Riders ({joinRequests.length})</label>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-                            {joinRequests.map(req => (
-                              <div key={req.id} style={{ background: 'rgba(255,204,0,0.05)', padding: '0.8rem', borderRadius: '12px', border: '1px solid rgba(255,204,0,0.2)' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                  <div>
-                                    <div style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'white' }}>{req.name}</div>
-                                    <div style={{ fontSize: '0.7rem', color: '#ffcc00', marginTop: '0.2rem' }}>
-                                      {'★'.repeat(Math.round(req.rating || 0))}{'☆'.repeat(5 - Math.round(req.rating || 0))}
-                                      <span style={{ marginLeft: '0.4rem', color: '#888' }}>({(req.rating || 0).toFixed(1)})</span>
-                                    </div>
-                                    <button 
-                                      onClick={() => window.open(`/profile/${req.name.replace(/\s+/g, '_')}`, '_blank')}
-                                      style={{ background: 'none', border: 'none', color: '#ff6600', fontSize: '0.65rem', padding: 0, textDecoration: 'underline', marginTop: '0.4rem', cursor: 'pointer' }}
-                                    >
-                                      View Profile
-                                    </button>
-                                  </div>
-                                  <div style={{ display: 'flex', gap: '0.4rem' }}>
-                                    <button onClick={() => handleJoinRequest(req, 'accept')} style={{ background: '#34a853', color: 'white', border: 'none', padding: '0.4rem 0.6rem', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 'bold', cursor: 'pointer' }}>Accept</button>
-                                    <button onClick={() => handleJoinRequest(req, 'decline')} style={{ background: '#444', color: 'white', border: 'none', padding: '0.4rem 0.6rem', borderRadius: '6px', fontSize: '0.7rem', cursor: 'pointer' }}>No</button>
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
-                        <button onClick={leaveRide} style={{ flex: 1, padding: '0.4rem', backgroundColor: '#444', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem' }}>Leave</button>
-                        {user?.uid === activeRide.creatorId && (
-                          <button onClick={endRide} style={{ flex: 2, padding: '0.4rem', backgroundColor: '#d93025', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.75rem' }}>End Ride</button>
-                        )}
-                      </div>
-                   </div>
-                 )}
-              </div>
-            )}
-          </section>
+              <button onClick={() => setShowSharePreview(true)} style={{ width: '100%', marginTop: '1rem', padding: '0.8rem', background: '#ff6600', border: 'none', borderRadius: '8px', color: 'white', fontWeight: 'bold', cursor: 'pointer' }}>Share Trip</button>
+            </div>
+          )}
+          <div style={{ marginTop: '2rem' }}><AdBanner isPro={isPro} /></div>
         </aside>
 
-        <main>
-          {isNavigating && response && (
-            <div style={{ 
-              position: 'fixed', 
-              top: '5.5rem', 
-              left: '50%', 
-              transform: 'translateX(-50%)', 
-              width: '90%', 
-              maxWidth: '500px', 
-              zIndex: 3000, 
-              background: '#1a1a1a', 
-              border: '2px solid #ff6600', 
-              borderRadius: '20px', 
-              padding: '1.2rem', 
-              boxShadow: '0 10px 40px rgba(0,0,0,0.8)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.8rem'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1 }}>
-                  <div style={{ background: '#333', padding: '0.6rem', borderRadius: '12px', fontSize: '1.5rem' }}>
-                    {response.routes[selectedRouteIndex].legs[currentLegIndex].steps[currentStepIndex].instructions.toLowerCase().includes('left') ? '⬅️' : 
-                     response.routes[selectedRouteIndex].legs[currentLegIndex].steps[currentStepIndex].instructions.toLowerCase().includes('right') ? '➡️' : '⬆️'}
-                  </div>
-                  <div>
-                    <div style={{ fontSize: '0.7rem', color: '#ff6600', fontWeight: 900, textTransform: 'uppercase' }}>In {distToNextStep || '---'}</div>
-                    <div 
-                      style={{ color: 'white', fontSize: '1.1rem', fontWeight: 'bold', lineHeight: '1.2' }}
-                      dangerouslySetInnerHTML={{ __html: response.routes[selectedRouteIndex].legs[currentLegIndex].steps[currentStepIndex].instructions }}
-                    />
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <button 
-                    onClick={() => setVoiceEnabled(!voiceEnabled)}
-                    style={{ background: '#333', color: 'white', border: 'none', borderRadius: '50%', width: '40px', height: '40px', cursor: 'pointer', fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                    title={voiceEnabled ? "Mute Voice" : "Unmute Voice"}
-                  >
-                    {voiceEnabled ? '🔊' : '🔇'}
-                  </button>
-                  <button 
-                    onClick={stopNavigation}
-                    style={{ background: '#444', color: 'white', border: 'none', borderRadius: '50%', width: '40px', height: '40px', cursor: 'pointer', fontWeight: 'bold' }}
-                  >✕</button>
-                </div>
-              </div>
-
-              {metrics && (
-                <div style={{ display: 'flex', gap: '1rem', borderTop: '1px solid #333', paddingTop: '0.8rem' }}>
-                   <div style={{ flex: 1, textAlign: 'center' }}>
-                      <div style={{ fontSize: '0.6rem', color: '#888' }}>BATTERY</div>
-                      <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: metrics.batteryPercentUsed < 15 ? '#ff4444' : '#34a853' }}>{metrics.batteryPercentUsed.toFixed(0)}%</div>
-                   </div>
-                   <div style={{ flex: 1, textAlign: 'center' }}>
-                      <div style={{ fontSize: '0.6rem', color: '#888' }}>SPEED</div>
-                      <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'white' }}>{targetSpeedMph}<span style={{ fontSize: '0.6rem' }}>mph</span></div>
-                   </div>
-                   <div style={{ flex: 1, textAlign: 'center' }}>
-                      <div style={{ fontSize: '0.6rem', color: '#888' }}>REMAINING</div>
-                      <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'white' }}>{Math.round(metrics.durationMin)}<span style={{ fontSize: '0.6rem' }}>min</span></div>
-                   </div>
-                </div>
-              )}
-            </div>
-          )}
-
+        <main style={{ position: 'relative', flex: 1 }}>
           {isLoaded ? (
-            <GoogleMap
-              mapContainerStyle={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}
-              center={center}
-              zoom={10}
-              onLoad={onMapLoad}
-              onIdle={onMapIdle}
-              onClick={onMapClick}
-            >
-                <div className="map-controls">
-                    <button onClick={() => searchPOIs('cafe')}>☕ Cafes</button>
-                    <button onClick={() => searchPOIs('bike shop')}>🚲 Shops</button>
-                    <button 
-                      onClick={() => searchPOIs('charging')}
-                      style={{
-                        background: (!isPro && !isHostTier) ? 'rgba(0,0,0,0.5)' : undefined,
-                        opacity: (!isPro && !isHostTier) ? 0.7 : 1,
-                        border: (!isPro && !isHostTier) ? '1px dashed #666' : undefined
-                      }}
-                    >
-                      ⚡ Charging {(!isPro && !isHostTier) && '🔒'}
-                    </button>
-                    <button 
-                      onClick={() => {
-                        if (!isPro && !isHostTier) {
-                          alert("OHV Trails are a PRO feature. Upgrade to unlock!");
-                          handleUpgrade('pro');
-                          return;
-                        }
-                        const next = !showTrails;
-                        setShowTrails(next);
-                        if (next) fetchOHVTrails();
-                        else setTrailPolylines([]);
-                      }}
-                      style={{
-                        background: showTrails ? '#34a853' : ((!isPro && !isHostTier) ? 'rgba(0,0,0,0.5)' : undefined),
-                        opacity: (!isPro && !isHostTier) ? 0.7 : 1,
-                        border: (!isPro && !isHostTier) ? '1px dashed #666' : undefined,
-                        color: showTrails ? 'white' : undefined
-                      }}
-                    >
-                      🌲 Trails {(!isPro && !isHostTier) && '🔒'}
-                    </button>
-                    <button onClick={searchByMapCenter}>🔍 Search Area</button>
-                </div>
-
+            <GoogleMap mapContainerStyle={{ width: '100%', height: '100%' }} center={center} zoom={10} onLoad={onMapLoad}>
               {trip.origin && trip.destination && isLoading && !response && (
-                <DirectionsService
-                  options={{
-                    origin: trip.origin,
-                    destination: isRoundTrip ? trip.origin : trip.destination,
-                    waypoints: [
-                      ...trip.waypoints.map(wp => ({ location: wp, stopover: true })),
-                      ...(isRoundTrip ? [{ location: trip.destination, stopover: true }] : []),
-                      ...(isRoundTrip && isCustomReturn ? trip.returnWaypoints.map(wp => ({ location: wp, stopover: true })) : [])
-                    ].filter(wp => wp.location && wp.location.trim() !== ""),
-                    travelMode: google.maps.TravelMode.BICYCLING,
-                    provideRouteAlternatives: true
-                  }}
-                  callback={directionsCallback}
+                <DirectionsService 
+                  options={{ origin: trip.origin, destination: isRoundTrip ? trip.origin : trip.destination, travelMode: google.maps.TravelMode.BICYCLING, waypoints: trip.waypoints.map(w => ({ location: w, stopover: true })) }} 
+                  callback={directionsCallback} 
                 />
               )}
               {response && <DirectionsRenderer options={{ directions: response, routeIndex: selectedRouteIndex }} />}
-              
-              {showTrails && trailPolylines.map(trail => (
-                <Polyline
-                  key={trail.id}
-                  path={trail.points}
-                  options={{
-                    strokeColor: '#34a853',
-                    strokeOpacity: 0.8,
-                    strokeWeight: 4,
-                  }}
-                  onClick={() => alert(`Trail: ${trail.name}\nType: ${trail.type}\nDifficulty: ${trail.difficulty || 'Unknown'}`)}
-                />
-              ))}
-              
-              {activeRide?.leaderTrail && activeRide.leaderTrail.length > 1 && (
-                <Polyline 
-                  path={activeRide.leaderTrail}
-                  options={{
-                    strokeColor: '#ff6600', // Orange trail for the leader
-                    strokeOpacity: 0.9,
-                    strokeWeight: 6, // Made slightly thicker for better visibility
-                    icons: [{
-                      icon: { path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW },
-                      offset: '100%',
-                      repeat: '100px'
-                    }]
-                  }}
-                />
-              )}
-              
-              {/* Public Rides Discovery */}
-              {publicRides.filter(r => r.id !== activeRide?.id).map(ride => (
-                <Marker 
-                  key={ride.id} 
-                  position={{ lat: ride.startLat, lng: ride.startLng }} 
-                  onClick={() => setSelectedPublicRide(ride)}
-                  icon={{
-                    url: 'https://maps.google.com/mapfiles/ms/icons/blue-dot.png',
-                    scaledSize: new google.maps.Size(40, 40)
-                  }}
-                />
-              ))}
-
-              {selectedPublicRide && (
-                <InfoWindow 
-                  position={{ lat: selectedPublicRide.startLat, lng: selectedPublicRide.startLng }} 
-                  onCloseClick={() => setSelectedPublicRide(null)}
-                >
-                  <div style={{ padding: '0.5rem', color: '#333' }}>
-                    <h4 style={{ margin: 0 }}>👥 {selectedPublicRide.name}</h4>
-                    <p style={{ margin: '0.2rem 0', fontSize: '0.8rem' }}>Host: {selectedPublicRide.creatorId.substring(0, 5)}...</p>
-                    <button 
-                      onClick={() => { joinRide(selectedPublicRide.id); setSelectedPublicRide(null); }} 
-                      style={{ width: '100%', marginTop: '0.5rem', padding: '0.4rem', backgroundColor: '#34a853', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
-                    >
-                      Join Group Ride
-                    </button>
-                  </div>
-                </InfoWindow>
-              )}
-              
-      {/* Ride Participants */}
-              {rideParticipants.map(p => {
-                const isOrganizer = activeRide?.creatorId === p.userId;
-                return (
-                  <Marker 
-                    key={p.userId} 
-                    position={{ lat: p.lat, lng: p.lng }} 
-                    label={{ 
-                      text: p.name, 
-                      color: 'white', 
-                      className: 'rider-label',
-                      fontSize: '12px',
-                      fontWeight: 'bold'
-                    }}
-                    icon={{
-                      path: google.maps.SymbolPath.CIRCLE,
-                      fillColor: isOrganizer ? '#34a853' : '#ff6600', // Green for Organizer, Orange for Riders
-                      fillOpacity: 1,
-                      strokeColor: 'white',
-                      strokeWeight: 2,
-                      scale: 8
-                    }}
-                  />
-                );
-              })}
-
-              {pois.map(poi => (
-                <Marker 
-                  key={poi.id} 
-                  position={poi.position} 
-                  title={poi.name} 
-                  onClick={() => handlePoiClick(poi)} 
-                  icon={poi.type === 'charging station' ? {
-                    path: google.maps.SymbolPath.CIRCLE,
-                    fillColor: '#d93025', // Red
-                    fillOpacity: 1,
-                    strokeColor: 'white',
-                    strokeWeight: 2,
-                    scale: 10
-                  } : undefined}
-                  label={poi.type === 'charging station' ? {
-                    text: '⚡',
-                    color: 'white',
-                    fontSize: '12px'
-                  } : undefined}
-                />
-              ))}
-              {selectedPoi && (
-                <InfoWindow position={selectedPoi.position} onCloseClick={() => setSelectedPoi(null)}>
-                  <div style={{ padding: '0.5rem', color: '#333', maxWidth: '200px' }}>
-                    <h4 style={{ margin: 0 }}>{selectedPoi.name}</h4>
-                    <p style={{ margin: '0.2rem 0', fontSize: '0.75rem', color: '#666' }}>{selectedPoi.address}</p>
-                    {selectedPoi.details && (
-                      <div style={{ marginTop: '0.5rem', padding: '0.4rem', background: '#f0f0f0', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold', color: '#ff6600' }}>
-                        ⚡ {selectedPoi.details}
-                      </div>
-                    )}
-                    <button onClick={() => { addPOIAsWaypoint(selectedPoi); setSelectedPoi(null); }} style={{ width: '100%', marginTop: '0.8rem', padding: '0.4rem', backgroundColor: '#ff6600', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Add to Route</button>
-                  </div>
-                </InfoWindow>
-              )}
               {metrics?.deathPoint && (
-                <Marker 
-                  position={metrics.deathPoint}
-                  icon={{
-                    url: 'https://maps.google.com/mapfiles/ms/icons/red-dot.png',
-                    scaledSize: new google.maps.Size(40, 40)
-                  }}
-                  label={{
-                    text: '☠️ DEPLETION',
-                    color: '#ff4444',
-                    fontWeight: 'bold',
-                    fontSize: '14px',
-                    className: 'death-label'
-                  }}
-                />
+                <Marker position={metrics.deathPoint} label={{ text: '☠️', color: 'white' }} />
               )}
             </GoogleMap>
-          ) : (
-            <div className="map-placeholder">
-              {loadError ? (
-                <div style={{ textAlign: 'center', padding: '2rem' }}>
-                  <p style={{ color: '#ff4444', fontWeight: 'bold' }}>Error Loading Maps</p>
-                  <p style={{ fontSize: '0.8rem' }}>{loadError.message}</p>
-                  <p style={{ fontSize: '0.7rem', marginTop: '1rem' }}>Check VITE_GOOGLE_MAPS_API_KEY.</p>
-                </div>
-              ) : "Loading Google Maps API..."}
-            </div>
-          )}
+          ) : <div>Loading Maps...</div>}
         </main>
       </div>
 
-      <footer style={{ padding: '2rem', borderTop: '1px solid #333', background: '#1a1a1a', textAlign: 'center' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
-          <p style={{ fontSize: '0.8rem', color: '#666', margin: 0 }}>&copy; 2026 Range Anxiety. Estimates only. Ride safe!</p>
-          <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
-             <a href="https://ebikekingnj.com" target="_blank" rel="noreferrer" style={{ color: '#888', textDecoration: 'none', fontSize: '0.7rem' }}>ebikekingnj.com</a>
-             <span style={{ color: '#444' }}>|</span>
-             <a href="#" onClick={(e) => { e.preventDefault(); setShowToSPage(true); }} style={{ color: '#888', textDecoration: 'none', fontSize: '0.7rem' }}>Terms of Service</a>
-          </div>
-          <div style={{ display: 'flex', gap: '1.5rem', marginTop: '1rem' }}>
-             <svg style={{ width: '20px', height: '20px', fill: '#444', cursor: 'pointer' }}><use href="/icons.svg#bluesky-icon" /></svg>
-             <svg style={{ width: '20px', height: '20px', fill: '#444', cursor: 'pointer' }}><use href="/icons.svg#discord-icon" /></svg>
-             <svg style={{ width: '20px', height: '20px', fill: '#444', cursor: 'pointer' }}><use href="/icons.svg#github-icon" /></svg>
-             <svg style={{ width: '20px', height: '20px', fill: '#444', cursor: 'pointer' }}><use href="/icons.svg#x-icon" /></svg>
-          </div>
-          <button 
-            onClick={() => setShowInstallTutorial(true)}
-            style={{ 
-              marginTop: '1.5rem',
-              background: 'none', 
-              border: '1px solid #444', 
-              color: '#888', 
-              borderRadius: '8px', 
-              padding: '0.5rem 1rem', 
-              fontSize: '0.7rem', 
-              cursor: 'pointer' 
-            }}
-          >
-            Install as Mobile App
-          </button>
-        </div>
-      </footer>
-      
-      {showInstallTutorial && <InstallTutorial onClose={() => setShowInstallTutorial(false)} />}
-      
-      {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
-
-      {showToSPage && <TermsOfService onClose={() => setShowToSPage(false)} />}
+      <div className="persistent-controls" style={{ position: 'fixed', bottom: '2rem', left: '50%', transform: 'translateX(-50%)', zIndex: 1000, display: 'flex', gap: '1rem', background: 'rgba(20,20,20,0.9)', padding: '0.8rem 1.5rem', borderRadius: '40px', border: '1px solid #333' }}>
+        <button 
+          onClick={() => {
+            if (showMobileMenu && trip.origin && trip.destination && settingsDirty) {
+              handleCalculate(); setShowMobileMenu(false);
+            } else {
+              setShowMobileMenu(!showMobileMenu);
+            }
+          }}
+          style={{ background: '#ff6600', color: 'white', border: 'none', padding: '0.8rem 1.5rem', borderRadius: '25px', fontWeight: 'bold', cursor: 'pointer', textTransform: 'uppercase', fontSize: '0.75rem' }}
+        >
+          {showMobileMenu ? (trip.origin && trip.destination && settingsDirty ? '🚀 Find Route' : '🗺️ Map') : (metrics && !settingsDirty ? '📊 Trip Stats' : '🏁 Start Here')}
+        </button>
+        <button onClick={recenterMap} style={{ width: '45px', height: '45px', borderRadius: '50%', background: '#333', color: 'white', border: 'none', cursor: 'pointer', fontSize: '1.2rem' }}>🎯</button>
+      </div>
 
       {showSharePreview && metrics && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.95)', zIndex: 10001, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px', overflowY: 'auto', backdropFilter: 'blur(10px)' }}>
-          <div style={{ marginBottom: '20px', textAlign: 'center' }}>
-            <h3 style={{ color: 'white', marginBottom: '5px', letterSpacing: '0.2em', textTransform: 'uppercase' }}>Preview Trip Dashboard</h3>
-            <p style={{ color: '#ff6600', fontSize: '0.8rem' }}>Ready for high-res export</p>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.95)', zIndex: 2000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(10px)', padding: '20px' }}>
+          <div ref={shareCardRef} style={{ width: '500px', height: '800px', background: '#0a0a0a', padding: '2rem', display: 'flex', flexDirection: 'column', borderRadius: '40px', border: '1px solid #333', position: 'relative' }}>
+             <h2 style={{ color: '#ff6600', fontStyle: 'italic', margin: 0 }}>RANGE ANXIETY</h2>
+             {mapSnapshot && <div style={{ flex: 1, margin: '1.5rem 0', borderRadius: '20px', overflow: 'hidden' }}><img src={mapSnapshot} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /></div>}
+             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div style={{ background: '#1a1a1a', padding: '1rem', borderRadius: '15px', textAlign: 'center' }}>
+                  <div style={{ color: '#ff6600', fontSize: '0.6rem' }}>BATTERY LEFT</div>
+                  <div style={{ fontSize: '2rem', fontWeight: 900 }}>{metrics.batteryPercentUsed.toFixed(0)}%</div>
+                </div>
+                <div style={{ background: '#1a1a1a', padding: '1rem', borderRadius: '15px', textAlign: 'center' }}>
+                  <div style={{ color: '#666', fontSize: '0.6rem' }}>DISTANCE</div>
+                  <div style={{ fontSize: '2rem', fontWeight: 900 }}>{metrics.distanceMiles.toFixed(1)}mi</div>
+                </div>
+             </div>
+             <div style={{ textAlign: 'center', marginTop: 'auto', color: '#ff6600', fontWeight: 'bold' }}>rangeanxiety.app</div>
           </div>
-
-          <div style={{ 
-            position: "relative", 
-            boxShadow: '0 30px 60px rgba(0,0,0,0.8)', 
-            borderRadius: '40px',
-            transform: 'scale(0.65)',
-            transformOrigin: 'center center',
-            margin: '-120px 0' // Compensate for scaled-down height
-          }}>
-            <div 
-              ref={shareCardRef}
-              style={{ 
-                width: "600px", 
-                height: "900px",
-                background: "#0a0a0a radial-gradient(circle at center, #1a1a1a 0%, #050505 100%)", 
-                padding: "2rem", 
-                color: "white",
-                fontFamily: "'Inter', sans-serif",
-                display: "flex",
-                flexDirection: "column",
-                gap: "1rem",
-                borderRadius: "40px",
-                border: "1px solid #333",
-                overflow: "hidden",
-                position: "relative"
-              }}
-            >
-              {/* Circuit Pattern Overlay */}
-              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0.05, pointerEvents: 'none', backgroundImage: 'radial-gradient(#ff6600 0.5px, transparent 0.5px)', backgroundSize: '20px 20px' }} />
-              
-              {/* Header Section - BETTER READABILITY */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', zIndex: 2, marginBottom: '0.5rem' }}>
-                <div>
-                  <h1 style={{ color: '#ff6600', margin: 0, fontSize: '1.4rem', fontWeight: 900, letterSpacing: '-0.02em', fontStyle: 'italic' }}>RANGE ANXIETY</h1>
-                  <p style={{ margin: 0, fontSize: '0.7rem', color: '#666', fontWeight: 600 }}>Trip Report • {new Date().toLocaleDateString()}</p>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: '1.2rem', fontWeight: 800, color: 'white' }}>{specs.voltage}V {specs.capacityAh}Ah</div>
-                  <div style={{ fontSize: '0.7rem', color: '#ff6600', fontWeight: 600 }}>{bikeSearchQuery || "Custom E-Bike"}</div>
-                </div>
-              </div>
-
-              {/* Route Map Snapshot - MAINTAIN FOCUS */}
-              {mapSnapshot && (
-                <div style={{ flex: 1, width: '100%', borderRadius: '24px', overflow: 'hidden', border: '2px solid rgba(255,102,0,0.6)', position: 'relative', zIndex: 2, boxShadow: '0 20px 50px rgba(0,0,0,0.7)' }}>
-                  <img 
-                    src={mapSnapshot} 
-                    alt="Route Snapshot" 
-                    crossOrigin="anonymous"
-                    style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} 
-                  />
-                </div>
-              )}
-
-              {/* UNIFIED METRICS GRID */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gridTemplateRows: 'auto auto', gap: '0.6rem', margin: '0.8rem 0', zIndex: 2 }}>
-                
-                {/* End Battery */}
-                <div style={{ background: 'linear-gradient(145deg, #2a2a2a 0%, #1a1a1a 100%)', borderRadius: '15px', border: '1px solid #444', padding: '0.6rem', textAlign: 'center', boxShadow: '0 5px 15px rgba(0,0,0,0.3)' }}>
-                  <div style={{ fontSize: '0.5rem', color: '#ff6600', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.2rem' }}>Battery Left</div>
-                  <div style={{ fontSize: '1.8rem', fontWeight: 900, color: 'white', lineHeight: 1 }}>{metrics.batteryPercentUsed.toFixed(0)}%</div>
-                  <div style={{ fontSize: '0.7rem', color: '#ff6600', fontWeight: 700 }}>{(getBatteryLevels(Number(specs.voltage)).min + (metrics.batteryPercentUsed / 100) * (getBatteryLevels(Number(specs.voltage)).max - getBatteryLevels(Number(specs.voltage)).min)).toFixed(1)}V</div>
-                </div>
-
-                {/* Distance */}
-                <div style={{ background: 'rgba(30,30,30,0.8)', borderRadius: '15px', border: '1px solid rgba(255,255,255,0.05)', padding: '0.6rem', textAlign: 'center', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                  <div style={{ fontSize: '0.5rem', color: '#666', textTransform: 'uppercase', fontWeight: 800, marginBottom: '0.2rem' }}>Distance</div>
-                  <div style={{ fontSize: '1.8rem', fontWeight: 900, color: 'white', lineHeight: 1 }}>{unitSystem === 'imperial' ? `${metrics.distanceMiles.toFixed(1)}` : `${(metrics.distanceMiles * 1.60934).toFixed(1)}`}<span style={{ fontSize: '0.6rem', marginLeft: '2px' }}>{unitSystem === 'imperial' ? 'mi' : 'km'}</span></div>
-                </div>
-
-                {/* Efficiency */}
-                <div style={{ background: 'rgba(30,30,30,0.8)', borderRadius: '15px', border: '1px solid rgba(255,255,255,0.05)', padding: '0.6rem', textAlign: 'center', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                  <div style={{ fontSize: '0.5rem', color: '#666', textTransform: 'uppercase', fontWeight: 800, marginBottom: '0.2rem' }}>Efficiency</div>
-                  <div style={{ fontSize: '1.8rem', fontWeight: 900, color: 'white', lineHeight: 1 }}>{(metrics.estimatedWh / metrics.distanceMiles).toFixed(0)}<span style={{ fontSize: '0.6rem', marginLeft: '2px' }}>Wh</span></div>
-                </div>
-
-                {/* Start Battery */}
-                <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '15px', border: '1px solid rgba(255,255,255,0.05)', padding: '0.6rem', textAlign: 'center' }}>
-                  <div style={{ fontSize: '0.5rem', color: '#666', textTransform: 'uppercase', fontWeight: 800, marginBottom: '0.2rem' }}>Start Bat</div>
-                  <div style={{ fontSize: '1.8rem', fontWeight: 900, color: 'white', lineHeight: 1 }}>{startBattery}%</div>
-                  <div style={{ fontSize: '0.7rem', color: '#888' }}>{startVoltage}V</div>
-                </div>
-
-                {/* Elevation */}
-                <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '15px', border: '1px solid rgba(255,255,255,0.05)', padding: '0.6rem', textAlign: 'center', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                  <div style={{ fontSize: '0.5rem', color: '#666', textTransform: 'uppercase', fontWeight: 800, marginBottom: '0.2rem' }}>Gain/Loss</div>
-                  <div style={{ fontSize: '1.8rem', fontWeight: 900, color: 'white', lineHeight: 1 }}>{metrics.elevationGainFeet > metrics.elevationLossFeet ? `+${(metrics.elevationGainFeet - metrics.elevationLossFeet).toFixed(0)}` : `-${(metrics.elevationLossFeet - metrics.elevationGainFeet).toFixed(0)}`}<span style={{ fontSize: '0.6rem', marginLeft: '2px' }}>ft</span></div>
-                </div>
-
-                {/* Wind */}
-                <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '15px', border: '1px solid rgba(255,255,255,0.05)', padding: '0.6rem', textAlign: 'center', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                  <div style={{ fontSize: '0.5rem', color: '#666', textTransform: 'uppercase', fontWeight: 800, marginBottom: '0.2rem' }}>Wind</div>
-                  <div style={{ fontSize: '1.8rem', fontWeight: 900, color: 'white', lineHeight: 1 }}>{metrics.windConditions ? Math.round(metrics.windConditions.speed) : '0'}<span style={{ fontSize: '0.6rem', marginLeft: '2px' }}>{(metrics.windConditions?.headwindComponent || 0) > 0 ? '🌬️' : '💨'}</span></div>
-                </div>
-
-              </div>
-
-              {/* Route Summary Text */}
-              <div style={{ fontSize: '1rem', color: 'white', textAlign: 'center', marginBottom: '0.8rem', zIndex: 2, fontWeight: 600 }}>
-                {trip.origin || "Current Location"} <span style={{ color: '#ff6600' }}>➔</span> {trip.destination}
-                <div style={{ fontSize: '0.65rem', color: '#ff6600', textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: '0.2rem' }}>
-                  {isRoundTrip ? '🔄 Round Trip' : '➔ One Way'}
-                </div>
-              </div>
-
-              {/* Footer */}
-              <div style={{ textAlign: 'center', marginTop: 'auto', zIndex: 2 }}>
-                <div style={{ color: '#ff6600', fontSize: '1.2rem', fontWeight: 900, letterSpacing: '0.1em' }}>rangeanxiety.app</div>
-                <p style={{ color: '#444', fontSize: '0.6rem', marginTop: '0.5rem', maxWidth: '80%', marginInline: 'auto' }}>
-                  * Estimates only. Actual range may vary based on conditions, rider behavior, and hardware health.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div style={{ marginTop: "30px", display: "flex", flexWrap: 'wrap', gap: "15px", width: "100%", maxWidth: "600px" }}>
-            <button 
-              onClick={() => setShowSharePreview(false)} 
-              style={{ flex: 1, padding: '14px', backgroundColor: '#333', color: 'white', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em' }}
-            >
-              Cancel
-            </button>
-            <button 
-              onClick={async () => {
-                await downloadShareCard();
-                setShowSharePreview(false);
-              }} 
-              disabled={isLoading}
-              style={{ flex: 1, padding: '14px', backgroundColor: '#444', color: 'white', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em' }}
-            >
-              {isLoading ? '...' : 'Private Download'}
-            </button>
-            <button 
-              onClick={shareToCommunity} 
-              disabled={isLoading}
-              style={{ width: '100%', padding: '14px', backgroundColor: '#ff6600', color: 'white', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', boxShadow: '0 0 20px rgba(255,102,0,0.4)' }}
-            >
-              {isLoading ? 'Processing...' : 'Post to Community Feed'}
-            </button>
-            <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '0.8rem', justifyContent: 'center', width: '100%' }}>
-              <input 
-                type="checkbox" 
-                id="allow-comments-map" 
-                checked={commentsEnabled} 
-                onChange={e => setCommentsEnabled(e.target.checked)}
-                style={{ width: 'auto' }}
-              />
-              <label htmlFor="allow-comments-map" style={{ margin: 0, textTransform: 'none', fontSize: '0.85rem', color: '#ccc' }}>Allow community comments</label>
-            </div>
-            <p style={{ width: '100%', textAlign: 'center', fontSize: '0.6rem', color: '#666', marginTop: '10px' }}>
-               * Private Download saves locally only. Nothing is saved to our servers unless you click "Post to Community Feed".
-            </p>
+          <div style={{ marginTop: '2rem', display: 'flex', gap: '1rem' }}>
+            <button onClick={() => setShowSharePreview(false)} style={{ padding: '1rem 2rem', background: '#333', color: 'white', border: 'none', borderRadius: '12px', cursor: 'pointer' }}>Cancel</button>
+            <button onClick={downloadShareCard} style={{ padding: '1rem 2rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold' }}>Download PNG</button>
           </div>
         </div>
       )}
 
-      {/* Off-screen container for image generation (high-res export) */}
-      <div style={{ position: 'absolute', left: '-9999px', top: '-9999px', pointerEvents: 'none' }}>
-        <div 
-          ref={shareCardRef} 
-          style={{ 
-            width: "600px", 
-            height: "900px",
-            background: "#0a0a0a radial-gradient(circle at center, #1a1a1a 0%, #050505 100%)", 
-            padding: "2rem", 
-            color: "white",
-            fontFamily: "'Inter', sans-serif",
-            display: "flex",
-            flexDirection: "column",
-            gap: "1rem",
-            borderRadius: "40px",
-            border: "1px solid #333",
-            overflow: "hidden",
-            position: "relative"
-          }}
-        >
-          {/* Circuit Pattern Overlay */}
-          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0.05, pointerEvents: 'none', backgroundImage: 'radial-gradient(#ff6600 0.5px, transparent 0.5px)', backgroundSize: '20px 20px' }} />
-          
-          {metrics && (
-            <>
-              {/* Header Section - BETTER READABILITY */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', zIndex: 2, marginBottom: '0.5rem' }}>
-                <div>
-                  <h1 style={{ color: '#ff6600', margin: 0, fontSize: '1.4rem', fontWeight: 900, letterSpacing: '-0.02em', fontStyle: 'italic' }}>RANGE ANXIETY</h1>
-                  <p style={{ margin: 0, fontSize: '0.7rem', color: '#666', fontWeight: 600 }}>Trip Report • {new Date().toLocaleDateString()}</p>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: '1.2rem', fontWeight: 800, color: 'white' }}>{specs.voltage}V {specs.capacityAh}Ah</div>
-                  <div style={{ fontSize: '0.7rem', color: '#ff6600', fontWeight: 600 }}>{bikeSearchQuery || "Custom E-Bike"}</div>
-                </div>
-              </div>
-
-              {/* Route Map Snapshot - MAINTAIN FOCUS */}
-              {mapSnapshot && (
-                <div style={{ flex: 1, width: '100%', borderRadius: '24px', overflow: 'hidden', border: '2px solid rgba(255,102,0,0.6)', position: 'relative', zIndex: 2, boxShadow: '0 20px 50px rgba(0,0,0,0.7)' }}>
-                  <img 
-                    src={mapSnapshot} 
-                    alt="Route Snapshot" 
-                    crossOrigin="anonymous"
-                    style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} 
-                  />
-                </div>
-              )}
-
-              {/* UNIFIED METRICS GRID */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gridTemplateRows: 'auto auto', gap: '0.6rem', margin: '0.8rem 0', zIndex: 2 }}>
-                
-                {/* End Battery */}
-                <div style={{ background: 'linear-gradient(145deg, #2a2a2a 0%, #1a1a1a 100%)', borderRadius: '15px', border: '1px solid #444', padding: '0.6rem', textAlign: 'center', boxShadow: '0 5px 15px rgba(0,0,0,0.3)' }}>
-                  <div style={{ fontSize: '0.5rem', color: '#ff6600', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.2rem' }}>Battery Left</div>
-                  <div style={{ fontSize: '1.8rem', fontWeight: 900, color: 'white', lineHeight: 1 }}>{metrics.batteryPercentUsed.toFixed(0)}%</div>
-                  <div style={{ fontSize: '0.7rem', color: '#ff6600', fontWeight: 700 }}>{(getBatteryLevels(Number(specs.voltage)).min + (metrics.batteryPercentUsed / 100) * (getBatteryLevels(Number(specs.voltage)).max - getBatteryLevels(Number(specs.voltage)).min)).toFixed(1)}V</div>
-                </div>
-
-                {/* Distance */}
-                <div style={{ background: 'rgba(30,30,30,0.8)', borderRadius: '15px', border: '1px solid rgba(255,255,255,0.05)', padding: '0.6rem', textAlign: 'center', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                  <div style={{ fontSize: '0.5rem', color: '#666', textTransform: 'uppercase', fontWeight: 800, marginBottom: '0.2rem' }}>Distance</div>
-                  <div style={{ fontSize: '1.8rem', fontWeight: 900, color: 'white', lineHeight: 1 }}>{unitSystem === 'imperial' ? `${metrics.distanceMiles.toFixed(1)}` : `${(metrics.distanceMiles * 1.60934).toFixed(1)}`}<span style={{ fontSize: '0.6rem', marginLeft: '2px' }}>{unitSystem === 'imperial' ? 'mi' : 'km'}</span></div>
-                </div>
-
-                {/* Efficiency */}
-                <div style={{ background: 'rgba(30,30,30,0.8)', borderRadius: '15px', border: '1px solid rgba(255,255,255,0.05)', padding: '0.6rem', textAlign: 'center', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                  <div style={{ fontSize: '0.5rem', color: '#666', textTransform: 'uppercase', fontWeight: 800, marginBottom: '0.2rem' }}>Efficiency</div>
-                  <div style={{ fontSize: '1.8rem', fontWeight: 900, color: 'white', lineHeight: 1 }}>{(metrics.estimatedWh / metrics.distanceMiles).toFixed(0)}<span style={{ fontSize: '0.6rem', marginLeft: '2px' }}>Wh</span></div>
-                </div>
-
-                {/* Start Battery */}
-                <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '15px', border: '1px solid rgba(255,255,255,0.05)', padding: '0.6rem', textAlign: 'center' }}>
-                  <div style={{ fontSize: '0.5rem', color: '#666', textTransform: 'uppercase', fontWeight: 800, marginBottom: '0.2rem' }}>Start Bat</div>
-                  <div style={{ fontSize: '1.8rem', fontWeight: 900, color: 'white', lineHeight: 1 }}>{startBattery}%</div>
-                  <div style={{ fontSize: '0.7rem', color: '#888' }}>{startVoltage}V</div>
-                </div>
-
-                {/* Elevation */}
-                <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '15px', border: '1px solid rgba(255,255,255,0.05)', padding: '0.6rem', textAlign: 'center', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                  <div style={{ fontSize: '0.5rem', color: '#666', textTransform: 'uppercase', fontWeight: 800, marginBottom: '0.2rem' }}>Gain/Loss</div>
-                  <div style={{ fontSize: '1.8rem', fontWeight: 900, color: 'white', lineHeight: 1 }}>{metrics.elevationGainFeet > metrics.elevationLossFeet ? `+${(metrics.elevationGainFeet - metrics.elevationLossFeet).toFixed(0)}` : `-${(metrics.elevationLossFeet - metrics.elevationGainFeet).toFixed(0)}`}<span style={{ fontSize: '0.6rem', marginLeft: '2px' }}>ft</span></div>
-                </div>
-
-                {/* Wind */}
-                <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '15px', border: '1px solid rgba(255,255,255,0.05)', padding: '0.6rem', textAlign: 'center', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                  <div style={{ fontSize: '0.5rem', color: '#666', textTransform: 'uppercase', fontWeight: 800, marginBottom: '0.2rem' }}>Wind</div>
-                  <div style={{ fontSize: '1.8rem', fontWeight: 900, color: 'white', lineHeight: 1 }}>{metrics.windConditions ? Math.round(metrics.windConditions.speed) : '0'}<span style={{ fontSize: '0.6rem', marginLeft: '2px' }}>{(metrics.windConditions?.headwindComponent || 0) > 0 ? '🌬️' : '💨'}</span></div>
-                </div>
-
-              </div>
-
-              {/* Route Summary Text */}
-              <div style={{ fontSize: '1rem', color: 'white', textAlign: 'center', marginBottom: '0.8rem', zIndex: 2, fontWeight: 600 }}>
-                {trip.origin || "Current Location"} <span style={{ color: '#ff6600' }}>➔</span> {trip.destination}
-                <div style={{ fontSize: '0.65rem', color: '#ff6600', textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: '0.2rem' }}>
-                  {isRoundTrip ? '🔄 Round Trip' : '➔ One Way'}
-                </div>
-              </div>
-
-              {/* Footer */}
-              <div style={{ textAlign: 'center', marginTop: 'auto', zIndex: 2 }}>
-                <div style={{ color: '#ff6600', fontSize: '1.2rem', fontWeight: 900, letterSpacing: '0.1em' }}>rangeanxiety.app</div>
-                <p style={{ color: '#444', fontSize: '0.6rem', marginTop: '0.5rem' }}>
-                  * Estimates only. Actual range may vary based on conditions.
-                </p>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-      {/* Floating UI Controls (Persistent) */}
-      <div className="persistent-controls" style={{ 
-        position: 'fixed', 
-        bottom: '2rem', 
-        left: '50%',
-        transform: 'translateX(-50%)',
-        zIndex: 20002, 
-        display: 'flex', 
-        flexDirection: 'row', 
-        gap: '1rem', 
-        alignItems: 'center',
-        background: 'rgba(20,20,20,0.8)',
-        padding: '0.8rem 1.5rem',
-        borderRadius: '40px',
-        backdropFilter: 'blur(10px)',
-        border: '1px solid rgba(255,255,255,0.1)',
-        boxShadow: '0 10px 40px rgba(0,0,0,0.8)'
-      }}>
-          <button 
-            className="mobile-toggle-btn-floating"
-            onClick={() => {
-              if (showMobileMenu && trip.origin && trip.destination && settingsDirty) {
-                handleCalculate();
-                setShowMobileMenu(false);
-              } else {
-                setShowMobileMenu(!showMobileMenu);
-              }
-            }}
-            style={{
-              padding: '0.8rem 1.2rem',
-              borderRadius: '25px',
-              backgroundColor: '#ff6600',
-              color: 'white',
-              border: 'none',
-              cursor: 'pointer',
-              fontWeight: 800,
-              fontSize: '0.75rem',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              whiteSpace: 'nowrap',
-              textTransform: 'uppercase'
-            }}
-          >
-            {showMobileMenu 
-              ? (trip.origin && trip.destination && settingsDirty ? '🚀 Find Route' : '🗺️ Map') 
-              : (metrics && !settingsDirty ? '📊 Trip Metrics' : '🏁 Start Here')
-            }
-          </button>
-
-          <button 
-            onClick={recenterMap}
-            style={{
-              width: '45px',
-              height: '45px',
-              borderRadius: '50%',
-              backgroundColor: '#333',
-              color: 'white',
-              border: '1px solid #444',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '1.4rem'
-            }}
-            title="Recenter Map"
-          >
-            🎯
-          </button>
-      </div>
-
-      {showInstallTutorial && <InstallTutorial onClose={() => setShowInstallTutorial(false)} />}
-      
       {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
-
-      {showToSPage && <TermsOfService onClose={() => setShowToSPage(false)} />}
-
       {showWelcomeModal && <WelcomeModal onClose={() => setShowWelcomeModal(false)} />}
+      {showInstallTutorial && <InstallTutorial onClose={() => setShowInstallTutorial(false)} />}
     </div>
-  )
+  );
 }
 
-export default MapHome
+export default MapHome;
