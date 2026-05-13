@@ -1332,16 +1332,8 @@ function MapHome() {
     } catch (e: any) { console.error("Calculation error", e); setError("Failed to calculate metrics."); setIsLoading(false); }
   };
 
-  // Dirty Settings Tracking
-  useEffect(() => {
-    setSettingsDirty(true);
-  }, [
-    trip.origin, trip.destination, trip.waypoints, trip.returnWaypoints,
-    specs.voltage, specs.capacityAh, specs.motorWatts, specs.bikeWeightLbs,
-    riderWeightLbs, targetSpeedMph, ambientTempF, tireType, tirePressurePsi,
-    controlType, mode, pasLevel, ridingStyle, isRoundTrip, isCustomReturn,
-    startBattery, startVoltage
-  ]);
+  // Clean up settingsDirty logic - moved to direct handlers to prevent focus loss
+  const markDirty = () => { if (!settingsDirty) setSettingsDirty(true); };
 
   const handleCalculate = () => { 
     if (!trip.origin || !trip.destination) return; 
@@ -1349,7 +1341,10 @@ function MapHome() {
     setIsLoading(true); setResponse(null); setMetrics(null); setError(null); setPois([]); 
     setSettingsDirty(false); 
   };
-  const useCurrentLocation = () => { if (navigator.geolocation) { navigator.geolocation.getCurrentPosition((pos) => { setTrip(prev => ({ ...prev, origin: `${pos.coords.latitude},${pos.coords.longitude}` })); }); } };
+  const useCurrentLocation = () => { if (navigator.geolocation) { navigator.geolocation.getCurrentPosition((pos) => { 
+    setTrip(prev => ({ ...prev, origin: `${pos.coords.latitude},${pos.coords.longitude}` })); 
+    markDirty();
+  }); } };
 
   const searchPOIs = async (category: string) => {
     if (!isLoaded || !mapRef.current) return;
