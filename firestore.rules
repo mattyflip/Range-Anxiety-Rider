@@ -27,13 +27,13 @@ service cloud.firestore {
     // --- Community Feed ---
     match /posts/{postId} {
       allow read: if isSignedIn();
-      allow create: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
       allow update, delete: if isSignedIn() && (request.auth.uid == resource.data.authorId || isAdmin());
       
       // Post Comments
       match /comments/{commentId} {
         allow read: if isSignedIn();
-        allow create: if isSignedIn();
+        allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
         allow update, delete: if isSignedIn() && (request.auth.uid == resource.data.authorId || isAdmin());
       }
     }
@@ -41,19 +41,19 @@ service cloud.firestore {
     // --- Forum Hub ---
     match /communities/{communityId} {
       allow read: if isSignedIn();
-      allow create: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.creatorId == request.auth.uid;
       allow update, delete: if isSignedIn() && (request.auth.uid == resource.data.creatorId || isAdmin());
 
       // Threads within a community
       match /threads/{threadId} {
         allow read: if isSignedIn();
-        allow create: if isSignedIn();
+        allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
         allow update, delete: if isSignedIn() && (request.auth.uid == resource.data.authorId || isAdmin());
 
         // Comments within a thread
         match /comments/{commentId} {
           allow read: if isSignedIn();
-          allow create: if isSignedIn();
+          allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
           allow update, delete: if isSignedIn() && (request.auth.uid == resource.data.authorId || isAdmin());
         }
       }
@@ -68,7 +68,7 @@ service cloud.firestore {
       // Comments on reviews
       match /comments/{commentId} {
         allow read: if isSignedIn();
-        allow create: if isSignedIn();
+        allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
         allow update, delete: if isSignedIn() && (resource.data.authorId == request.auth.uid || isAdmin());
       }
     }
@@ -76,7 +76,7 @@ service cloud.firestore {
     // --- Group Rides Collection ---
     match /group_rides/{rideId} {
       allow read: if isSignedIn();
-      allow create: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.creatorId == request.auth.uid;
       allow update, delete: if isSignedIn() && (request.auth.uid == resource.data.creatorId || isAdmin());
       
       match /participants/{participantId} {
@@ -99,7 +99,7 @@ service cloud.firestore {
     }
 
     match /marketing_emails/{docId} {
-      allow create: if true;
+      allow create: if isAdmin();
       allow read: if isAdmin();
       allow update, delete: if isAdmin();
     }
