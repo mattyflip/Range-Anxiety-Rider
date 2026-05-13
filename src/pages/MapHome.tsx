@@ -119,7 +119,7 @@ function MapHome() {
   const [targetSpeedMph, setTargetSpeedMph] = useState<number | ''>(20);
   
   const [batteryInputMode, setBatteryInputMode] = useState<'percent' | 'voltage'>('percent'); 
-  const [capacityInputMode, setCapacityInputMode] = useState<'ah' | 'wh'>('ah');
+  const [capacityInputMode] = useState<'ah' | 'wh'>('ah');
   const [startBattery, setStartBattery] = useState<number | ''>(100);
   const [startVoltage, setStartVoltage] = useState<number | ''>(54.6);
   
@@ -128,11 +128,11 @@ function MapHome() {
   const [metrics, setMetrics] = useState<RouteMetrics | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [pois, setPois] = useState<POI[]>([]);
-  const [poiCategory, setPoiCategory] = useState<string | null>(null);
   const [selectedPoi, setSelectedPoi] = useState<POI | null>(null);
+  const [poiCategory, setPoiCategory] = useState<string | null>(null);
   
   const [showSharePreview, setShowSharePreview] = useState(false);
-  const [commentsEnabled, setCommentsEnabled] = useState(true);
+  const [commentsEnabled] = useState(true);
 
   const [user, setUser] = useState<User | null>(null);
   const [userData, setUserData] = useState<any>(null);
@@ -156,6 +156,8 @@ function MapHome() {
   const [activeRide, setActiveRide] = useState<GroupRide | null>(null);
   const [rideParticipants, setRideParticipants] = useState<Participant[]>([]);
 
+  // --- Logic & Effects ---
+
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
       setUser(u); setAuthInitialized(true);
@@ -176,6 +178,14 @@ function MapHome() {
     });
     return () => unsub();
   }, []);
+
+  useEffect(() => {
+    if (!user || !isPro) return;
+    const q = query(collection(db, "group_rides"), where("isPublic", "==", true), where("status", "==", "active"));
+    return onSnapshot(q, (snap) => {
+      // Logic for public rides here if needed
+    });
+  }, [user, isPro]);
 
   useEffect(() => {
     if (!activeRide || !user) return;
@@ -217,7 +227,7 @@ function MapHome() {
         setShowMobileMenu(true); setPendingBikeAutoSelect(true);
         localStorage.removeItem('ebike_load_route');
         if (data.origin && data.destination) setTimeout(() => handleCalculate(), 1000);
-      } catch (e) { console.error(e); }
+      } catch (e) { console.error("Load route failed", e); }
     }
   }, []);
 
@@ -241,7 +251,7 @@ function MapHome() {
         const reader = new FileReader();
         reader.onloadend = () => setMapSnapshot(reader.result as string);
         reader.readAsDataURL(blob);
-      } catch (e) { console.error(e); }
+      } catch (e) { console.error("Snapshot failed", e); }
     };
     fetchSnapshot();
   }, [response, selectedRouteIndex]);
@@ -427,7 +437,7 @@ function MapHome() {
             <section className="form-group"><label>Voltage</label><input type="number" value={specs.voltage} onChange={e => handleSpecChange('voltage', e.target.value)} /></section>
             <section className="form-group"><label>Ah/Wh</label><input type="number" value={specs.capacityAh} onChange={e => handleSpecChange('capacityAh', e.target.value)} /></section>
           </div>
-          <section className="form-group"><label>Rider Weight ({unitSystem === 'imperial' ? 'lbs' : 'kg'})</label><input type="number" value={riderWeightLbs} onChange={e => { setRiderWeightLbs(parseFloat(e.target.value) || ''); markDirty(); }} /></section>
+          <section className="form-group"><label>Rider weight ({unitSystem === 'imperial' ? 'lbs' : 'kg'})</label><input type="number" value={riderWeightLbs} onChange={e => { setRiderWeightLbs(parseFloat(e.target.value) || ''); markDirty(); }} /></section>
           <section className="form-group"><label>Avg Speed ({unitSystem === 'imperial' ? 'mph' : 'km/h'})</label><input type="number" value={targetSpeedMph} onChange={e => { setTargetSpeedMph(parseFloat(e.target.value) || ''); markDirty(); }} /></section>
           <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', marginBottom: '1rem' }}>
             <label style={{ fontSize: '0.65rem', color: '#ff6600' }}>Environment</label>
