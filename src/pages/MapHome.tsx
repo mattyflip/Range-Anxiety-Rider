@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { GoogleMap, useJsApiLoader, DirectionsService, DirectionsRenderer, Marker } from '@react-google-maps/api'
 import axios from 'axios'
 import { toPng } from 'html-to-image'
@@ -103,11 +103,13 @@ function MapHome() {
     const unsub = onAuthStateChanged(auth, async (u) => {
       setUser(u); setAuthInitialized(true);
       if (u) {
-        const snap = await getDoc(doc(db, "users", u.uid));
-        if (snap.exists()) {
-          const data = snap.data(); setUserData(data);
-          if (data.bikes) setSavedBikes(data.bikes);
-        }
+        try {
+          const userDoc = await getDoc(doc(db, "users", u.uid));
+          if (userDoc.exists()) {
+            const data = userDoc.data(); setUserData(data);
+            if (data.bikes) setSavedBikes(data.bikes);
+          }
+        } catch (e) { console.error("Firestore error:", e); }
       } else {
         const local = localStorage.getItem('ebike-saved-bikes');
         if (local) setSavedBikes(JSON.parse(local));
@@ -138,11 +140,42 @@ function MapHome() {
   }, [showMobileMenu, metrics]);
 
   useEffect(() => {
+    const savedRoute = localStorage.getItem('ebike_load_route');
+    if (savedRoute) {
+      try {
+        const data = JSON.parse(savedRoute);
+        setTrip({ origin: data.origin || "", destination: data.destination || "", waypoints: data.waypoints || [] });
+        setShowMobileMenu(true); setPendingBikeAutoSelect(true);
+        localStorage.removeItem('ebike_load_route');
+        if (data.origin && data.destination) setTimeout(() => handleCalculate(), 1000);
+      } catch (e) { console.error("Load route failed", e); }
+    }
+  }, []);
+
+  useEffect(() => {
     if (pendingBikeAutoSelect && authInitialized && savedBikes.length > 0) {
       loadBike(savedBikes[0]); setPendingBikeAutoSelect(false);
       setTimeout(() => handleCalculate(), 500);
     }
   }, [pendingBikeAutoSelect, savedBikes, authInitialized]);
+
+  useEffect(() => {
+    if (!response || !response.routes[0]) return;
+    const polyline = response.routes[0].overview_polyline;
+    const points = (polyline as any).points || polyline;
+    const proxyUrl = `/api/static-map?polyline=${encodeURIComponent(points)}`;
+    const fetchSnapshot = async () => {
+      try {
+        const resp = await fetch(proxyUrl);
+        if (!resp.ok) return;
+        const blob = await resp.blob();
+        const reader = new FileReader();
+        reader.onloadend = () => setMapSnapshot(reader.result as string);
+        reader.readAsDataURL(blob);
+      } catch (e) { console.error("Snapshot failed", e); }
+    };
+    fetchSnapshot();
+  }, [response]);
 
   const markDirty = () => { if (!settingsDirty) setSettingsDirty(true); };
 
@@ -197,11 +230,11 @@ function MapHome() {
       } catch (e) { console.warn(e); }
 
       const totalWh = (Number(specs.voltage) * Number(specs.capacityAh)) * 0.92;
-      const estimatedWh = (distMiles * 25) + (gain * 0.1); // Simplified physics for stability
+      const estimatedWh = (distMiles * 25) + (gain * 0.1); 
       const remaining = ((totalWh - estimatedWh) / totalWh) * 100;
 
       let deathPoint: google.maps.LatLngLiteral | undefined = undefined;
-      if (remaining <= 0) deathPoint = path[Math.floor(path.length * 0.8)]; // Approximation
+      if (remaining <= 0) deathPoint = path[Math.floor(path.length * 0.8)];
 
       setMetrics({ distanceMiles: distMiles, durationMin: distMiles / 15 * 60, elevationGainFeet: gain, elevationLossFeet: 0, estimatedWh, batteryPercentUsed: Math.max(0, remaining), deathPoint });
       setIsLoading(false);
@@ -211,6 +244,12 @@ function MapHome() {
   const directionsCallback = (result: google.maps.DirectionsResult | null, status: google.maps.DirectionsStatus) => {
     if (status === 'OK' && result) { setResponse(result); calculateMetrics(result); }
     else { setIsLoading(false); }
+  };
+
+  const recenterMap = () => {
+    if (mapRef.current && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(pos => mapRef.current?.panTo({ lat: pos.coords.latitude, lng: pos.coords.longitude }));
+    }
   };
 
   const downloadShareCard = async () => {
@@ -262,11 +301,18 @@ function MapHome() {
                 {filteredBikes.map(b => <div key={b.name} onClick={() => loadBike(b)} style={{ padding: '0.8rem', borderBottom: '1px solid #222', cursor: 'pointer' }}>{b.name}</div>)}
               </div>
             )}
+            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+              <input type="text" placeholder="Name" value={newBikeName} onChange={e => setNewBikeName(e.target.value)} style={{ padding: '0.4rem' }} />
+              <button onClick={saveCurrentBike} style={{ padding: '0.4rem 0.8rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '4px' }}>Save</button>
+            </div>
           </section>
           <section className="form-group">
             <label>Route</label>
-            <input type="text" name="origin" placeholder="Start" value={trip.origin} onChange={handleInputChange} style={{ marginBottom: '0.5rem' }} />
-            <input type="text" name="destination" placeholder="End" value={trip.destination} onChange={handleInputChange} />
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <input type="text" name="origin" placeholder="Start" value={trip.origin} onChange={handleInputChange} style={{ flex: 1 }} />
+              <button onClick={useCurrentLocation} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer' }}>📍</button>
+            </div>
+            <input type="text" name="destination" placeholder="End" value={trip.destination} onChange={handleInputChange} style={{ marginTop: '0.5rem' }} />
           </section>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <section className="form-group"><label>Volts</label><input type="number" value={specs.voltage} onChange={e => handleSpecChange('voltage', e.target.value)} /></section>
@@ -276,17 +322,17 @@ function MapHome() {
             <div ref={metricsCardRef} className="card metrics-card" style={{ marginTop: '2rem', borderLeft: '4px solid #ff6600', padding: '1rem', background: 'rgba(40,40,40,0.9)' }}>
               <div style={{ fontSize: '1.5rem', fontWeight: 900 }}>{metrics.batteryPercentUsed.toFixed(1)}% Left</div>
               <p style={{ color: '#888' }}>{metrics.distanceMiles.toFixed(1)} miles</p>
-              <button onClick={downloadShareCard} style={{ width: '100%', marginTop: '1rem', padding: '0.8rem', background: '#333', color: 'white', border: 'none', borderRadius: '8px' }}>Save PNG</button>
-              <button onClick={shareToCommunity} style={{ width: '100%', marginTop: '0.5rem', padding: '0.8rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '8px' }}>Share Feed</button>
+              <button onClick={downloadShareCard} style={{ width: '100%', marginTop: '1rem', padding: '0.8rem', background: '#333', color: 'white', border: 'none', borderRadius: '8px' }}>Download</button>
+              <button onClick={shareToCommunity} style={{ width: '100%', marginTop: '0.5rem', padding: '0.8rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '8px' }}>Post Feed</button>
             </div>
           )}
-          <AdBanner isPro={isPro} />
+          <AdBanner isPro={userData?.isPro || false} />
         </aside>
         <main style={{ flex: 1, position: 'relative' }}>
           {isLoaded ? (
             <GoogleMap mapContainerStyle={{ width: '100%', height: '100%' }} center={center} zoom={10} onLoad={map => { mapRef.current = map; }}>
               {trip.origin && trip.destination && isLoading && !response && (
-                <DirectionsService options={{ origin: trip.origin, destination: isRoundTrip ? trip.origin : trip.destination, travelMode: google.maps.TravelMode.BICYCLING }} callback={directionsCallback} />
+                <DirectionsService options={{ origin: trip.origin, destination: trip.destination, travelMode: google.maps.TravelMode.BICYCLING }} callback={directionsCallback} />
               )}
               {response && <DirectionsRenderer options={{ directions: response }} />}
               {metrics?.deathPoint && <Marker position={metrics.deathPoint} label="☠️" />}
@@ -304,6 +350,7 @@ function MapHome() {
         >
           {showMobileMenu ? (settingsDirty ? '🚀 Find Route' : '🗺️ Map') : (metrics ? '📊 Stats' : '🏁 Start Here')}
         </button>
+        <button onClick={recenterMap} style={{ width: '45px', height: '45px', borderRadius: '50%', background: '#333', color: 'white', border: 'none', cursor: 'pointer' }}>🎯</button>
       </div>
       <div style={{ position: 'absolute', left: '-9999px', top: '-9999px', pointerEvents: 'none' }}>
         <div ref={shareCardRef} style={{ width: '500px', height: '800px', background: '#0a0a0a', padding: '2rem', display: 'flex', flexDirection: 'column', borderRadius: '40px' }}>
