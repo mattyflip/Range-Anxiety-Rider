@@ -119,7 +119,6 @@ function MapHome() {
   const [targetSpeedMph, setTargetSpeedMph] = useState<number | ''>(20);
   
   const [batteryInputMode, setBatteryInputMode] = useState<'percent' | 'voltage'>('percent'); 
-  const [capacityInputMode] = useState<'ah' | 'wh'>('ah');
   const [startBattery, setStartBattery] = useState<number | ''>(100);
   const [startVoltage, setStartVoltage] = useState<number | ''>(54.6);
   
@@ -129,7 +128,6 @@ function MapHome() {
   const [isLoading, setIsLoading] = useState(false);
   const [pois, setPois] = useState<POI[]>([]);
   const [selectedPoi, setSelectedPoi] = useState<POI | null>(null);
-  const [poiCategory, setPoiCategory] = useState<string | null>(null);
   
   const [showSharePreview, setShowSharePreview] = useState(false);
   const [commentsEnabled] = useState(true);
@@ -153,8 +151,34 @@ function MapHome() {
   const [pendingBikeAutoSelect, setPendingBikeAutoSelect] = useState(false);
   const [settingsDirty, setSettingsDirty] = useState(true);
 
-  const [activeRide, setActiveRide] = useState<GroupRide | null>(null);
+  const [activeRide] = useState<GroupRide | null>(null);
   const [rideParticipants, setRideParticipants] = useState<Participant[]>([]);
+
+  // --- Helpers ---
+
+  const getBatteryLevels = (v: number) => {
+    if (v >= 72) return { min: 60, max: 84 };
+    if (v >= 60) return { min: 50, max: 70 };
+    if (v >= 52) return { min: 42, max: 58.8 };
+    if (v >= 48) return { min: 39, max: 54.6 };
+    if (v >= 36) return { min: 30, max: 42 };
+    return { min: v * 0.8, max: v * 1.15 };
+  };
+
+  const handleToggleBatteryMode = (newMode: 'percent' | 'voltage') => {
+    if (newMode === batteryInputMode) return;
+    const { min, max } = getBatteryLevels(Number(specs.voltage));
+    if (newMode === 'voltage') {
+      const p = Number(startBattery) / 100;
+      const v = min + (p * (max - min));
+      setStartVoltage(Number(v.toFixed(1)));
+    } else {
+      const v = Number(startVoltage);
+      const p = ((v - min) / (max - min)) * 100;
+      setStartBattery(Math.min(100, Math.max(0, Number(p.toFixed(0)))));
+    }
+    setBatteryInputMode(newMode);
+  };
 
   // --- Logic & Effects ---
 
@@ -182,7 +206,7 @@ function MapHome() {
   useEffect(() => {
     if (!user || !isPro) return;
     const q = query(collection(db, "group_rides"), where("isPublic", "==", true), where("status", "==", "active"));
-    return onSnapshot(q, (snap) => {
+    return onSnapshot(q, (_snap) => {
       // Logic for public rides here if needed
     });
   }, [user, isPro]);
@@ -251,7 +275,7 @@ function MapHome() {
         const reader = new FileReader();
         reader.onloadend = () => setMapSnapshot(reader.result as string);
         reader.readAsDataURL(blob);
-      } catch (e) { console.error("Snapshot failed", e); }
+      } catch (e) { console.error(e); }
     };
     fetchSnapshot();
   }, [response, selectedRouteIndex]);
@@ -304,7 +328,6 @@ function MapHome() {
   const searchPOIs = async (category: string) => {
     if (!isLoaded || !mapRef.current) return;
     if (category === 'charging' && !isPro) { alert("PRO required."); return; }
-    setPoiCategory(category);
     const service = new google.maps.places.PlacesService(mapRef.current!);
     service.textSearch({ location: mapRef.current!.getCenter()!, radius: 5000, query: category }, (results, status) => {
       if (status === google.maps.places.PlacesServiceStatus.OK && results) {
@@ -435,7 +458,7 @@ function MapHome() {
           </section>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <section className="form-group"><label>Voltage</label><input type="number" value={specs.voltage} onChange={e => handleSpecChange('voltage', e.target.value)} /></section>
-            <section className="form-group"><label>Ah/Wh</label><input type="number" value={specs.capacityAh} onChange={e => handleSpecChange('capacityAh', e.target.value)} /></section>
+            <section className="form-group"><label>Capacity (Ah)</label><input type="number" value={specs.capacityAh} onChange={e => handleSpecChange('capacityAh', e.target.value)} /></section>
           </div>
           <section className="form-group"><label>Rider weight ({unitSystem === 'imperial' ? 'lbs' : 'kg'})</label><input type="number" value={riderWeightLbs} onChange={e => { setRiderWeightLbs(parseFloat(e.target.value) || ''); markDirty(); }} /></section>
           <section className="form-group"><label>Avg Speed ({unitSystem === 'imperial' ? 'mph' : 'km/h'})</label><input type="number" value={targetSpeedMph} onChange={e => { setTargetSpeedMph(parseFloat(e.target.value) || ''); markDirty(); }} /></section>
