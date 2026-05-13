@@ -414,6 +414,9 @@ function MapHome() {
         </main>
       </div>
       <div className="persistent-controls" style={{ position: 'fixed', bottom: '2rem', left: '50%', transform: 'translateX(-50%)', zIndex: 2000, display: 'flex', gap: '1rem', background: 'rgba(20,20,20,0.9)', padding: '0.8rem 1.5rem', borderRadius: '40px', border: '1px solid #333' }}>
+        <button onClick={useCurrentLocation} style={{ background: 'rgba(255,255,255,0.05)', color: 'white', border: 'none', width: '45px', height: '45px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', cursor: 'pointer' }}>
+          📍
+        </button>
         <button onClick={() => { if (showMobileMenu && trip.origin && trip.destination && settingsDirty) { handleCalculate(); setShowMobileMenu(false); } else setShowMobileMenu(!showMobileMenu); }} style={{ background: '#ff6600', color: 'white', border: 'none', padding: '0.8rem 1.5rem', borderRadius: '25px', fontWeight: 'bold' }}>
           {showMobileMenu ? (settingsDirty ? (metrics ? '🔄 Update Trip' : '🚀 Find Route') : '🗺️ Map') : (metrics && !settingsDirty ? '📊 Stats' : '🏁 Start Here')}
         </button>
