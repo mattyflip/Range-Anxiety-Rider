@@ -5,7 +5,7 @@ import { toPng } from 'html-to-image'
 import { auth, db, storage } from '../firebase'
 import { onAuthStateChanged } from 'firebase/auth'
 import type { User } from 'firebase/auth'
-import { doc, getDoc, collection, addDoc, serverTimestamp, updateDoc } from 'firebase/firestore'
+import { doc, getDoc, collection, addDoc, serverTimestamp, updateDoc, deleteDoc } from 'firebase/firestore'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import AdBanner from '../components/AdBanner'
 import TermsOfService from '../components/TermsOfService'
@@ -123,6 +123,9 @@ function MapHome() {
   const [authInitialized, setAuthInitialized] = useState(false);
   const [mapSnapshot, setMapSnapshot] = useState<string | null>(null);
   const [settingsDirty, setSettingsDirty] = useState(true);
+  const [userLocation, setUserLocation] = useState<google.maps.LatLngLiteral | null>(null);
+  const [isHostingRide, setIsHostingRide] = useState(false);
+  const [hostedRideId, setHostedRideId] = useState<string | null>(null);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
@@ -267,8 +270,44 @@ function MapHome() {
 
   const useCurrentLocation = () => {
     if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(pos => { setTrip(p => ({ ...p, origin: `${pos.coords.latitude},${pos.coords.longitude}` })); markDirty(); });
+      navigator.geolocation.getCurrentPosition(pos => {
+        const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        setUserLocation(loc);
+        if (mapRef.current) {
+          mapRef.current.panTo(loc);
+          mapRef.current.setZoom(15);
+        }
+        setTrip(p => ({ ...p, origin: `${loc.lat},${loc.lng}` }));
+        markDirty();
+      });
     }
+  };
+
+  const toggleRideHosting = async () => {
+    if (!user) { setShowAuthModal(true); return; }
+    if (isHostingRide && hostedRideId) {
+      setIsLoading(true);
+      try {
+        await deleteDoc(doc(db, "group_rides", hostedRideId));
+        setIsHostingRide(false); setHostedRideId(null);
+      } catch (e) { console.error(e); }
+      setIsLoading(false);
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const rideRef = await addDoc(collection(db, "group_rides"), {
+        creatorId: user.uid,
+        hostName: userData?.username || 'Rider',
+        location: userLocation || center,
+        startTime: serverTimestamp(),
+        isActive: true
+      });
+      setHostedRideId(rideRef.id);
+      setIsHostingRide(true);
+      alert("Hosting Group Ride!");
+    } catch (e) { console.error(e); }
+    setIsLoading(false);
   };
 
   const downloadShareCard = async () => {
@@ -316,6 +355,14 @@ function MapHome() {
             <button className={unitSystem === 'imperial' ? 'active' : ''} onClick={() => setUnitSystem('imperial')}>Imperial</button>
             <button className={unitSystem === 'metric' ? 'active' : ''} onClick={() => setUnitSystem('metric')}>Metric</button>
           </div></div>
+          
+          <button 
+            onClick={toggleRideHosting} 
+            style={{ width: '100%', padding: '1rem', background: isHostingRide ? '#333' : '#ff6600', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 900, marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem' }}
+          >
+            <span style={{ fontSize: '1.2rem' }}>{isHostingRide ? '🛑' : '🏍️'}</span> {isHostingRide ? 'Stop Hosting' : 'Host Group Ride'}
+          </button>
+
           <section className="form-group" style={{ position: 'relative' }}>
             <label>Bike Library</label>
             <input type="text" placeholder="Search..." value={bikeSearchQuery} onFocus={() => setShowBikeResults(true)} onChange={e => setBikeSearchQuery(e.target.value)} />
@@ -384,11 +431,62 @@ function MapHome() {
             </div>
             <input type="number" value={batteryInputMode === 'percent' ? startBattery : startVoltage} onChange={e => { if (batteryInputMode === 'percent') setStartBattery(parseFloat(e.target.value) || ''); else setStartVoltage(parseFloat(e.target.value) || ''); markDirty(); }} />
           </section>
+
           {metrics && (
-            <div ref={metricsCardRef} className="card metrics-card" style={{ marginTop: '1rem', borderLeft: '4px solid #ff6600', padding: '1rem', background: 'rgba(40,40,40,0.9)' }}>
-              <div style={{ fontSize: '1.5rem', fontWeight: 900 }}>{metrics.batteryPercentUsed.toFixed(1)}% Left</div>
-              <p style={{ color: '#888', fontSize: '0.85rem' }}>{metrics.distanceMiles.toFixed(1)} mi • End Volts: {metrics.endingVoltage?.toFixed(1)}V • Gain: {metrics.elevationGainFeet.toFixed(0)}ft</p>
-              <button onClick={() => setShowSharePreview(true)} style={{ width: '100%', marginTop: '1rem', padding: '0.8rem', background: '#ff6600', border: 'none', borderRadius: '8px', color: 'white', fontWeight: 'bold' }}>Share Trip</button>
+            <div ref={metricsCardRef} className="card metrics-card" style={{ marginTop: '1rem', borderLeft: '4px solid #ff6600', padding: '1.5rem', background: '#1a1a1a', borderRadius: '16px' }}>
+              <div style={{ color: '#ff6600', fontWeight: 800, fontSize: '0.8rem', textTransform: 'uppercase' }}>Estimated Metrics</div>
+              <div style={{ color: '#666', fontSize: '0.7rem', marginBottom: '1rem' }}>SELECT ROUTE</div>
+              
+              <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem' }}>
+                {[0, 1, 2].map(idx => (
+                  (response?.routes[idx] || idx === 0) && (
+                    <button 
+                      key={idx} 
+                      onClick={() => { setSelectedRouteIndex(idx); if (response) calculateMetrics(response, idx); }}
+                      style={{ 
+                        flex: 1, padding: '0.6rem', borderRadius: '8px', border: 'none',
+                        background: selectedRouteIndex === idx ? '#ff6600' : '#333',
+                        color: 'white', fontWeight: 'bold', fontSize: '0.8rem'
+                      }}
+                    >
+                      Route {idx + 1}
+                    </button>
+                  )
+                ))}
+              </div>
+
+              <div style={{ fontSize: '1.8rem', fontWeight: 900, color: 'white' }}>Battery Left: {metrics.batteryPercentUsed.toFixed(1)}%</div>
+              <div style={{ color: '#888', fontSize: '0.9rem', marginBottom: '1.5rem' }}>Est. End Voltage: {metrics.endingVoltage?.toFixed(1)}V</div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#666' }}>Travel Time:</span><span style={{ fontWeight: 'bold' }}>{Math.floor(metrics.durationMin/60)}h {Math.round(metrics.durationMin%60)}m</span></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#666' }}>Distance:</span><span style={{ fontWeight: 'bold' }}>{metrics.distanceMiles.toFixed(1)} mi</span></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#666' }}>Elevation Gain:</span><span style={{ fontWeight: 'bold' }}>{metrics.elevationGainFeet.toFixed(0)} ft</span></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#666' }}>🌬️ Wind:</span>
+                  <span style={{ color: '#4caf50', fontWeight: 'bold' }}>
+                    {metrics.windConditions?.speed.toFixed(1)} mph ({metrics.windConditions && metrics.windConditions.headwindComponent > 0 ? 'Headwind' : 'Tailwind'})
+                  </span>
+                </div>
+              </div>
+
+              <div style={{ textAlign: 'center', color: '#666', fontSize: '0.8rem', margin: '1rem 0' }}>Wh/mile: {(metrics.estimatedWh / metrics.distanceMiles).toFixed(1)}</div>
+
+              <button 
+                onClick={() => {
+                   const url = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(trip.origin)}&destination=${encodeURIComponent(trip.destination)}&travelmode=bicycling`;
+                   window.open(url, '_blank');
+                }} 
+                style={{ width: '100%', padding: '1rem', background: '#2e7d32', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 900, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+              >
+                🚀 Open Maps
+              </button>
+              
+              <button onClick={() => setShowSharePreview(true)} style={{ width: '100%', padding: '1rem', background: '#333', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 900, marginBottom: '1.5rem' }}>Save Image (PRO)</button>
+
+              <button style={{ width: '100%', padding: '1.2rem', background: 'linear-gradient(to bottom, #ff8800, #ff6600)', color: 'white', border: 'none', borderRadius: '16px', fontWeight: 900, fontSize: '1.2rem', boxShadow: '0 4px 15px rgba(255,102,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                🏁 START TRIP
+              </button>
             </div>
           )}
           <AdBanner isPro={isPro} />
@@ -408,6 +506,19 @@ function MapHome() {
               {pois.map(p => (
                 <Marker key={p.id} position={p.position} onClick={() => setSelectedPoi(p)} label={p.type === 'charging' ? { text: '⚡', color: 'white', fontWeight: 'bold' } : undefined} icon={{ url: p.type === 'charging' ? 'https://maps.google.com/mapfiles/ms/icons/green-dot.png' : 'https://maps.google.com/mapfiles/ms/icons/blue-dot.png' }} />
               ))}
+              {userLocation && (
+                <Marker 
+                  position={userLocation} 
+                  icon={{
+                    path: google.maps.SymbolPath.CIRCLE,
+                    scale: 8,
+                    fillColor: "#4285F4",
+                    fillOpacity: 1,
+                    strokeColor: "white",
+                    strokeWeight: 2,
+                  }}
+                />
+              )}
               {selectedPoi && <InfoWindow position={selectedPoi.position} onCloseClick={() => setSelectedPoi(null)}><div style={{ color: 'black' }}><strong>{selectedPoi.name}</strong><br/>{selectedPoi.address}</div></InfoWindow>}
             </GoogleMap>
           ) : <div style={{ color: 'white', padding: '2rem' }}>Loading Maps...</div>}
@@ -417,8 +528,22 @@ function MapHome() {
         <button onClick={useCurrentLocation} style={{ background: 'rgba(255,255,255,0.05)', color: 'white', border: 'none', width: '45px', height: '45px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', cursor: 'pointer' }}>
           📍
         </button>
-        <button onClick={() => { if (showMobileMenu && trip.origin && trip.destination && settingsDirty) { handleCalculate(); setShowMobileMenu(false); } else setShowMobileMenu(!showMobileMenu); }} style={{ background: '#ff6600', color: 'white', border: 'none', padding: '0.8rem 1.5rem', borderRadius: '25px', fontWeight: 'bold' }}>
-          {showMobileMenu ? (settingsDirty ? (metrics ? '🔄 Update Trip' : '🚀 Find Route') : '🗺️ Map') : (metrics && !settingsDirty ? '📊 Stats' : '🏁 Start Here')}
+        <button 
+          onClick={() => { 
+            if (showMobileMenu) {
+              if (settingsDirty && trip.origin && trip.destination) {
+                handleCalculate();
+                setShowMobileMenu(false);
+              } else {
+                setShowMobileMenu(false);
+              }
+            } else {
+              setShowMobileMenu(true);
+            }
+          }} 
+          style={{ background: '#ff6600', color: 'white', border: 'none', padding: '0.8rem 1.5rem', borderRadius: '25px', fontWeight: 'bold' }}
+        >
+          {!showMobileMenu ? (metrics && !settingsDirty ? '📊 Stats' : '🏁 Start Here') : (settingsDirty ? (metrics ? '🔄 Update Trip' : '🚀 Find Route') : '🗺️ Map')}
         </button>
       </div>
       {showSharePreview && metrics && (
