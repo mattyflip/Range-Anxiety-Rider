@@ -60,6 +60,7 @@ interface RouteMetrics {
   batteryPercentUsed: number;
   recommendedSpeedMph: number;
   deathPoint?: google.maps.LatLngLiteral;
+  endingVoltage?: number;
   windConditions?: {
     speed: number;
     direction: number;
@@ -204,14 +205,6 @@ function MapHome() {
   }, []);
 
   useEffect(() => {
-    if (!user || !isPro) return;
-    const q = query(collection(db, "group_rides"), where("isPublic", "==", true), where("status", "==", "active"));
-    return onSnapshot(q, (_snap) => {
-      // Logic for public rides here if needed
-    });
-  }, [user, isPro]);
-
-  useEffect(() => {
     if (!activeRide || !user) return;
     return onSnapshot(collection(db, `group_rides/${activeRide.id}/participants`), (snap) => {
       const parts: Participant[] = [];
@@ -275,7 +268,7 @@ function MapHome() {
         const reader = new FileReader();
         reader.onloadend = () => setMapSnapshot(reader.result as string);
         reader.readAsDataURL(blob);
-      } catch (e) { console.error(e); }
+      } catch (e) { console.error("Snapshot failed", e); }
     };
     fetchSnapshot();
   }, [response, selectedRouteIndex]);
@@ -342,25 +335,41 @@ function MapHome() {
       let distMeters = 0; route.legs.forEach(leg => distMeters += (leg.distance?.value || 0));
       const distMiles = distMeters / 1609.34;
       const path = route.overview_path.map(p => ({ lat: p.lat(), lng: p.lng() }));
+      
       let gainFeet = 0, lossFeet = 0;
       try {
         const encodedPath = google.maps.geometry.encoding.encodePath(route.overview_path);
         const elevResp = await axios.post('/api/elevation', { encodedPath, samples: 100 });
         if (elevResp.data?.gain) { gainFeet = elevResp.data.gain; lossFeet = elevResp.data.loss || 0; }
-      } catch (e) { console.error(e); }
+      } catch (e) { console.warn("Elevation failed", e); }
+
       let windSpeed = 0, windDir = 0, headwindMph = 0;
       try {
         const weatherResp = await axios.get(`/api/weather?lat=${path[0].lat}&lng=${path[0].lng}`);
         windSpeed = weatherResp.data.wind_speed; windDir = weatherResp.data.wind_deg;
-        headwindMph = windSpeed * 0.5;
-      } catch (e) { console.error(e); }
+        const y = Math.sin((path[path.length-1].lng - path[0].lng) * Math.PI / 180) * Math.cos(path[path.length-1].lat * Math.PI / 180);
+        const x = Math.cos(path[0].lat * Math.PI / 180) * Math.sin(path[path.length-1].lat * Math.PI / 180) - Math.sin(path[0].lat * Math.PI / 180) * Math.cos(path[path.length-1].lat * Math.PI / 180) * Math.cos((path[path.length-1].lng - path[0].lng) * Math.PI / 180);
+        const routeBearing = (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+        headwindMph = windSpeed * Math.cos((windDir - routeBearing) * Math.PI / 180);
+      } catch (e) { console.warn("Weather failed", e); }
+
+      const massKg = (Number(specs.bikeWeightLbs) + Number(riderWeightLbs)) * 0.453592;
+      const velocityMps = Number(targetSpeedMph) * 0.44704;
+      const Crr = tireType === 'road' ? 0.007 : 0.015;
+      const ForceRolling = Crr * massKg * 9.81;
+      const ForceDrag = 0.5 * 1.225 * 0.55 * Math.pow(Math.max(0.1, velocityMps + headwindMph * 0.44704), 2);
+      const motorEff = mode === 'eco' ? 0.85 : 0.80;
       const totalWhRaw = (Number(specs.voltage) * Number(specs.capacityAh));
       const totalWhUsable = totalWhRaw * 0.92;
-      const WhPerMile = 25;
-      const estimatedWh = (distMiles * WhPerMile) + (gainFeet * 0.1); 
-      const minV = getBatteryLevels(Number(specs.voltage)).min, maxV = getBatteryLevels(Number(specs.voltage)).max;
-      const startWh = batteryInputMode === 'percent' ? (totalWhUsable * (Number(startBattery)/100)) : (totalWhUsable * ((Number(startVoltage)-minV)/(maxV-minV)));
+      const MotorPowerWatts = Math.max(0, (ForceRolling + ForceDrag) * velocityMps - (controlType === 'pas' ? (150 - (pasLevel-1)*30) : 0));
+      const WhPerMile = (MotorPowerWatts / velocityMps) * (1609.34 / 3600) / motorEff;
+      const estimatedWh = (distMiles * WhPerMile) + ((massKg * 9.81 * gainFeet * 0.3048) / 3600 / motorEff);
+
+      const { min, max } = getBatteryLevels(Number(specs.voltage));
+      const startWh = batteryInputMode === 'percent' ? (totalWhUsable * (Number(startBattery)/100)) : (totalWhUsable * ((Number(startVoltage)-min)/(max-min)));
       const batteryPercentRemaining = ((startWh - estimatedWh) / totalWhUsable) * 100;
+      const endingVoltage = min + (Math.max(0, batteryPercentRemaining / 100) * (max - min));
+
       let deathPoint: google.maps.LatLngLiteral | undefined = undefined;
       if (batteryPercentRemaining <= 0) {
         const avgWhPerMile = estimatedWh / distMiles; let cumulativeWh = 0;
@@ -370,7 +379,8 @@ function MapHome() {
           if (cumulativeWh >= startWh) { deathPoint = path[i]; break; }
         }
       }
-      setMetrics({ distanceMiles: distMiles, durationMin: distMiles / 15 * 60, elevationGainFeet: gainFeet, elevationLossFeet: lossFeet, estimatedWh, batteryPercentUsed: Math.max(0, batteryPercentRemaining), recommendedSpeedMph: 20, deathPoint, windConditions: { speed: windSpeed, direction: windDir, headwindComponent: headwindMph } });
+
+      setMetrics({ distanceMiles: distMiles, durationMin: distMiles / (Number(targetSpeedMph) || 15) * 60, elevationGainFeet: gainFeet, elevationLossFeet: lossFeet, estimatedWh, batteryPercentUsed: Math.max(0, batteryPercentRemaining), recommendedSpeedMph: 20, deathPoint, endingVoltage, windConditions: { speed: windSpeed, direction: windDir, headwindComponent: headwindMph } });
       setIsLoading(false);
     } catch (e) { console.error(e); setIsLoading(false); }
   };
@@ -391,9 +401,9 @@ function MapHome() {
     try {
       setIsLoading(true); shareCardRef.current.style.opacity = '1';
       await new Promise(r => setTimeout(r, 1500));
-      const dataUrl = await toPng(shareCardRef.current, { backgroundColor: "#121212" });
+      const dataUrl = await toPng(shareCardRef.current, { backgroundColor: "#121212", pixelRatio: 2 });
       shareCardRef.current.style.opacity = '0';
-      const link = document.createElement('a'); link.download = 'trip.png'; link.href = dataUrl; link.click();
+      const link = document.createElement('a'); link.download = `trip-${Date.now()}.png`; link.href = dataUrl; link.click();
       setIsLoading(false);
     } catch (e) { setIsLoading(false); }
   };
@@ -404,13 +414,18 @@ function MapHome() {
     try {
       shareCardRef.current.style.opacity = '1';
       await new Promise(r => setTimeout(r, 1500));
-      const dataUrl = await toPng(shareCardRef.current, { backgroundColor: "#121212" });
+      const dataUrl = await toPng(shareCardRef.current, { backgroundColor: "#121212", pixelRatio: 2 });
       shareCardRef.current.style.opacity = '0';
       const blob = await (await fetch(dataUrl)).blob();
       const imageRef = ref(storage, `trips/${user.uid}/${Date.now()}.png`);
       await uploadBytes(imageRef, blob);
       const url = await getDownloadURL(imageRef);
-      await addDoc(collection(db, "posts"), { authorId: user.uid, authorUsername: userData?.username || 'Rider', authorProfilePic: userData?.profilePic || '', imageUrl: url, caption: `Rode ${metrics.distanceMiles.toFixed(1)} miles!`, likes: [], commentsEnabled: commentsEnabled, createdAt: serverTimestamp(), city: userData?.city || "", homeRegion: userData?.homeRegion || "", tripData: { origin: trip.origin, destination: trip.destination, waypoints: trip.waypoints, isRoundTrip } });
+      await addDoc(collection(db, "posts"), {
+        authorId: user.uid, authorUsername: userData?.username || 'Rider', authorProfilePic: userData?.profilePic || '', imageUrl: url, 
+        caption: `Rode ${metrics.distanceMiles.toFixed(1)} miles!`, likes: [], commentsEnabled: commentsEnabled, createdAt: serverTimestamp(),
+        city: userData?.city || "", homeRegion: userData?.homeRegion || "",
+        tripData: { origin: trip.origin, destination: trip.destination, waypoints: trip.waypoints, isRoundTrip }
+      });
       alert("Shared!"); setIsLoading(false); setShowSharePreview(false);
     } catch (e) { setIsLoading(false); }
   };
@@ -418,6 +433,8 @@ function MapHome() {
   const onMapLoad = useCallback((map: google.maps.Map) => { mapRef.current = map; }, []);
 
   const filteredBikes = [...STANDARD_BIKES, ...savedBikes].filter(b => b.name.toLowerCase().includes(bikeSearchQuery.toLowerCase()));
+
+  // --- Render ---
 
   return (
     <div className="container">
@@ -431,6 +448,7 @@ function MapHome() {
               <button className={unitSystem === 'metric' ? 'active' : ''} onClick={() => setUnitSystem('metric')}>Metric</button>
             </div>
           </div>
+
           <section className="form-group" style={{ position: 'relative' }}>
             <label>Bike Library</label>
             <input type="text" placeholder="Search..." value={bikeSearchQuery} onFocus={() => setShowBikeResults(true)} onChange={e => setBikeSearchQuery(e.target.value)} />
@@ -444,6 +462,7 @@ function MapHome() {
               <button onClick={saveCurrentBike} style={{ padding: '0.4rem 0.8rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '4px' }}>Save</button>
             </div>
           </section>
+
           <section className="form-group">
             <label>Route</label>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -456,12 +475,15 @@ function MapHome() {
               <button className={isRoundTrip ? 'active' : ''} onClick={() => { setIsRoundTrip(true); markDirty(); }}>Round Trip</button>
             </div>
           </section>
+
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <section className="form-group"><label>Voltage</label><input type="number" value={specs.voltage} onChange={e => handleSpecChange('voltage', e.target.value)} /></section>
             <section className="form-group"><label>Capacity (Ah)</label><input type="number" value={specs.capacityAh} onChange={e => handleSpecChange('capacityAh', e.target.value)} /></section>
           </div>
+
           <section className="form-group"><label>Rider weight ({unitSystem === 'imperial' ? 'lbs' : 'kg'})</label><input type="number" value={riderWeightLbs} onChange={e => { setRiderWeightLbs(parseFloat(e.target.value) || ''); markDirty(); }} /></section>
           <section className="form-group"><label>Avg Speed ({unitSystem === 'imperial' ? 'mph' : 'km/h'})</label><input type="number" value={targetSpeedMph} onChange={e => { setTargetSpeedMph(parseFloat(e.target.value) || ''); markDirty(); }} /></section>
+
           <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', marginBottom: '1rem' }}>
             <label style={{ fontSize: '0.65rem', color: '#ff6600' }}>Environment</label>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '0.5rem' }}>
@@ -473,31 +495,33 @@ function MapHome() {
               <button className={tireType === 'knobby' ? 'active' : ''} onClick={() => { setTireType('knobby'); markDirty(); }}>Knobby</button>
             </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+
+          <section className="form-group">
+            <label>Drive Type</label>
+            <div className="mode-toggle">
+              <button className={controlType === 'pas' ? 'active' : ''} onClick={() => { setControlType('pas'); markDirty(); }}>PAS (1-5)</button>
+              <button className={controlType === 'switch' ? 'active' : ''} onClick={() => { setControlType('switch'); markDirty(); }}>3 Speed Switch</button>
+            </div>
+          </section>
+
+          {controlType === 'pas' ? (
             <section className="form-group">
-              <label>Control</label>
-              <div className="mode-toggle">
-                <button className={controlType === 'pas' ? 'active' : ''} onClick={() => { setControlType('pas'); markDirty(); }}>PAS</button>
-                <button className={controlType === 'switch' ? 'active' : ''} onClick={() => { setControlType('switch'); markDirty(); }}>SW</button>
-              </div>
-            </section>
-            <section className="form-group">
-              <label>Mode</label>
-              <select value={mode} onChange={e => { setMode(e.target.value as any); markDirty(); }} style={{ width: '100%', padding: '0.8rem', background: '#222', border: '1px solid #333', borderRadius: '8px', color: 'white' }}>
-                <option value="eco">ECO</option>
-                <option value="normal">NORMAL</option>
-                <option value="sport">SPORT</option>
-              </select>
-            </section>
-          </div>
-          {controlType === 'pas' && (
-            <section className="form-group">
-              <label>Assist Level (1-5)</label>
+              <label>Pedal Assist Level (1-5)</label>
               <div className="mode-toggle">
                 {[1, 2, 3, 4, 5].map(l => <button key={l} className={pasLevel === l ? 'active' : ''} onClick={() => { setPasLevel(l); markDirty(); }}>{l}</button>)}
               </div>
             </section>
+          ) : (
+            <section className="form-group">
+              <label>Speed Mode</label>
+              <div className="mode-toggle">
+                <button className={mode === 'eco' ? 'active' : ''} onClick={() => { setMode('eco'); markDirty(); }}>Eco</button>
+                <button className={mode === 'normal' ? 'active' : ''} onClick={() => { setMode('normal'); markDirty(); }}>Normal</button>
+                <button className={mode === 'sport' ? 'active' : ''} onClick={() => { setMode('sport'); markDirty(); }}>Sport</button>
+              </div>
+            </section>
           )}
+
           <section className="form-group">
             <label>Battery Entry</label>
             <div className="mode-toggle">
@@ -506,20 +530,31 @@ function MapHome() {
             </div>
             <input type="number" value={batteryInputMode === 'percent' ? startBattery : startVoltage} onChange={e => { if (batteryInputMode === 'percent') setStartBattery(parseFloat(e.target.value) || ''); else setStartVoltage(parseFloat(e.target.value) || ''); markDirty(); }} />
           </section>
-          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
-            <button onClick={() => searchPOIs('charging')} style={{ flex: 1, padding: '0.6rem', background: '#333', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '0.7rem' }}>⚡ Chargers</button>
-            <button onClick={() => searchPOIs('cafe')} style={{ flex: 1, padding: '0.6rem', background: '#333', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '0.7rem' }}>☕ Cafes</button>
-          </div>
+
           {metrics && (
             <div ref={metricsCardRef} className="card metrics-card" style={{ marginTop: '1rem', borderLeft: '4px solid #ff6600', padding: '1rem', background: 'rgba(40,40,40,0.9)' }}>
               <div style={{ fontSize: '1.5rem', fontWeight: 900 }}>{metrics.batteryPercentUsed.toFixed(1)}% Left</div>
-              <p style={{ margin: '0.5rem 0', color: '#888' }}>{metrics.distanceMiles.toFixed(1)} mi • {Math.round(metrics.durationMin)} min</p>
+              <p style={{ margin: '0.5rem 0', color: '#888', fontSize: '0.85rem' }}>
+                {metrics.distanceMiles.toFixed(1)} mi • {Math.round(metrics.durationMin)} min<br/>
+                End Volts: {metrics.endingVoltage?.toFixed(1)}V • Gain: {metrics.elevationGainFeet.toFixed(0)}ft
+              </p>
               <button onClick={() => setShowSharePreview(true)} style={{ width: '100%', marginTop: '1rem', padding: '0.8rem', background: '#ff6600', border: 'none', borderRadius: '8px', color: 'white', fontWeight: 'bold' }}>Share Trip</button>
             </div>
           )}
           <AdBanner isPro={isPro} />
         </aside>
+
         <main style={{ flex: 1, position: 'relative' }}>
+          {/* POI Search Over Map */}
+          <div style={{ position: 'absolute', top: '1rem', right: '1rem', zIndex: 10, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+             <button onClick={() => searchPOIs('charging')} style={{ padding: '0.8rem 1.2rem', background: 'rgba(20,20,20,0.9)', color: 'white', border: '1px solid #333', borderRadius: '12px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem', boxShadow: '0 4px 15px rgba(0,0,0,0.5)' }}>
+                <span style={{ color: '#ff6600' }}>⚡</span> Chargers
+             </button>
+             <button onClick={() => searchPOIs('cafe')} style={{ padding: '0.8rem 1.2rem', background: 'rgba(20,20,20,0.9)', color: 'white', border: '1px solid #333', borderRadius: '12px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem', boxShadow: '0 4px 15px rgba(0,0,0,0.5)' }}>
+                <span style={{ color: '#ffcc00' }}>☕</span> Cafes
+             </button>
+          </div>
+
           {isLoaded ? (
             <GoogleMap mapContainerStyle={{ width: '100%', height: '100%' }} center={center} zoom={10} onLoad={onMapLoad}>
               {trip.origin && trip.destination && isLoading && !response && (
@@ -529,7 +564,16 @@ function MapHome() {
               {metrics?.deathPoint && <Marker position={metrics.deathPoint} label={{ text: '☠️', color: 'white', fontWeight: 'bold' }} />}
               {rideParticipants.map(p => <Marker key={p.userId} position={{ lat: p.lat, lng: p.lng }} label={{ text: p.name, color: 'white', fontSize: '10px' }} />)}
               {pois.map(p => (
-                <Marker key={p.id} position={p.position} onClick={() => setSelectedPoi(p)} icon={{ url: p.type === 'charging' ? 'https://maps.google.com/mapfiles/ms/icons/green-dot.png' : 'https://maps.google.com/mapfiles/ms/icons/blue-dot.png' }} />
+                <Marker 
+                  key={p.id} 
+                  position={p.position} 
+                  onClick={() => setSelectedPoi(p)} 
+                  label={p.type === 'charging' ? { text: '⚡', color: 'white', fontWeight: 'bold', fontSize: '14px' } : undefined}
+                  icon={{ 
+                    url: p.type === 'charging' ? 'https://maps.google.com/mapfiles/ms/icons/green-dot.png' : 'https://maps.google.com/mapfiles/ms/icons/blue-dot.png',
+                    scaledSize: new google.maps.Size(32, 32)
+                  }} 
+                />
               ))}
               {selectedPoi && <InfoWindow position={selectedPoi.position} onCloseClick={() => setSelectedPoi(null)}><div style={{ color: 'black' }}><strong>{selectedPoi.name}</strong><br/>{selectedPoi.address}</div></InfoWindow>}
             </GoogleMap>
@@ -550,23 +594,47 @@ function MapHome() {
       </div>
       {showSharePreview && metrics && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.95)', zIndex: 10000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(10px)', padding: '20px' }}>
-          <div ref={shareCardRef} style={{ width: '500px', height: '800px', background: '#0a0a0a', padding: '2rem', display: 'flex', flexDirection: 'column', borderRadius: '40px', border: '1px solid #333' }}>
-             <h2 style={{ color: '#ff6600', fontStyle: 'italic' }}>RANGE ANXIETY</h2>
-             {mapSnapshot && <div style={{ flex: 1, margin: '1.5rem 0', borderRadius: '20px', overflow: 'hidden' }}><img src={mapSnapshot} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Map" /></div>}
-             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <div style={{ background: '#1a1a1a', padding: '1rem', borderRadius: '15px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '2rem', fontWeight: 900, color: 'white' }}>{metrics.batteryPercentUsed.toFixed(0)}%</div>
+          <div ref={shareCardRef} style={{ width: '500px', height: '800px', background: '#0a0a0a', padding: '2.5rem', display: 'flex', flexDirection: 'column', borderRadius: '40px', border: '1px solid #333', position: 'relative' }}>
+             <h2 style={{ color: '#ff6600', fontStyle: 'italic', fontSize: '2.2rem', fontWeight: 900, letterSpacing: '-0.02em', margin: 0 }}>RANGE ANXIETY</h2>
+             <p style={{ color: '#666', fontSize: '0.8rem', fontWeight: 'bold', margin: '0.2rem 0 1.5rem 0' }}>{new Date().toLocaleDateString()} • TRIP REPORT</p>
+             
+             {mapSnapshot && <div style={{ flex: 1, margin: '1rem 0', borderRadius: '24px', overflow: 'hidden', border: '1px solid #222', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }}><img src={mapSnapshot} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Map" /></div>}
+             
+             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: 'repeat(3, 1fr)', gap: '1.2rem', marginTop: '1.5rem' }}>
+                <div style={{ background: '#111', padding: '1.2rem', borderRadius: '20px', border: '1px solid #222', textAlign: 'center' }}>
+                  <div style={{ color: '#ff6600', fontSize: '0.65rem', fontWeight: 'bold', letterSpacing: '0.1em', marginBottom: '0.5rem' }}>BATTERY LEFT</div>
+                  <div style={{ fontSize: '2.2rem', fontWeight: 900, color: 'white' }}>{metrics.batteryPercentUsed.toFixed(0)}%</div>
                 </div>
-                <div style={{ background: '#1a1a1a', padding: '1rem', borderRadius: '15px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '2rem', fontWeight: 900, color: 'white' }}>{metrics.distanceMiles.toFixed(1)}mi</div>
+                <div style={{ background: '#111', padding: '1.2rem', borderRadius: '20px', border: '1px solid #222', textAlign: 'center' }}>
+                  <div style={{ color: '#888', fontSize: '0.65rem', fontWeight: 'bold', letterSpacing: '0.1em', marginBottom: '0.5rem' }}>DISTANCE</div>
+                  <div style={{ fontSize: '2.2rem', fontWeight: 900, color: 'white' }}>{metrics.distanceMiles.toFixed(1)}<span style={{ fontSize: '1rem', color: '#444', marginLeft: '2px' }}>mi</span></div>
+                </div>
+                <div style={{ background: '#111', padding: '1.2rem', borderRadius: '20px', border: '1px solid #222', textAlign: 'center' }}>
+                  <div style={{ color: '#888', fontSize: '0.65rem', fontWeight: 'bold', letterSpacing: '0.1em', marginBottom: '0.5rem' }}>END VOLTS</div>
+                  <div style={{ fontSize: '2.2rem', fontWeight: 900, color: 'white' }}>{metrics.endingVoltage?.toFixed(1)}<span style={{ fontSize: '1rem', color: '#444', marginLeft: '2px' }}>V</span></div>
+                </div>
+                <div style={{ background: '#111', padding: '1.2rem', borderRadius: '20px', border: '1px solid #222', textAlign: 'center' }}>
+                  <div style={{ color: '#888', fontSize: '0.65rem', fontWeight: 'bold', letterSpacing: '0.1em', marginBottom: '0.5rem' }}>TIME</div>
+                  <div style={{ fontSize: '2.2rem', fontWeight: 900, color: 'white' }}>{Math.round(metrics.durationMin)}<span style={{ fontSize: '1rem', color: '#444', marginLeft: '2px' }}>m</span></div>
+                </div>
+                <div style={{ background: '#111', padding: '1.2rem', borderRadius: '20px', border: '1px solid #222', textAlign: 'center' }}>
+                  <div style={{ color: '#888', fontSize: '0.65rem', fontWeight: 'bold', letterSpacing: '0.1em', marginBottom: '0.5rem' }}>ELEV GAIN</div>
+                  <div style={{ fontSize: '2.2rem', fontWeight: 900, color: 'white' }}>{metrics.elevationGainFeet.toFixed(0)}<span style={{ fontSize: '1rem', color: '#444', marginLeft: '2px' }}>ft</span></div>
+                </div>
+                <div style={{ background: '#111', padding: '1.2rem', borderRadius: '20px', border: '1px solid #222', textAlign: 'center' }}>
+                  <div style={{ color: '#888', fontSize: '0.65rem', fontWeight: 'bold', letterSpacing: '0.1em', marginBottom: '0.5rem' }}>WIND COMP</div>
+                  <div style={{ fontSize: '2.2rem', fontWeight: 900, color: 'white' }}>{metrics.windConditions?.headwindComponent.toFixed(0)}<span style={{ fontSize: '1rem', color: '#444', marginLeft: '2px' }}>mph</span></div>
                 </div>
              </div>
-             <div style={{ textAlign: 'center', marginTop: 'auto', color: '#ff6600', fontWeight: 'bold' }}>rangeanxiety.app</div>
+             
+             <div style={{ textAlign: 'center', marginTop: '2.5rem' }}>
+                <div style={{ color: '#ff6600', fontWeight: 900, fontSize: '1.1rem', letterSpacing: '0.05em' }}>rangeanxiety.app</div>
+             </div>
           </div>
           <div style={{ marginTop: '2rem', display: 'flex', gap: '1rem' }}>
-            <button onClick={() => setShowSharePreview(false)} style={{ padding: '1rem 2rem', background: '#333', color: 'white', border: 'none', borderRadius: '12px' }}>Cancel</button>
-            <button onClick={downloadShareCard} style={{ padding: '1rem 2rem', background: '#444', color: 'white', border: 'none', borderRadius: '12px' }}>Save PNG</button>
-            <button onClick={shareToCommunity} style={{ padding: '1rem 2rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold' }}>Post Feed</button>
+            <button onClick={() => setShowSharePreview(false)} style={{ padding: '1rem 2rem', background: '#333', color: 'white', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold' }}>Cancel</button>
+            <button onClick={downloadShareCard} style={{ padding: '1rem 2rem', background: '#444', color: 'white', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold' }}>Save PNG</button>
+            <button onClick={shareToCommunity} style={{ padding: '1rem 2rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer' }}>Post to Feed</button>
           </div>
         </div>
       )}
