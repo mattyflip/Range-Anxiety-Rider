@@ -461,9 +461,15 @@ const Profile: React.FC = () => {
                 style={{ flex: 1, padding: '1rem', background: 'none', border: 'none', borderBottom: activeTab === 'garage' ? '2px solid #ff6600' : '2px solid transparent', color: activeTab === 'garage' ? 'white' : '#888', fontWeight: 'bold', cursor: 'pointer' }}
               >Garage</button>
               <button 
-                onClick={() => setActiveTab('ride')}
-                style={{ flex: 1, padding: '1rem', background: 'none', border: 'none', borderBottom: activeTab === 'ride' ? '2px solid #ff6600' : '2px solid transparent', color: activeTab === 'ride' ? 'white' : '#888', fontWeight: 'bold', cursor: 'pointer' }}
-              >Ride</button>
+                onClick={() => setActiveTab('trips')}
+                style={{ flex: 1, padding: '1rem', background: 'none', border: 'none', borderBottom: activeTab === 'trips' ? '2px solid #ff6600' : '2px solid transparent', color: activeTab === 'trips' ? 'white' : '#888', fontWeight: 'bold', cursor: 'pointer' }}
+              >Trips</button>
+              {userPosts.some(p => !p.tripData) && (
+                <button 
+                  onClick={() => setActiveTab('posts')}
+                  style={{ flex: 1, padding: '1rem', background: 'none', border: 'none', borderBottom: activeTab === 'posts' ? '2px solid #ff6600' : '2px solid transparent', color: activeTab === 'posts' ? 'white' : '#888', fontWeight: 'bold', cursor: 'pointer' }}
+                >Posts</button>
+              )}
               <button 
                 onClick={() => setActiveTab('reviews')}
                 style={{ flex: 1, padding: '1rem', background: 'none', border: 'none', borderBottom: activeTab === 'reviews' ? '2px solid #ff6600' : '2px solid transparent', color: activeTab === 'reviews' ? 'white' : '#888', fontWeight: 'bold', cursor: 'pointer' }}
@@ -493,15 +499,52 @@ const Profile: React.FC = () => {
               </section>
             )}
 
-            {activeTab === 'ride' && (
+            {activeTab === 'trips' && (
               <section style={{ marginBottom: '4rem' }}>
-                {userPosts.length === 0 ? (
-                  <div style={{ color: '#666', textAlign: 'center', padding: '2rem' }}>No rides shared yet.</div>
+                {userPosts.filter(p => p.tripData).length === 0 ? (
+                  <div style={{ color: '#666', textAlign: 'center', padding: '2rem' }}>No trips shared yet.</div>
                 ) : (
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                    {userPosts.map(post => (
+                    {userPosts.filter(p => p.tripData).map(post => (
                       <div key={post.id} style={{ background: '#1a1a1a', borderRadius: '16px', border: '1px solid #333', overflow: 'hidden', position: 'relative' }}>
-                        <img src={post.imageUrl} style={{ width: '100%', aspectRatio: '1/1', objectFit: 'cover' }} alt="Ride" />
+                        <img src={post.imageUrl} style={{ width: '100%', aspectRatio: '1/1', objectFit: 'cover' }} alt="Trip" />
+                        {isAdmin && (
+                          <button 
+                            onClick={async () => {
+                              const reason = promptForModerationReason("post deletion");
+                              if (reason === null) return;
+                              await deleteDoc(doc(db, "posts", post.id));
+                              await createNotification(
+                                post.authorId,
+                                user.uid,
+                                "System Admin",
+                                'moderation',
+                                'deleted_post',
+                                `Your trip post was removed by a moderator. Reason: ${reason}`
+                              );
+                            }}
+                            style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', background: 'rgba(0,0,0,0.6)', border: 'none', borderRadius: '4px', padding: '4px', cursor: 'pointer' }}
+                          >🗑️</button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
+
+            {activeTab === 'posts' && (
+              <section style={{ marginBottom: '4rem' }}>
+                {userPosts.filter(p => !p.tripData).length === 0 ? (
+                  <div style={{ color: '#666', textAlign: 'center', padding: '2rem' }}>No posts yet.</div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    {userPosts.filter(p => !p.tripData).map(post => (
+                      <div key={post.id} style={{ background: '#1a1a1a', borderRadius: '16px', border: '1px solid #333', overflow: 'hidden', position: 'relative' }}>
+                        <img src={post.imageUrl} style={{ width: '100%', aspectRatio: '1/1', objectFit: 'cover' }} alt="Post" />
+                        <div style={{ padding: '1rem' }}>
+                          <p style={{ color: '#ccc', margin: 0, fontSize: '0.95rem', lineHeight: '1.5' }}>{post.caption}</p>
+                        </div>
                         {isAdmin && (
                           <button 
                             onClick={async () => {
