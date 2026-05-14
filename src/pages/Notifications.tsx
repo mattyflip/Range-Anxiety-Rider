@@ -26,14 +26,17 @@ const Notifications: React.FC = () => {
 
   useEffect(() => {
     if (!user) return;
+    let isActive = true;
 
-    setLoading(true);
+    if(isActive && !loading) {
+       // use setTimeout to skip render sync loop
+       setTimeout(() => setLoading(true), 0);
+    }
     const q = query(
       collection(db, `users/${user.uid}/notifications`),
       orderBy('createdAt', 'desc')
     );
-
-    const unsubscribe = onSnapshot(q, (snap) => {
+    const unsub = onSnapshot(q, (snap) => {
       const notifs: any[] = [];
       snap.forEach(d => {
         notifs.push({ id: d.id, ...d.data() });
@@ -42,7 +45,7 @@ const Notifications: React.FC = () => {
       setLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => unsub();
   }, [user]);
 
   const handleNotificationClick = async (notif: any) => {

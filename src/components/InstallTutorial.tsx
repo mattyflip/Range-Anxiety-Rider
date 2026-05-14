@@ -1,17 +1,15 @@
 import React, { useState, useEffect } from 'react';
 
 const InstallTutorial: React.FC<{ onClose: () => void }> = ({ onClose }) => {
-  const [platform, setPlatform] = useState<'ios' | 'android' | 'desktop'>('desktop');
+  const [platform] = useState<'ios' | 'android' | 'desktop'>(() => {
+    const userAgent = window.navigator.userAgent.toLowerCase();
+    if (/iphone|ipad|ipod/.test(userAgent)) return 'ios';
+    if (/android/.test(userAgent)) return 'android';
+    return 'desktop';
+  });
 
   useEffect(() => {
-    const userAgent = window.navigator.userAgent.toLowerCase();
-    if (/iphone|ipad|ipod/.test(userAgent)) {
-      setPlatform('ios');
-    } else if (/android/.test(userAgent)) {
-      setPlatform('android');
-    } else {
-      setPlatform('desktop');
-    }
+    // Empty effect since state is initialized synchronously above
   }, []);
 
   return (

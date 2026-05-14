@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { db, auth, storage } from '../firebase'
-import { collection, query, orderBy, onSnapshot, doc, getDoc, updateDoc, addDoc, serverTimestamp, deleteDoc } from 'firebase/firestore'
+import { onAuthStateChanged } from 'firebase/auth'
+import { collection, query, orderBy, onSnapshot, getDoc, doc, deleteDoc, updateDoc, addDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
+import { serverTimestamp } from 'firebase/firestore'
 import NavBar from '../components/NavBar'
 import InstallTutorial from '../components/InstallTutorial'
 import AuthModal from '../components/AuthModal'
@@ -54,7 +56,6 @@ const Feed: React.FC = () => {
 
   // Modal states
   const [activeCommentPost, setActiveCommentPost] = useState<Post | null>(null);
-  const [selectedFullPost, setSelectedFullPost] = useState<Post | null>(null);
 
   // Admin states
   const [adminEditingPost, setAdminEditingPost] = useState<Post | null>(null);
@@ -72,8 +73,17 @@ const Feed: React.FC = () => {
   const [showCropper, setShowCropper] = useState(false);
 
   useEffect(() => {
-    const unsub = auth.onAuthStateChanged(async (u) => {
+    if (user?.uid) {
+      // empty or real function if you need
+    } else if (!authLoading) {
+      setLoading(false);
+    }
+  }, [user, authLoading]);
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, async (u) => {
       setUser(u);
+      setAuthLoading(false);
       if (u) {
         const snap = await getDoc(doc(db, "users", u.uid));
         if (snap.exists()) {
@@ -84,21 +94,44 @@ const Feed: React.FC = () => {
         // Prompt guests to sign up
         setShowAuthModal(true);
       }
-      setAuthLoading(false);
     });
     return () => unsub();
   }, []);
 
-  useEffect(() => {
-    if (!loading && posts.length > 0) {
-      const params = new URLSearchParams(location.search);
-      const postId = params.get('post');
+  // Calculate derived state directly dynamically to prevent cascading render
+  const selectedFullPostState = (() => {
+      const searchParams = new URLSearchParams(location.search);
+      const postId = searchParams.get('post');
       if (postId) {
-        const found = posts.find(p => p.id === postId);
-        if (found) setSelectedFullPost(found);
+        return posts.find(p => p.id === postId) || null;
       }
+      return null;
+  })();
+
+  const [explicitSelectedPost, setExplicitSelectedPost] = useState<Post | null>(null);
+
+  const clearSelectedPost = () => {
+    setExplicitSelectedPost(null);
+    const searchParams = new URLSearchParams(location.search);
+    if(searchParams.get('post')) {
+      navigate('/feed', { replace: true });
     }
-  }, [location.search, posts, loading]);
+  }
+
+  const setExplicitSelectedPostInner = (post: Post | null) => {
+    // Override function that controls explicit override, or clears it and query params to sync it all up
+    if (!post) {
+      clearSelectedPost();
+    } else {
+      setExplicitSelectedPost(post);
+    }
+  }
+
+  // Backwards compat shim for rest of code
+  const setSelectedFullPost = (post: Post | null) => {
+    setExplicitSelectedPostInner(post);
+  };
+  const selectedFullPost = explicitSelectedPost || selectedFullPostState;
 
   useEffect(() => {
     const q = query(collection(db, "posts"), orderBy("createdAt", "desc"));

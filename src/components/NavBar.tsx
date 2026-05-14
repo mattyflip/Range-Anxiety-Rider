@@ -15,10 +15,7 @@ const NavBar: React.FC<NavBarProps> = ({ user, onShowInstall, onShowAuth }) => {
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
-    if (!user) {
-      setUnreadCount(0);
-      return;
-    }
+    if (!user) return; // Don't explicitly zero out state on unmount if it doesn't matter
 
     const q = query(
       collection(db, `users/${user.uid}/notifications`),

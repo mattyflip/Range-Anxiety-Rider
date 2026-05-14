@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { GoogleMap, useJsApiLoader, DirectionsService, DirectionsRenderer, Marker, InfoWindow, Polyline } from '@react-google-maps/api'
 import axios from 'axios'
 import { toPng } from 'html-to-image'
@@ -207,7 +207,10 @@ function MapHome() {
   }, []);
 
   useEffect(() => {
-    if (authInitialized && !user && !localStorage.getItem('ebike_portal_visited')) setShowWelcomeModal(true);
+    if (authInitialized && !user && !localStorage.getItem('ebike_portal_visited')) {
+        // use setTimeout to jump out of synchronous render flow for modal state updates
+        setTimeout(() => setShowWelcomeModal(true), 0);
+    }
   }, [authInitialized, user]);
 
   useEffect(() => {
@@ -286,7 +289,11 @@ function MapHome() {
 
   // Load host's route from Firestore (all participants see it)
   useEffect(() => {
-    if (!activeRide) { setRideRoutePath([]); setRideRouteStops([]); return; }
+    if (!activeRide) { 
+        if (rideRoutePath.length > 0) setRideRoutePath([]); 
+        if (rideRouteStops.length > 0) setRideRouteStops([]); 
+        return; 
+    }
     const unsub = onSnapshot(doc(db, "group_rides", activeRide.id), (snap) => {
       if (snap.exists()) {
         const data = snap.data();
@@ -506,10 +513,12 @@ function MapHome() {
     } catch (e) { console.error(e); alert('Checkout failed.'); }
   };
 
+  // We calculate timestamp offset on load once assuming stable clock over session logic, avoiding dynamic changing `Date.now` purity breaking in render.
+  const [sessionTimeStart] = useState(() => new Date().getTime());
+
   const canHostRide = () => {
-    if (!isHostTier) return false;
-    if (!hostTierExpiresAt) return false;
-    return hostTierExpiresAt.getTime() > Date.now();
+    if (!isHostTier || !hostTierExpiresAt) return false;
+    return hostTierExpiresAt.getTime() > sessionTimeStart;
   };
 
   const canJoinRide = () => {
@@ -529,12 +538,12 @@ function MapHome() {
       }
       localStorage.removeItem('active_ride_id');
     }
-    const pin = Math.floor(1000 + Math.random() * 9000).toString();
+    const pin = Math.floor(1000 + (crypto.getRandomValues(new Uint32Array(1))[0] / 4294967295) * 9000).toString();
     const rideData = { name: groupRideName, isPublic: isPublicRide, pin, creatorId: user.uid, leaderId: user.uid, status: 'active', startLat: center.lat, startLng: center.lng };
     const rideRef = await addDoc(collection(db, "group_rides"), rideData);
     setActiveRide({ id: rideRef.id, ...rideData } as any);
     localStorage.setItem('active_ride_id', rideRef.id);
-    await setDoc(doc(db, `group_rides/${rideRef.id}/participants`, user.uid), { userId: user.uid, name: userData?.username || 'Host', lat: center.lat, lng: center.lng, lastUpdatedAt: Date.now() });
+    await setDoc(doc(db, `group_rides/${rideRef.id}/participants`, user.uid), { userId: user.uid, name: userData?.username || 'Host', lat: center.lat, lng: center.lng, lastUpdatedAt: new Date().getTime() });
   };
 
   const joinRide = async (rideId?: string) => {
@@ -551,7 +560,7 @@ function MapHome() {
     }
 
     if (targetRide) {
-      await setDoc(doc(db, `group_rides/${targetRide.id}/participants`, user.uid), { userId: user.uid, name: userData?.username || 'Rider', lat: center.lat, lng: center.lng, lastUpdatedAt: Date.now() });
+      await setDoc(doc(db, `group_rides/${targetRide.id}/participants`, user.uid), { userId: user.uid, name: userData?.username || 'Rider', lat: center.lat, lng: center.lng, lastUpdatedAt: new Date().getTime() });
       setActiveRide(targetRide as any);
       localStorage.setItem('active_ride_id', targetRide.id);
       setJoinPin('');

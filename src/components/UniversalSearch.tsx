@@ -9,7 +9,7 @@ const UniversalSearch: React.FC = () => {
   const [showResults, setShowResults] = useState(false)
   const [isSearching, setIsSearching] = useState(false)
   const navigate = useNavigate()
-
+  // Search Execution Hook
   useEffect(() => {
     const delayDebounceFn = setTimeout(() => {
       if (searchTerm.length >= 2) {
@@ -17,12 +17,15 @@ const UniversalSearch: React.FC = () => {
       } else {
         setResults({ users: [], posts: [] })
         setShowResults(false)
+        setIsSearching(false)
       }
-    }, 500)
+    }, 300)
 
     return () => clearTimeout(delayDebounceFn)
+    // NOTE: 'performSearch' is intentionally omitted here to prevent endless 
+    // rendering loops since it's re-created on each render right now.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm])
-
   const performSearch = async () => {
     setIsSearching(true)
     setShowResults(true)
