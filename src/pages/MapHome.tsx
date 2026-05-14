@@ -159,6 +159,7 @@ function MapHome() {
   const [publicRides, setPublicRides] = useState<GroupRide[]>([]);
   const [rideParticipants, setRideParticipants] = useState<Participant[]>([]);
   const [rideRoutePath, setRideRoutePath] = useState<google.maps.LatLngLiteral[]>([]);
+  const [rideRouteStops, setRideRouteStops] = useState<{lat:number;lng:number;label:string}[]>([]);
   const [groupRideName, setGroupRideName] = useState('');
   const [isPublicRide, setIsPublicRide] = useState(true);
   const [joinPin, setJoinPin] = useState('');
@@ -260,14 +261,17 @@ function MapHome() {
 
   // Load host's route from Firestore (all participants see it)
   useEffect(() => {
-    if (!activeRide) { setRideRoutePath([]); return; }
+    if (!activeRide) { setRideRoutePath([]); setRideRouteStops([]); return; }
     const unsub = onSnapshot(doc(db, "group_rides", activeRide.id), (snap) => {
       if (snap.exists()) {
         const data = snap.data();
         if (data.routePath?.length) setRideRoutePath(data.routePath);
         else setRideRoutePath([]);
+        if (data.routeStops?.length) setRideRouteStops(data.routeStops);
+        else setRideRouteStops([]);
       } else {
         setRideRoutePath([]);
+        setRideRouteStops([]);
       }
     }, console.error);
     return () => unsub();
@@ -408,8 +412,20 @@ function MapHome() {
       
       // If host is in an active ride, save route to Firestore so participants can see it
       if (activeRide && user?.uid === activeRide.creatorId) {
+        // Build stop markers from DirectionsResult legs
+        const stops: {lat:number;lng:number;label:string}[] = [];
+        stops.push({ lat: route.legs[0].start_location.lat(), lng: route.legs[0].start_location.lng(), label: 'Start' });
+        trip.waypoints.filter(w => w.trim()).forEach((_wp, i) => {
+          if (route.legs[i + 1]) {
+            stops.push({ lat: route.legs[i + 1].start_location.lat(), lng: route.legs[i + 1].start_location.lng(), label: `Stop ${i + 3}` });
+          }
+        });
+        const lastLeg = route.legs[route.legs.length - 1];
+        stops.push({ lat: lastLeg.end_location.lat(), lng: lastLeg.end_location.lng(), label: 'End' });
+        
         updateDoc(doc(db, "group_rides", activeRide.id), {
           routePath: path,
+          routeStops: stops,
           routeOrigin: trip.origin,
           routeDestination: trip.destination,
         }).catch(console.error);
@@ -872,6 +888,16 @@ function MapHome() {
               {rideRoutePath.length > 1 && (
                 <Polyline path={rideRoutePath} options={{ strokeColor: '#4285F4', strokeOpacity: 0.8, strokeWeight: 5 }} />
               )}
+
+              {/* Route stop markers (Start, Stop 3, Stop 4, Stop 5, End) */}
+              {rideRouteStops.map((s, i) => (
+                <Marker
+                  key={`stop-${i}`}
+                  position={{ lat: s.lat, lng: s.lng }}
+                  label={{ text: s.label, color: '#4285F4', fontSize: '11px', fontWeight: 'bold', className: 'rider-label' }}
+                  icon={{ path: google.maps.SymbolPath.BACKWARD_CLOSED_ARROW, fillColor: '#4285F4', fillOpacity: 1, strokeColor: 'white', strokeWeight: 2, scale: 5 }}
+                />
+              ))}
 
               {activeRide?.leaderTrail && activeRide.leaderTrail.length > 1 && (
                 <Polyline path={activeRide.leaderTrail} options={{ strokeColor: '#ff6600', strokeOpacity: 0.9, strokeWeight: 6 }} />
