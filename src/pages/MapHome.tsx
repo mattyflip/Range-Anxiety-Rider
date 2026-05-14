@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { GoogleMap, useJsApiLoader, DirectionsService, DirectionsRenderer, Marker, InfoWindow } from '@react-google-maps/api'
+import { GoogleMap, useJsApiLoader, DirectionsService, DirectionsRenderer, Marker, InfoWindow, Polyline } from '@react-google-maps/api'
 import axios from 'axios'
 import { toPng } from 'html-to-image'
 import { auth, db, storage } from '../firebase'
 import { onAuthStateChanged } from 'firebase/auth'
 import type { User } from 'firebase/auth'
-import { doc, getDoc, collection, addDoc, serverTimestamp, updateDoc } from 'firebase/firestore'
+import { doc, getDoc, collection, addDoc, serverTimestamp, updateDoc, deleteDoc, query, where, onSnapshot, setDoc, getDocs, arrayUnion } from 'firebase/firestore'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import AdBanner from '../components/AdBanner'
 import TermsOfService from '../components/TermsOfService'
@@ -16,6 +16,28 @@ import WelcomeModal from '../components/WelcomeModal'
 import { STATE_COORDINATES } from '../utils/ebikeLaws'
 
 const LIBRARIES: ("places" | "geometry")[] = ["places", "geometry"];
+
+interface GroupRide {
+  id: string;
+  name: string;
+  isPublic: boolean;
+  pin: string;
+  creatorId: string;
+  origin: string;
+  startLat: number;
+  startLng: number;
+  status: string;
+  leaderId?: string;
+  leaderTrail?: google.maps.LatLngLiteral[];
+}
+
+interface Participant {
+  userId: string;
+  name: string;
+  lat: number;
+  lng: number;
+  lastUpdatedAt: number;
+}
 
 interface BikeSpecs {
   voltage: number | '';
@@ -125,6 +147,14 @@ function MapHome() {
   const [settingsDirty, setSettingsDirty] = useState(true);
   const [userLocation, setUserLocation] = useState<google.maps.LatLngLiteral | null>(null);
 
+  // Group Ride State
+  const [activeRide, setActiveRide] = useState<GroupRide | null>(null);
+  const [publicRides, setPublicRides] = useState<GroupRide[]>([]);
+  const [rideParticipants, setRideParticipants] = useState<Participant[]>([]);
+  const [groupRideName, setGroupRideName] = useState('');
+  const [isPublicRide, setIsPublicRide] = useState(true);
+  const [joinPin, setJoinPin] = useState('');
+
   // Navigation State
   const [isNavigating, setIsNavigating] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(true);
@@ -173,6 +203,50 @@ function MapHome() {
       const reader = new FileReader(); reader.onloadend = () => setMapSnapshot(reader.result as string); reader.readAsDataURL(blob);
     }).catch(console.error);
   }, [response, selectedRouteIndex]);
+
+  // Sync Public Rides (20mi radius)
+  useEffect(() => {
+    if (!user) return;
+    const q = query(collection(db, "group_rides"), where("isPublic", "==", true), where("status", "==", "active"));
+    const unsub = onSnapshot(q, (snap) => {
+      const rides: GroupRide[] = [];
+      snap.forEach(d => rides.push({ id: d.id, ...d.data() } as GroupRide));
+      setPublicRides(rides);
+    });
+    return () => unsub();
+  }, [user]);
+
+  // Sync Participants
+  useEffect(() => {
+    if (!activeRide) return;
+    const q = collection(db, `group_rides/${activeRide.id}/participants`);
+    const unsub = onSnapshot(q, (snap) => {
+      const parts: Participant[] = [];
+      snap.forEach(d => parts.push(d.data() as Participant));
+      setRideParticipants(parts);
+    });
+    return () => unsub();
+  }, [activeRide?.id]);
+
+  // Location Upload during Ride
+  useEffect(() => {
+    if (!activeRide || !user) return;
+    const interval = setInterval(() => {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(async (pos) => {
+          const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+          setUserLocation(loc);
+          await setDoc(doc(db, `group_rides/${activeRide.id}/participants`, user.uid), {
+            userId: user.uid, name: userData?.username || 'Rider', lat: loc.lat, lng: loc.lng, lastUpdatedAt: Date.now()
+          }, { merge: true });
+          if (activeRide.leaderId === user.uid) {
+            await updateDoc(doc(db, "group_rides", activeRide.id), { leaderTrail: arrayUnion(loc) });
+          }
+        });
+      }
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [activeRide?.id, user, userData?.username]);
 
   // Navigation Logic
   const speak = (text: string) => {
@@ -322,6 +396,47 @@ function MapHome() {
     });
   };
 
+  const createRide = async () => {
+    if (!user) { setShowAuthModal(true); return; }
+    if (!groupRideName) { alert("Name required."); return; }
+    const pin = Math.floor(1000 + Math.random() * 9000).toString();
+    const rideData = { name: groupRideName, isPublic: isPublicRide, pin, creatorId: user.uid, status: 'active', startLat: center.lat, startLng: center.lng };
+    const rideRef = await addDoc(collection(db, "group_rides"), rideData);
+    setActiveRide({ id: rideRef.id, ...rideData } as any);
+    await setDoc(doc(db, `group_rides/${rideRef.id}/participants`, user.uid), { userId: user.uid, name: userData?.username || 'Host', lat: center.lat, lng: center.lng, lastUpdatedAt: Date.now() });
+  };
+
+  const joinRide = async (rideId?: string) => {
+    if (!user) { setShowAuthModal(true); return; }
+    let targetRide;
+    if (rideId) {
+      const snap = await getDoc(doc(db, "group_rides", rideId));
+      if (snap.exists()) targetRide = { id: snap.id, ...snap.data() };
+    } else {
+      const q = query(collection(db, "group_rides"), where("pin", "==", joinPin), where("status", "==", "active"));
+      const snap = await getDocs(q);
+      if (!snap.empty) targetRide = { id: snap.docs[0].id, ...snap.docs[0].data() };
+    }
+
+    if (targetRide) {
+      await setDoc(doc(db, `group_rides/${targetRide.id}/participants`, user.uid), { userId: user.uid, name: userData?.username || 'Rider', lat: center.lat, lng: center.lng, lastUpdatedAt: Date.now() });
+      setActiveRide(targetRide as any);
+      setJoinPin('');
+    } else { alert("Ride not found."); }
+  };
+
+  const leaveRide = async () => {
+    if (!activeRide || !user) return;
+    await deleteDoc(doc(db, `group_rides/${activeRide.id}/participants`, user.uid));
+    setActiveRide(null); setRideParticipants([]);
+  };
+
+  const endRide = async () => {
+    if (!activeRide) return;
+    await updateDoc(doc(db, "group_rides", activeRide.id), { status: 'offline' });
+    setActiveRide(null); setRideParticipants([]);
+  };
+
   const saveCurrentBike = async () => {
     if (!user) { setShowAuthModal(true); return; }
     if (!newBikeName) return;
@@ -409,6 +524,38 @@ function MapHome() {
               <input type="text" placeholder="Nickname" value={newBikeName} onChange={e => setNewBikeName(e.target.value)} style={{ padding: '0.4rem' }} />
               <button onClick={saveCurrentBike} style={{ padding: '0.4rem 0.8rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '4px' }}>Save</button>
             </div>
+          </section>
+
+          <section className="form-group" style={{ borderTop: '1px solid #333', paddingTop: '1rem' }}>
+            <label style={{ color: '#ff6600' }}>Group Ride</label>
+            {!activeRide ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <input type="text" placeholder="PIN" value={joinPin} onChange={e => setJoinPin(e.target.value)} />
+                  <button onClick={() => joinRide()} style={{ padding: '0.4rem 1rem', background: '#444', border: 'none', borderRadius: '4px', color: 'white' }}>Join</button>
+                </div>
+                {publicRides.length > 0 && (
+                  <div style={{ marginTop: '0.5rem' }}>
+                    <label style={{ fontSize: '0.6rem', color: '#888' }}>NEARBY RIDES</label>
+                    {publicRides.map(r => (
+                      <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#222', padding: '0.5rem', borderRadius: '8px', marginTop: '0.4rem' }}>
+                        <span style={{ fontSize: '0.75rem' }}>{r.name}</span>
+                        <button onClick={() => joinRide(r.id)} style={{ padding: '0.2rem 0.5rem', background: '#34a853', color: 'white', border: 'none', borderRadius: '4px', fontSize: '0.6rem' }}>Join</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div style={{ background: 'rgba(52,168,83,0.1)', padding: '1rem', borderRadius: '12px', border: '1px solid #34a853' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}><strong>{activeRide.name}</strong> <span>PIN: {activeRide.pin}</span></div>
+                <div style={{ margin: '0.5rem 0', fontSize: '0.8rem' }}>{rideParticipants.length} Participants</div>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button onClick={leaveRide} style={{ flex: 1, padding: '0.5rem', background: '#444', border: 'none', borderRadius: '4px', color: 'white' }}>Leave</button>
+                  {user?.uid === activeRide.creatorId && <button onClick={endRide} style={{ flex: 1, padding: '0.5rem', background: '#d93025', border: 'none', borderRadius: '4px', color: 'white', fontWeight: 'bold' }}>End</button>}
+                </div>
+              </div>
+            )}
           </section>
 
           <section className="form-group">
@@ -570,6 +717,15 @@ function MapHome() {
                 <Marker key={p.id} position={p.position} onClick={() => setSelectedPoi(p)} label={p.type === 'charging' ? { text: '⚡', color: 'white', fontWeight: 'bold' } : undefined} icon={{ url: p.type === 'charging' ? 'https://maps.google.com/mapfiles/ms/icons/green-dot.png' : 'https://maps.google.com/mapfiles/ms/icons/blue-dot.png' }} />
               ))}
               
+              {/* Ride Participants */}
+              {rideParticipants.map(p => (
+                <Marker key={p.userId} position={{ lat: p.lat, lng: p.lng }} label={{ text: p.name, color: 'white', fontSize: '12px', fontWeight: 'bold' }} icon={{ path: google.maps.SymbolPath.CIRCLE, fillColor: activeRide?.creatorId === p.userId ? '#34a853' : '#ff6600', fillOpacity: 1, strokeColor: 'white', strokeWeight: 2, scale: 8 }} />
+              ))}
+
+              {activeRide?.leaderTrail && activeRide.leaderTrail.length > 1 && (
+                <Polyline path={activeRide.leaderTrail} options={{ strokeColor: '#ff6600', strokeOpacity: 0.9, strokeWeight: 6 }} />
+              )}
+
               {userLocation && (
                 <Marker 
                   position={userLocation} 
