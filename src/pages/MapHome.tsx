@@ -975,7 +975,8 @@ function MapHome() {
         </button>
       </div>
       {showSharePreview && metrics && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.95)', zIndex: 10000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(10px)', padding: '20px' }}>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.95)', zIndex: 10000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(10px)', padding: '10px', overflow: 'auto' }}>
+          <div style={{ transform: 'scale(0.6)', transformOrigin: 'top center', marginBottom: '-280px' }}>
           <div ref={shareCardRef} style={{ width: '500px', height: '800px', background: '#0a0a0a', padding: '2.5rem', display: 'flex', flexDirection: 'column', borderRadius: '40px', border: '1px solid #333', position: 'relative' }}>
              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div><h2 style={{ color: '#ff6600', fontStyle: 'italic', fontSize: '2.1rem', fontWeight: 900, margin: 0 }}>RANGE ANXIETY</h2><p style={{ color: '#666', fontSize: '0.75rem', fontWeight: 'bold' }}>Trip Report • {new Date().toLocaleDateString()}</p></div>
@@ -993,7 +994,8 @@ function MapHome() {
              <div style={{ fontSize: '1.1rem', color: 'white', textAlign: 'center', margin: '1rem 0' }}>{trip.origin.split(',')[0]} <span style={{ color: '#ff6600' }}>➔</span> {trip.destination.split(',')[0]}</div>
              <div style={{ textAlign: 'center', marginTop: 'auto' }}><div style={{ color: '#ff6600', fontWeight: 900, fontSize: '1.3rem' }}>rangeanxiety.app</div><p style={{ color: '#444', fontSize: '0.6rem' }}>* Estimates only. Actual range may vary.</p></div>
           </div>
-          <div style={{ marginTop: '2rem', display: 'flex', gap: '1rem' }}>
+          </div>
+          <div style={{ marginTop: '1rem', display: 'flex', gap: '1rem' }}>
             <button onClick={() => setShowSharePreview(false)} style={{ padding: '1rem 2rem', background: '#333', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold' }}>Cancel</button>
             <button onClick={downloadShareCard} style={{ padding: '1rem 2rem', background: '#444', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold' }}>Save PNG</button>
             <button onClick={shareToCommunity} style={{ padding: '1rem 2rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold' }}>Post Feed</button>
