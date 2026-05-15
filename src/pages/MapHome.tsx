@@ -669,92 +669,15 @@ function MapHome() {
               <div className="bike-results-dropdown" style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#1a1a1a', zIndex: 100, border: '1px solid #333', maxHeight: '200px', overflowY: 'auto' }}>
                 {filteredBikes.map(b => <div key={b.name} onClick={() => loadBike(b)} style={{ padding: '0.8rem', borderBottom: '1px solid #222', cursor: 'pointer' }}>{b.name}</div>)}
               </div>
-            )}
-            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-              <input type="text" placeholder="Nickname" value={newBikeName} onChange={e => setNewBikeName(e.target.value)} style={{ padding: '0.4rem' }} />
-              <button onClick={saveCurrentBike} style={{ padding: '0.4rem 0.8rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '4px' }}>Save</button>
+            <label style={{ color: '#ff6600' }}>Save Route Mode</label>
+            <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
+              <button onClick={() => setRecordingMode(true)} style={{ flex: 1, padding: '0.8rem', background: recordingMode ? '#ff6600' : '#222', color: 'white', border: '1px solid #333', borderRadius: '12px' }}>● Rec Current Ride</button>
+              <button onClick={() => { setShowRoutePlanner(true); setShowTripSettings(false); }} style={{ flex: 1, padding: '0.8rem', background: '#222', color: 'white', border: '1px solid #333', borderRadius: '12px' }}>Plan Future Route</button>
             </div>
           </section>
 
-          <section className="form-group" style={{ borderTop: '1px solid #333', paddingTop: '1rem' }}>
-            <label style={{ color: '#ff6600' }}>Group Ride {canHostRide() ? <span style={{ color: '#34a853', fontSize: '0.6rem', marginLeft: '0.5rem' }}>✓ HOST</span> : isPro ? <span style={{ color: '#ff9900', fontSize: '0.6rem', marginLeft: '0.5rem' }}>✓ JOIN</span> : <span style={{ color: '#888', fontSize: '0.6rem', marginLeft: '0.5rem' }}>🔒 PRO</span>}</label>
-            {canHostRide() && hostTierExpiresAt && (
-              <div style={{ fontSize: '0.6rem', color: '#666', marginTop: '0.2rem' }}>
-                Host access expires {hostTierExpiresAt.toLocaleDateString()}
-              </div>
-            )}
-            {isPro && !canHostRide() && (
-              <div style={{ fontSize: '0.6rem', color: '#ff9900', marginTop: '0.2rem' }}>
-                You can join rides. Upgrade to HOST to create your own.
-              </div>
-            )}
-            {!activeRide ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <input type="text" placeholder="Ride Name" value={groupRideName} onChange={e => setGroupRideName(e.target.value)} style={{ flex: 1 }} />
-                  <button onClick={createRide} style={{ padding: '0.4rem 1rem', background: '#ff6600', border: 'none', borderRadius: '4px', color: 'white', fontWeight: 'bold' }}>Host</button>
-                </div>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.7rem', color: '#888' }}>
-                  <input type="checkbox" checked={isPublicRide} onChange={e => setIsPublicRide(e.target.checked)} style={{ width: 'auto' }} />
-                  Public Visibility
-                </label>
-                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-                  <input type="text" placeholder="PIN" value={joinPin} onChange={e => setJoinPin(e.target.value)} style={{ flex: 1 }} />
-                  <button onClick={() => joinRide()} style={{ padding: '0.4rem 1rem', background: '#444', border: 'none', borderRadius: '4px', color: 'white' }}>Join</button>
-                </div>
-                {publicRides.length > 0 && (
-                  <div style={{ marginTop: '0.5rem' }}>
-                    <label style={{ fontSize: '0.6rem', color: '#888' }}>NEARBY RIDES</label>
-                    {publicRides.map(r => (
-                      <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#222', padding: '0.5rem', borderRadius: '8px', marginTop: '0.4rem' }}>
-                        <span style={{ fontSize: '0.75rem' }}>{r.name}</span>
-                        <button onClick={() => joinRide(r.id)} style={{ padding: '0.2rem 0.5rem', background: '#34a853', color: 'white', border: 'none', borderRadius: '4px', fontSize: '0.6rem' }}>Join</button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div style={{ background: 'rgba(52,168,83,0.1)', padding: '1rem', borderRadius: '12px', border: '1px solid #34a853' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}><strong>{activeRide.name}</strong> <span>PIN: {activeRide.pin}</span></div>
-                <div style={{ margin: '0.5rem 0', fontSize: '0.8rem' }}>{rideParticipants.length} Participants</div>
-                {user?.uid === activeRide.creatorId && rideParticipants.length > 1 && (
-                  <div style={{ marginBottom: '0.5rem' }}>
-                    <label style={{ fontSize: '0.6rem', color: '#888' }}>LEADER</label>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem' }}>
-                      {rideParticipants.map(p => (
-                        <button
-                          key={p.userId}
-                          onClick={() => setRideLeader(p.userId)}
-                          style={{
-                            padding: '0.25rem 0.6rem',
-                            background: activeRide.leaderId === p.userId ? '#ff6600' : '#333',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '12px',
-                            fontSize: '0.65rem',
-                            cursor: 'pointer',
-                            fontWeight: activeRide.leaderId === p.userId ? 'bold' : 'normal'
-                          }}
-                        >
-                          {activeRide.leaderId === p.userId ? '⭐ ' : ''}{p.name}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {activeRide.leaderId && activeRide.leaderId !== user?.uid && (
-                  <div style={{ fontSize: '0.65rem', color: '#ff9900', marginBottom: '0.5rem' }}>
-                    👑 {rideParticipants.find(p => p.userId === activeRide.leaderId)?.name || 'Rider'} is leading
-                  </div>
-                )}
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <button onClick={leaveRide} style={{ flex: 1, padding: '0.5rem', background: '#444', border: 'none', borderRadius: '4px', color: 'white' }}>Leave</button>
-                  {user?.uid === activeRide.creatorId && <button onClick={endRide} style={{ flex: 1, padding: '0.5rem', background: '#d93025', border: 'none', borderRadius: '4px', color: 'white', fontWeight: 'bold' }}>End</button>}
-                </div>
-              </div>
-            )}
-          </section>
+        </div>
+      </div>
 
           <section className="form-group">
             <label>Route</label>
