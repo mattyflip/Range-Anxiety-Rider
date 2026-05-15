@@ -501,7 +501,11 @@ function MapHome() {
   };
 
   const checkoutProTier = async () => {
-    if (!user) { setShowAuthModal(true); return; }
+    if (!user) { 
+      setShowGroupRidePaywall(false);
+      setShowAuthModal(true); 
+      return; 
+    }
     try {
       const token = await user.getIdToken();
       const res = await fetch('/api/create-checkout-session', {
@@ -523,7 +527,11 @@ function MapHome() {
   };
 
   const checkoutHostTier = async () => {
-    if (!user) { setShowAuthModal(true); return; }
+    if (!user) { 
+      setShowGroupRidePaywall(false);
+      setShowAuthModal(true); 
+      return; 
+    }
     try {
       const token = await user.getIdToken();
       const res = await fetch('/api/create-checkout-session', {
