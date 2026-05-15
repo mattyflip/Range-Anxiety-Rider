@@ -425,11 +425,28 @@ function MapHome() {
 
       const massKg = (Number(specs.bikeWeightLbs) + Number(riderWeightLbs)) * 0.453592;
       const velocityMps = Number(targetSpeedMph) * 0.44704;
-      const Crr = tireType === 'road' ? 0.007 : 0.015;
+      
+      // Temperature adjustments
+      const tempF = Number(ambientTempF) || 70;
+      // Air density adjustment (baseline 1.225 at 59F/15C)
+      const rho = 1.225 * (518.67 / (459.67 + tempF));
+      
+      // Tire pressure adjustment (Crr increases as PSI drops)
+      let Crr = tireType === 'road' ? 0.007 : 0.015;
+      if (tirePressurePsi && Number(tirePressurePsi) > 0) {
+        const refPsi = tireType === 'road' ? 40 : 25;
+        Crr = Crr * (refPsi / Number(tirePressurePsi));
+      }
+
       const ForceRolling = Crr * massKg * 9.81;
-      const ForceDrag = 0.5 * 1.225 * 0.55 * Math.pow(Math.max(0.1, velocityMps + headwindMph * 0.44704), 2);
-      const motorEff = mode === 'eco' ? 0.85 : 0.80;
-      const totalWhUsable = (Number(specs.voltage) * Number(specs.capacityAh)) * 0.92;
+      const ForceDrag = 0.5 * rho * 0.55 * Math.pow(Math.max(0.1, velocityMps + headwindMph * 0.44704), 2);
+      
+      // Motor and Battery efficiency adjustments
+      let motorEff = mode === 'eco' ? 0.85 : 0.80;
+      // Battery capacity drops in cold (approx 0.5% per degree F below 70)
+      const tempEfficiency = tempF < 70 ? Math.max(0.7, 1 - (70 - tempF) * 0.005) : 1;
+      
+      const totalWhUsable = (Number(specs.voltage) * Number(specs.capacityAh)) * 0.92 * tempEfficiency;
       const WhPerMile = Math.max(10, ((ForceRolling + ForceDrag) * velocityMps / velocityMps) * (1609.34 / 3600) / motorEff);
       const estimatedWh = (distMiles * WhPerMile) + (gainFeet * 0.1);
 
