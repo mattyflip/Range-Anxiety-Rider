@@ -841,6 +841,11 @@ function MapHome() {
             <input type="number" value={batteryInputMode === 'percent' ? startBattery : startVoltage} onChange={e => { if (batteryInputMode === 'percent') setStartBattery(parseFloat(e.target.value) || ''); else setStartVoltage(parseFloat(e.target.value) || ''); markDirty(); }} />
           </section>
 
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
+            <button onClick={() => setPois([])} style={{ padding: '0.8rem', background: '#222', border: '1px solid #333', color: 'white', borderRadius: '12px' }}>Clear Map</button>
+            <button onClick={handleCalculate} style={{ padding: '0.8rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold' }}>Update Route</button>
+          </div>
+
           <section className="form-group" style={{ borderTop: '1px solid #333', paddingTop: '1rem', paddingBottom: '2rem', marginTop: '1rem' }}>
             <label style={{ color: '#ff6600', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span>Group Ride {canHostRide() ? <span style={{ color: '#34a853', fontSize: '0.6rem', marginLeft: '0.5rem' }}>✓ HOST</span> : isPro ? <span style={{ color: '#ff9900', fontSize: '0.6rem', marginLeft: '0.5rem' }}>✓ JOIN</span> : <span style={{ color: '#888', fontSize: '0.6rem', marginLeft: '0.5rem' }}>🔒 FREE</span>}</span>
@@ -941,11 +946,6 @@ function MapHome() {
             )}
           </section>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
-            <button onClick={() => setPois([])} style={{ padding: '0.8rem', background: '#222', border: '1px solid #333', color: 'white', borderRadius: '12px' }}>Clear Map</button>
-            <button onClick={handleCalculate} style={{ padding: '0.8rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold' }}>Update Route</button>
-          </div>
-
           {metrics && (
             <div ref={metricsCardRef} className="card metrics-card" style={{ marginTop: '1.5rem', borderLeft: '4px solid #ff6600', padding: '1.5rem', background: '#1a1a1a', borderRadius: '16px' }}>
               <div style={{ color: '#ff6600', fontWeight: 800, fontSize: '0.8rem', textTransform: 'uppercase' }}>Estimated Metrics</div>
@@ -998,7 +998,16 @@ function MapHome() {
                 🚀 Open Maps
               </button>
               
-              <button onClick={() => setShowSharePreview(true)} style={{ width: '100%', padding: '1rem', background: '#333', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 900, marginBottom: '1.5rem' }}>Save Image (PRO)</button>
+              <button onClick={() => {
+                if (isPro) {
+                  setShowSharePreview(true);
+                } else {
+                  setPaywallTier('pro');
+                  setShowGroupRidePaywall(true);
+                }
+              }} style={{ width: '100%', padding: '1rem', background: isPro ? '#333' : '#444', color: isPro ? 'white' : '#888', border: 'none', borderRadius: '12px', fontWeight: 900, marginBottom: '1.5rem', cursor: 'pointer' }}>
+                Save Image {isPro ? '' : '🔒 (PRO)'}
+              </button>
 
               <button onClick={startNavigation} style={{ width: '100%', padding: '1.2rem', background: 'linear-gradient(to bottom, #ff8800, #ff6600)', color: 'white', border: 'none', borderRadius: '16px', fontWeight: 900, fontSize: '1.2rem', boxShadow: '0 4px 15px rgba(255,102,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
                 🏁 START TRIP
