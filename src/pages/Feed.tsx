@@ -14,6 +14,7 @@ import Cropper from 'react-easy-crop'
 import { getCroppedImg } from '../utils/imageUtils'
 import CommentModal from '../components/CommentModal'
 import { createNotification } from '../utils/notifications'
+import SEO from '../components/SEO'
 
 interface Post {
   id: string;
@@ -253,6 +254,11 @@ const Feed: React.FC = () => {
 
   return (
     <div className="container" style={{ minHeight: '100vh', background: '#121212', overflowY: 'auto' }}>
+      <SEO 
+        title="Community Feed" 
+        description="See the latest routes and trips shared by e-bike riders. Load their routes directly into your map and conquer range anxiety together."
+        url="https://rangeanxiety.app/feed"
+      />
       <NavBar 
         user={user} 
         onShowInstall={() => setShowInstallTutorial(true)} 

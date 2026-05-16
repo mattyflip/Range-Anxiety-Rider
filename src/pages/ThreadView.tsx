@@ -6,6 +6,7 @@ import NavBar from '../components/NavBar'
 import InstallTutorial from '../components/InstallTutorial'
 import AuthModal from '../components/AuthModal'
 import { createNotification } from '../utils/notifications'
+import SEO from '../components/SEO'
 
 interface ForumComment {
   id: string;
@@ -313,6 +314,11 @@ const ThreadView: React.FC = () => {
 
   return (
     <div className="container" style={{ minHeight: '100vh', background: '#121212', overflowY: 'auto' }}>
+      <SEO 
+        title={thread?.title} 
+        description={thread?.body ? (thread.body.length > 160 ? thread.body.substring(0, 157) + '...' : thread.body) : undefined}
+        type="article"
+      />
       <NavBar 
         user={user} 
         onShowInstall={() => setShowInstallTutorial(true)} 

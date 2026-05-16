@@ -6,6 +6,7 @@ import NavBar from '../components/NavBar'
 import InstallTutorial from '../components/InstallTutorial'
 import AuthModal from '../components/AuthModal'
 import { createNotification } from '../utils/notifications'
+import SEO from '../components/SEO'
 
 interface Thread {
   id: string;
@@ -157,7 +158,13 @@ const CommunityView: React.FC = () => {
 
   return (
     <div className="container" style={{ minHeight: '100vh', background: '#121212', overflowY: 'auto' }}>
-      <NavBar user={user} onShowInstall={() => setShowInstallTutorial(true)} onShowAuth={() => setShowAuthModal(true)} />
+      <SEO 
+        title={`c/${communityId}`} 
+        description={`Join the c/${communityId} community on Range Anxiety. Discuss battery life, mods, and routes for your e-bike.`}
+        url={`https://rangeanxiety.app/forum/c/${communityId}`}
+      />
+      <NavBar 
+ user={user} onShowInstall={() => setShowInstallTutorial(true)} onShowAuth={() => setShowAuthModal(true)} />
       <main style={{ padding: '2rem 1.5rem', maxWidth: '900px', margin: '0 auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
           <div><Link to="/forum" style={{ color: '#888', textDecoration: 'none', fontSize: '0.8rem', fontWeight: 'bold' }}>FORUM HUB</Link><h1 style={{ color: 'white', margin: '0.2rem 0 0 0', fontSize: '1.8rem' }}>c/{communityId}</h1></div>

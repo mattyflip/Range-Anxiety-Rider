@@ -7,6 +7,7 @@ import InstallTutorial from '../components/InstallTutorial'
 import AuthModal from '../components/AuthModal'
 import UniversalSearch from '../components/UniversalSearch'
 import AdBanner from '../components/AdBanner'
+import SEO from '../components/SEO'
 
 interface Community {
   id: string;
@@ -79,6 +80,11 @@ const ForumHub: React.FC = () => {
 
   return (
     <div className="container" style={{ minHeight: '100vh', background: '#121212', overflowY: 'auto' }}>
+      <SEO 
+        title="Forum Hub" 
+        description="Explore specialized e-bike communities. From Sur-Ron performance to DIY battery builds, join the discussion with thousands of riders."
+        url="https://rangeanxiety.app/forum"
+      />
       <NavBar 
         user={user} 
         onShowInstall={() => setShowInstallTutorial(true)} 

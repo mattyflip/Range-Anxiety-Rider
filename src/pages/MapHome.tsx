@@ -14,8 +14,10 @@ import NavBar from '../components/NavBar'
 import AuthModal from '../components/AuthModal'
 import WelcomeModal from '../components/WelcomeModal'
 import { STATE_COORDINATES } from '../utils/ebikeLaws'
+import SEO from '../components/SEO'
 
-const LIBRARIES: ("places" | "geometry")[] = ["places", "geometry"];
+const LIBRARIES
+: ("places" | "geometry")[] = ["places", "geometry"];
 
 interface GroupRide {
   id: string;
@@ -738,7 +740,9 @@ function MapHome() {
 
   return (
     <div className="container">
-      <NavBar user={user} onShowInstall={() => setShowInstallTutorial(true)} onShowAuth={() => setShowAuthModal(true)} />
+      <SEO />
+      <NavBar 
+ user={user} onShowInstall={() => setShowInstallTutorial(true)} onShowAuth={() => setShowAuthModal(true)} />
       <div className="main-layout">
         <aside className={`sidebar ${showMobileMenu ? 'mobile-visible' : ''}`}>
           <div className="form-group"><label>Units</label><div className="mode-toggle">

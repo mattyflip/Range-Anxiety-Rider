@@ -1,1 +1,1 @@
-{"root":["./api/charging.ts","./api/create-checkout-session.ts","./api/elevation.ts","./api/static-map.ts","./api/stripe-webhook.ts","./api/weather.ts"],"version":"6.0.3"}
+{"root":["./api/charging.ts","./api/create-checkout-session.ts","./api/elevation.ts","./api/sitemap.ts","./api/static-map.ts","./api/stripe-webhook.ts","./api/weather.ts"],"version":"6.0.3"}
