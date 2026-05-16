@@ -217,6 +217,39 @@ function MapHome() {
   }, []);
 
   useEffect(() => {
+    if (!isLoaded) return;
+    const loadRoute = () => {
+      const raw = localStorage.getItem('ebike_load_route');
+      if (!raw) return;
+      try {
+        const data = JSON.parse(raw);
+        if (
+          data &&
+          typeof data.origin === 'string' && data.origin.trim() &&
+          typeof data.destination === 'string' && data.destination.trim() &&
+          Array.isArray(data.waypoints)
+        ) {
+          setTrip({ origin: data.origin, destination: data.destination, waypoints: data.waypoints });
+          if (typeof data.isRoundTrip === 'boolean') setIsRoundTrip(data.isRoundTrip);
+          const wps = data.waypoints.filter((w: any) => typeof w === 'string');
+          setWaypoint3(wps[0] || '');
+          setWaypoint4(wps[1] || '');
+          setWaypoint5(wps[2] || '');
+          setIsLoading(true);
+          setResponse(null);
+          setMetrics(null);
+          setPois([]);
+          localStorage.removeItem('ebike_load_route');
+        }
+      } catch { /* ignore corrupted local storage */ }
+    };
+    loadRoute();
+    const handleEvent = () => loadRoute();
+    window.addEventListener('ebike-route-loaded', handleEvent);
+    return () => window.removeEventListener('ebike-route-loaded', handleEvent);
+  }, [isLoaded, setWaypoint3, setWaypoint4, setWaypoint5]);
+
+  useEffect(() => {
     if (authInitialized && !user && !localStorage.getItem('ebike_portal_visited')) {
         // use setTimeout to jump out of synchronous render flow for modal state updates
         setTimeout(() => setShowWelcomeModal(true), 0);

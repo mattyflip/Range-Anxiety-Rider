@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { db, auth, storage } from '../firebase'
 import { doc, arrayRemove, collection, setDoc, query, where, onSnapshot, updateDoc, getDoc, getCountFromServer, getDocs, addDoc, serverTimestamp, deleteDoc } from 'firebase/firestore'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
@@ -39,7 +39,15 @@ const Profile: React.FC = () => {
   const [user, setUser] = useState<any>(null);
 
   const isAdmin = user?.email?.toLowerCase() === 'mattyfliptv@gmail.com';
+  const navigate = useNavigate();
   const [showAuthModal, setShowAuthModal] = useState(false);
+
+  const handleLoadRoute = (post: Post) => {
+    if (!post.tripData) return;
+    localStorage.setItem('ebike_load_route', JSON.stringify(post.tripData));
+    window.dispatchEvent(new Event('ebike-route-loaded'));
+    navigate('/');
+  };
 
   const promptForModerationReason = (action: string) => {
     const reason = window.prompt(`Reason for ${action}:`, "Violates community guidelines");
@@ -508,6 +516,12 @@ const Profile: React.FC = () => {
                     {userPosts.filter(p => p.tripData).map(post => (
                       <div key={post.id} style={{ background: '#1a1a1a', borderRadius: '16px', border: '1px solid #333', overflow: 'hidden', position: 'relative' }}>
                         <img src={post.imageUrl} style={{ width: '100%', aspectRatio: '1/1', objectFit: 'cover' }} alt="Trip" />
+                        <button
+                          onClick={() => handleLoadRoute(post)}
+                          style={{ position: 'absolute', bottom: '0.5rem', left: '0.5rem', background: 'rgba(255,102,0,0.9)', border: 'none', borderRadius: '8px', padding: '6px 10px', cursor: 'pointer', color: 'white', fontWeight: 'bold', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
+                        >
+                          📍 Load Route
+                        </button>
                         {isAdmin && (
                           <button 
                             onClick={async () => {

@@ -35,6 +35,7 @@ const Feed: React.FC = () => {
   const handleLoadRoute = (post: Post) => {
     if (!post.tripData) return;
     localStorage.setItem('ebike_load_route', JSON.stringify(post.tripData));
+    window.dispatchEvent(new Event('ebike-route-loaded'));
     navigate('/');
   };
 
