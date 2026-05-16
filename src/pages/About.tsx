@@ -37,7 +37,7 @@ const About: React.FC = () => {
 
       <main style={{ padding: '4rem 1.5rem', maxWidth: '800px', margin: '0 auto' }}>
         <header style={{ textAlign: 'center', marginBottom: '4rem' }}>
-          <h1 style={{ fontSize: 'clamp(2rem, 8vw, 3.5rem)', fontWeight: 900, color: '#ff6600', marginBottom: '1rem', lineHeight: '1.1' }}>Conquer Range Anxiety</h1>
+          <h1 style={{ fontSize: 'clamp(2rem, 8vw, 3.5rem)', fontWeight: 900, color: '#ff6600', margin: '0 0 0.5rem 0', lineHeight: '1.1' }}>Conquer Range Anxiety</h1>
           <p style={{ fontSize: '1.1rem', color: '#888', maxWidth: '600px', margin: '0 auto' }}>
             The most accurate physics-based range estimator for electric bikes, Sur-Rons, and electric motorcycles.
           </p>
