@@ -15,7 +15,7 @@ service firebase.storage {
 
     // Helper: Admin check
     function isAdmin() {
-      return request.auth.token.email.lower() == 'mattyfliptv@gmail.com';
+      return request.auth.token.email.toLowerCase() == 'mattyfliptv@gmail.com';
     }
 
     // --- Profile Pictures ---

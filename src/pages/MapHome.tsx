@@ -98,6 +98,11 @@ interface POI {
 
 const center = { lat: 40.7128, lng: -74.0060 };
 
+function stripHtml(raw: string): string {
+  if (!raw) return '';
+  return raw.replace(/<[^>]+>/g, '');
+}
+
 function MapHome() {
   const { isLoaded } = useJsApiLoader({ id: 'google-map-script', googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "", libraries: LIBRARIES });
   const mapRef = useRef<google.maps.Map | null>(null);
@@ -200,7 +205,12 @@ function MapHome() {
         setUserData(null); setIsPro(false); setIsHostTier(false); setHostTierExpiresAt(null);
         localStorage.removeItem('active_ride_id');
         const local = localStorage.getItem('ebike-saved-bikes');
-        if (local) setSavedBikes(JSON.parse(local));
+        if (local) {
+          try {
+            const parsed = JSON.parse(local);
+            if (Array.isArray(parsed)) setSavedBikes(parsed);
+          } catch { /* ignore corrupted local storage */ }
+        }
       }
     });
     return () => unsub();
@@ -974,7 +984,7 @@ function MapHome() {
                   </div>
                   <div>
                     <div style={{ fontSize: '0.7rem', color: '#ff6600', fontWeight: 900, textTransform: 'uppercase' }}>In {distToNextStep || '---'}</div>
-                    <div style={{ color: 'white', fontSize: '1.1rem', fontWeight: 'bold', lineHeight: '1.2' }} dangerouslySetInnerHTML={{ __html: response.routes[selectedRouteIndex].legs[currentLegIndex].steps[currentStepIndex].instructions }} />
+                    <div style={{ color: 'white', fontSize: '1.1rem', fontWeight: 'bold', lineHeight: '1.2' }}>{stripHtml(response.routes[selectedRouteIndex].legs[currentLegIndex].steps[currentStepIndex].instructions)}</div>
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
