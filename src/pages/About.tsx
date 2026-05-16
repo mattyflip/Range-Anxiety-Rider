@@ -35,10 +35,10 @@ const About: React.FC = () => {
         onShowAuth={() => setShowAuthModal(true)} 
       />
 
-      <main style={{ padding: '4rem 2rem', maxWidth: '800px', margin: '0 auto' }}>
+      <main style={{ padding: '4rem 1.5rem', maxWidth: '800px', margin: '0 auto' }}>
         <header style={{ textAlign: 'center', marginBottom: '4rem' }}>
-          <h1 style={{ fontSize: '3.5rem', fontWeight: 900, color: '#ff6600', marginBottom: '1rem' }}>Conquer Range Anxiety</h1>
-          <p style={{ fontSize: '1.2rem', color: '#888', maxWidth: '600px', margin: '0 auto' }}>
+          <h1 style={{ fontSize: 'clamp(2rem, 8vw, 3.5rem)', fontWeight: 900, color: '#ff6600', marginBottom: '1rem', lineHeight: '1.1' }}>Conquer Range Anxiety</h1>
+          <p style={{ fontSize: '1.1rem', color: '#888', maxWidth: '600px', margin: '0 auto' }}>
             The most accurate physics-based range estimator for electric bikes, Sur-Rons, and electric motorcycles.
           </p>
         </header>
@@ -48,7 +48,7 @@ const About: React.FC = () => {
           <p style={{ lineHeight: 1.8, color: '#ccc' }}>
             Unlike basic calculators that only look at Amp Hours, Range Anxiety uses a complex physics model to determine your actual battery usage. We account for:
           </p>
-          <ul style={{ marginTop: '1.5rem', color: '#ccc', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <ul style={{ marginTop: '1.5rem', color: '#ccc', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem', padding: 0, listStyle: 'none' }}>
             <li>💨 <strong>Air Resistance:</strong> Drag increases exponentially with speed.</li>
             <li>⛰️ <strong>Elevation Change:</strong> Climbing uses significantly more Wh than flat ground.</li>
             <li>⚖️ <strong>Total Mass:</strong> Combined weight of rider and bike.</li>
@@ -56,7 +56,7 @@ const About: React.FC = () => {
           </ul>
         </section>
 
-        <div style={{ background: '#1a1a1a', padding: '2.5rem', borderRadius: '24px', border: '1px solid #333', marginBottom: '4rem' }}>
+        <div style={{ background: '#1a1a1a', padding: '2rem', borderRadius: '24px', border: '1px solid #333', marginBottom: '4rem' }}>
           <h2 style={{ marginTop: 0, color: '#ff6600' }}>Why trust us?</h2>
           <p style={{ color: '#aaa', lineHeight: 1.6 }}>
             Our model has been tuned against real-world GPS data from thousands of miles of riding on popular platforms like the Sur-Ron Light Bee, Talaria Sting, and Specialized Turbo Levo. Whether you're commuting or shredding trails, our goal is to ensure you never push your bike home.
@@ -83,23 +83,23 @@ const About: React.FC = () => {
 
         <AdBanner isPro={userData?.isPro || false} />
 
-        <footer style={{ textAlign: 'center', marginTop: '6rem', padding: '4rem 0', borderTop: '1px solid #222' }}>
+        <div style={{ textAlign: 'center', marginTop: '6rem', padding: '4rem 0', borderTop: '1px solid #222' }}>
           <h2 style={{ marginBottom: '2rem' }}>Ready to plan your next trip?</h2>
           <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
             <button 
               onClick={() => window.location.href = '/'}
-              style={{ padding: '1rem 3rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold', fontSize: '1.1rem', cursor: 'pointer' }}
+              style={{ padding: '1rem 2rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold', fontSize: '1.1rem', cursor: 'pointer', flex: '1', minWidth: '200px', maxWidth: '300px' }}
             >
               Launch Map
             </button>
             <button 
               onClick={() => window.location.href = '/faq'}
-              style={{ padding: '1rem 3rem', background: '#333', color: 'white', border: '1px solid #444', borderRadius: '12px', fontWeight: 'bold', fontSize: '1.1rem', cursor: 'pointer' }}
+              style={{ padding: '1rem 2rem', background: '#333', color: 'white', border: '1px solid #444', borderRadius: '12px', fontWeight: 'bold', fontSize: '1.1rem', cursor: 'pointer', flex: '1', minWidth: '200px', maxWidth: '300px' }}
             >
               Read FAQs
             </button>
           </div>
-        </footer>
+        </div>
       </main>
 
       {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}

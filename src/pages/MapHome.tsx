@@ -710,18 +710,28 @@ function MapHome() {
   };
 
   const useCurrentLocation = () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(pos => {
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser.");
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
         const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         setUserLocation(loc);
         if (mapRef.current) {
           mapRef.current.panTo(loc);
           mapRef.current.setZoom(15);
         }
-        setTrip(p => ({ ...p, origin: `${loc.lat},${loc.lng}` }));
+        setTrip(p => ({ ...p, origin: `${loc.lat.toFixed(6)}, ${loc.lng.toFixed(6)}` }));
         markDirty();
-      });
-    }
+      },
+      (err) => {
+        console.error("Locate me error:", err);
+        alert(`Location failed: ${err.message}. Please ensure location services are enabled.`);
+      },
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
   };
 
   const downloadShareCard = async () => {
