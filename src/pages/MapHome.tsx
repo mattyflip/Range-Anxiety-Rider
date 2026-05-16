@@ -223,8 +223,10 @@ function MapHome() {
     if (!isLoaded || !mapRef.current) return;
     
     // Check if we are loading a saved route first
-    if (localStorage.getItem('ebike_load_route')) return;
+    const savedRoute = localStorage.getItem('ebike_load_route');
+    if (savedRoute) return;
 
+    // Auto-center on load
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition((pos) => {
         const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
@@ -234,10 +236,10 @@ function MapHome() {
           mapRef.current.setZoom(13);
         }
       }, (err) => {
-        console.warn("Auto-centering failed:", err);
+        console.warn("Initial auto-centering failed:", err.message);
       }, { enableHighAccuracy: false, timeout: 5000 });
     }
-  }, [isLoaded]);
+  }, [isLoaded, mapRef.current]);
 
   useEffect(() => {
     if (!isLoaded) return;
@@ -246,12 +248,32 @@ function MapHome() {
       if (!raw) return;
       try {
         const data = JSON.parse(raw);
-        if (
+        if (data.isRecorded && Array.isArray(data.path)) {
+           setRecordedPath(data.path);
+           setResponse(null);
+           setMetrics({
+             distanceMiles: parseFloat(data.metrics?.distanceMiles || 0),
+             durationMin: parseInt(data.metrics?.durationMin || 0),
+             elevationGainFeet: 0,
+             elevationLossFeet: 0,
+             estimatedWh: 0,
+             batteryPercentUsed: 0,
+             recommendedSpeedMph: 0
+           });
+           setTrip({ origin: 'Recorded Ride', destination: data.name || 'Recorded Ride', waypoints: [] });
+           setPois([]);
+           localStorage.removeItem('ebike_load_route');
+           if (mapRef.current && data.path.length > 0) {
+              mapRef.current.panTo(data.path[0]);
+              mapRef.current.setZoom(14);
+           }
+        } else if (
           data &&
           typeof data.origin === 'string' && data.origin.trim() &&
           typeof data.destination === 'string' && data.destination.trim() &&
           Array.isArray(data.waypoints)
         ) {
+          setRecordedPath(null);
           setTrip({ origin: data.origin, destination: data.destination, waypoints: data.waypoints });
           if (typeof data.isRoundTrip === 'boolean') setIsRoundTrip(data.isRoundTrip);
           const wps = data.waypoints.filter((w: any) => typeof w === 'string');
