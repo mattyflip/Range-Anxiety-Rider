@@ -134,6 +134,7 @@ function MapHome() {
   
   const [response, setResponse] = useState<google.maps.DirectionsResult | null>(null);
   const [selectedRouteIndex, setSelectedRouteIndex] = useState(0);
+  const [recordedPath, setRecordedPath] = useState<google.maps.LatLngLiteral[] | null>(null);
   const [metrics, setMetrics] = useState<RouteMetrics | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [pois, setPois] = useState<POI[]>([]);
@@ -444,6 +445,7 @@ function MapHome() {
     // Build waypoints from individual fields
     const wps = [waypoint3, waypoint4, waypoint5].filter(w => w.trim());
     setTrip(p => ({ ...p, waypoints: wps }));
+    setRecordedPath(null);
     setIsLoading(true); setResponse(null); setMetrics(null); setPois([]); setSettingsDirty(false); 
   };
 
@@ -1093,6 +1095,11 @@ function MapHome() {
               {/* Host's planned route (visible to all participants) */}
               {rideRoutePath.length > 1 && (
                 <Polyline path={rideRoutePath} options={{ strokeColor: '#4285F4', strokeOpacity: 0.8, strokeWeight: 5 }} />
+              )}
+
+              {/* Recorded Ride Path */}
+              {recordedPath && recordedPath.length > 1 && (
+                <Polyline path={recordedPath} options={{ strokeColor: '#ff6600', strokeOpacity: 0.9, strokeWeight: 6 }} />
               )}
 
               {/* Route stop markers (Start, Stop 3, Stop 4, Stop 5, End) */}

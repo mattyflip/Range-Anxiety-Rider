@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { db, auth, storage } from '../firebase'
-import { doc, arrayRemove, collection, setDoc, query, where, onSnapshot, updateDoc, getDoc, getCountFromServer, getDocs, addDoc, serverTimestamp, deleteDoc } from 'firebase/firestore'
+import { doc, arrayRemove, collection, setDoc, query, where, onSnapshot, updateDoc, getDoc, getCountFromServer, getDocs, addDoc, serverTimestamp, deleteDoc, orderBy } from 'firebase/firestore'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import NavBar from '../components/NavBar'
 import InstallTutorial from '../components/InstallTutorial'
@@ -56,6 +56,7 @@ const Profile: React.FC = () => {
   const [showInstallTutorial, setShowInstallTutorial] = useState(false);
   const [userPosts, setUserPosts] = useState<Post[]>([]);
   const [userReviews, setUserReviews] = useState<Review[]>([]);
+  const [recordedRides, setRecordedRides] = useState<any[]>([]);
 
   const [activeTab, setActiveTab] = useState('garage');
   const [isFollowing, setIsFollowing] = useState(false);
@@ -103,6 +104,7 @@ const Profile: React.FC = () => {
     setLoading(true);
     let profileUnsub: () => void;
     let postsUnsub: () => void;
+    let recordedUnsub: () => void;
 
     const normalizedTarget = target.replace(/%20/g, ' ').replace(/\s+/g, '_');
     const spaceTarget = normalizedTarget.replace(/_/g, ' ');
@@ -115,7 +117,8 @@ const Profile: React.FC = () => {
     profileUnsub = onSnapshot(q, (snap) => {
       if (!snap.empty) {
         const data = snap.docs[0].data();
-        setProfileData({ ...data, id: snap.docs[0].id });
+        const tid = snap.docs[0].id;
+        setProfileData({ ...data, id: tid });
         setEditUsername(data.username || '');
         setEditFullName(data.fullName || '');
         setEditBio(data.bio || '');
@@ -124,19 +127,25 @@ const Profile: React.FC = () => {
         setEditBirthday(data.birthday || '');
         setEditIsPro(data.isPro || false);
         if (user) {
-          getDoc(doc(db, "users", snap.docs[0].id, "followers", user.uid)).then(d => setIsFollowing(d.exists()));
+          getDoc(doc(db, "users", tid, "followers", user.uid)).then(d => setIsFollowing(d.exists()));
         }
-        getCountFromServer(collection(db, "users", snap.docs[0].id, "followers")).then(c => setFollowerCount(c.data().count));
-        getCountFromServer(collection(db, "users", snap.docs[0].id, "following")).then(c => setFollowingCount(c.data().count));
+        getCountFromServer(collection(db, "users", tid, "followers")).then(c => setFollowerCount(c.data().count));
+        getCountFromServer(collection(db, "users", tid, "following")).then(c => setFollowingCount(c.data().count));
+        
         if (postsUnsub) postsUnsub();
-        postsUnsub = fetchUserPosts(snap.docs[0].id);
-        fetchUserReviews(snap.docs[0].id);
+        postsUnsub = fetchUserPosts(tid);
+        
+        if (recordedUnsub) recordedUnsub();
+        recordedUnsub = fetchRecordedRides(tid);
+
+        fetchUserReviews(tid);
       } else {
         const qOrig = query(usersRef, where("username", "in", [normalizedTarget, spaceTarget, target]));
         getDocs(qOrig).then((origSnap) => {
           if (!origSnap.empty) {
             const data = origSnap.docs[0].data();
-            setProfileData({ ...data, id: origSnap.docs[0].id });
+            const tid = origSnap.docs[0].id;
+            setProfileData({ ...data, id: tid });
             setEditUsername(data.username || '');
             setEditFullName(data.fullName || '');
             setEditBio(data.bio || '');
@@ -145,19 +154,25 @@ const Profile: React.FC = () => {
             setEditBirthday(data.birthday || '');
             setEditIsPro(data.isPro || false);
             if (user) {
-          getDoc(doc(db, "users", origSnap.docs[0].id, "followers", user.uid)).then(d => setIsFollowing(d.exists()));
+          getDoc(doc(db, "users", tid, "followers", user.uid)).then(d => setIsFollowing(d.exists()));
         }
-        getCountFromServer(collection(db, "users", origSnap.docs[0].id, "followers")).then(c => setFollowerCount(c.data().count));
-        getCountFromServer(collection(db, "users", origSnap.docs[0].id, "following")).then(c => setFollowingCount(c.data().count));
+        getCountFromServer(collection(db, "users", tid, "followers")).then(c => setFollowerCount(c.data().count));
+        getCountFromServer(collection(db, "users", tid, "following")).then(c => setFollowingCount(c.data().count));
+            
             if (postsUnsub) postsUnsub();
-            postsUnsub = fetchUserPosts(origSnap.docs[0].id);
-            fetchUserReviews(origSnap.docs[0].id);
+            postsUnsub = fetchUserPosts(tid);
+
+            if (recordedUnsub) recordedUnsub();
+            recordedUnsub = fetchRecordedRides(tid);
+
+            fetchUserReviews(tid);
           } else {
             const docRef = doc(db, "users", target);
             getDoc(docRef).then((uSnap) => {
               if (uSnap.exists()) {
                 const data = uSnap.data();
-                setProfileData({ ...data, id: uSnap.id });
+                const tid = uSnap.id;
+                setProfileData({ ...data, id: tid });
                 setEditUsername(data.username || '');
                 setEditFullName(data.fullName || '');
                 setEditBio(data.bio || '');
@@ -166,13 +181,18 @@ const Profile: React.FC = () => {
                 setEditBirthday(data.birthday || '');
                 setEditIsPro(data.isPro || false);
                 if (user) {
-          getDoc(doc(db, "users", uSnap.id, "followers", user.uid)).then(d => setIsFollowing(d.exists()));
+          getDoc(doc(db, "users", tid, "followers", user.uid)).then(d => setIsFollowing(d.exists()));
         }
-        getCountFromServer(collection(db, "users", uSnap.id, "followers")).then(c => setFollowerCount(c.data().count));
-        getCountFromServer(collection(db, "users", uSnap.id, "following")).then(c => setFollowingCount(c.data().count));
+        getCountFromServer(collection(db, "users", tid, "followers")).then(c => setFollowerCount(c.data().count));
+        getCountFromServer(collection(db, "users", tid, "following")).then(c => setFollowingCount(c.data().count));
+                
                 if (postsUnsub) postsUnsub();
-                postsUnsub = fetchUserPosts(uSnap.id);
-                fetchUserReviews(uSnap.id);
+                postsUnsub = fetchUserPosts(tid);
+
+                if (recordedUnsub) recordedUnsub();
+                recordedUnsub = fetchRecordedRides(tid);
+
+                fetchUserReviews(tid);
               }
             });
           }
@@ -184,8 +204,35 @@ const Profile: React.FC = () => {
     return () => { 
       if (profileUnsub) profileUnsub(); 
       if (postsUnsub) postsUnsub();
+      if (recordedUnsub) recordedUnsub();
     };
   }, [username, user?.uid]);
+
+  const fetchRecordedRides = (userId: string) => {
+    const q = query(collection(db, `users/${userId}/recorded_routes`), orderBy("createdAt", "desc"));
+    return onSnapshot(q, (snap) => {
+      const rides: any[] = [];
+      snap.forEach(docSnap => rides.push({ id: docSnap.id, ...docSnap.data() }));
+      setRecordedRides(rides);
+    });
+  };
+
+  const handleLoadRecordedRide = (ride: any) => {
+    if (!ride.path) return;
+    // Prepare tripData structure expected by MapHome
+    const tripData = {
+      isRecorded: true,
+      path: ride.path,
+      name: ride.name,
+      metrics: {
+        distanceMiles: ride.distanceMiles,
+        durationMin: ride.durationMin
+      }
+    };
+    localStorage.setItem('ebike_load_route', JSON.stringify(tripData));
+    window.dispatchEvent(new Event('ebike-route-loaded'));
+    navigate('/');
+  };
 
   const toggleFollow = async () => {
     if (!user || !profileData) return;
@@ -463,24 +510,28 @@ const Profile: React.FC = () => {
             </div>
 
             
-            <div style={{ display: 'flex', borderBottom: '1px solid #333', marginBottom: '2rem' }}>
+            <div style={{ display: 'flex', borderBottom: '1px solid #333', marginBottom: '2rem', overflowX: 'auto' }}>
               <button 
                 onClick={() => setActiveTab('garage')}
-                style={{ flex: 1, padding: '1rem', background: 'none', border: 'none', borderBottom: activeTab === 'garage' ? '2px solid #ff6600' : '2px solid transparent', color: activeTab === 'garage' ? 'white' : '#888', fontWeight: 'bold', cursor: 'pointer' }}
+                style={{ flex: 1, padding: '1rem', background: 'none', border: 'none', borderBottom: activeTab === 'garage' ? '2px solid #ff6600' : '2px solid transparent', color: activeTab === 'garage' ? 'white' : '#888', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap' }}
               >Garage</button>
               <button 
                 onClick={() => setActiveTab('trips')}
-                style={{ flex: 1, padding: '1rem', background: 'none', border: 'none', borderBottom: activeTab === 'trips' ? '2px solid #ff6600' : '2px solid transparent', color: activeTab === 'trips' ? 'white' : '#888', fontWeight: 'bold', cursor: 'pointer' }}
+                style={{ flex: 1, padding: '1rem', background: 'none', border: 'none', borderBottom: activeTab === 'trips' ? '2px solid #ff6600' : '2px solid transparent', color: activeTab === 'trips' ? 'white' : '#888', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap' }}
               >Trips</button>
+              <button 
+                onClick={() => setActiveTab('recorded')}
+                style={{ flex: 1, padding: '1rem', background: 'none', border: 'none', borderBottom: activeTab === 'recorded' ? '2px solid #ff6600' : '2px solid transparent', color: activeTab === 'recorded' ? 'white' : '#888', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap' }}
+              >Recorded</button>
               {userPosts.some(p => !p.tripData) && (
                 <button 
                   onClick={() => setActiveTab('posts')}
-                  style={{ flex: 1, padding: '1rem', background: 'none', border: 'none', borderBottom: activeTab === 'posts' ? '2px solid #ff6600' : '2px solid transparent', color: activeTab === 'posts' ? 'white' : '#888', fontWeight: 'bold', cursor: 'pointer' }}
+                  style={{ flex: 1, padding: '1rem', background: 'none', border: 'none', borderBottom: activeTab === 'posts' ? '2px solid #ff6600' : '2px solid transparent', color: activeTab === 'posts' ? 'white' : '#888', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap' }}
                 >Posts</button>
               )}
               <button 
                 onClick={() => setActiveTab('reviews')}
-                style={{ flex: 1, padding: '1rem', background: 'none', border: 'none', borderBottom: activeTab === 'reviews' ? '2px solid #ff6600' : '2px solid transparent', color: activeTab === 'reviews' ? 'white' : '#888', fontWeight: 'bold', cursor: 'pointer' }}
+                style={{ flex: 1, padding: '1rem', background: 'none', border: 'none', borderBottom: activeTab === 'reviews' ? '2px solid #ff6600' : '2px solid transparent', color: activeTab === 'reviews' ? 'white' : '#888', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap' }}
               >Reviews ({profileData.ratingCount || 0})</button>
             </div>
 
@@ -540,6 +591,46 @@ const Profile: React.FC = () => {
                             style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', background: 'rgba(0,0,0,0.6)', border: 'none', borderRadius: '4px', padding: '4px', cursor: 'pointer' }}
                           >🗑️</button>
                         )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
+
+            {activeTab === 'recorded' && (
+              <section style={{ marginBottom: '4rem' }}>
+                {recordedRides.length === 0 ? (
+                  <div style={{ color: '#666', textAlign: 'center', padding: '2rem' }}>No recorded rides yet. Try Explore Mode!</div>
+                ) : (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '1rem' }}>
+                    {recordedRides.map(ride => (
+                      <div key={ride.id} style={{ background: '#1a1a1a', padding: '1.2rem', borderRadius: '16px', border: '1px solid #333', position: 'relative' }}>
+                        <div style={{ fontWeight: 'bold', color: 'white', marginBottom: '0.5rem' }}>{ride.name}</div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                           <div style={{ fontSize: '0.75rem', color: '#888' }}>📏 {ride.distanceMiles} MI</div>
+                           <div style={{ fontSize: '0.75rem', color: '#888' }}>⏱️ {ride.durationMin} MIN</div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                          <button 
+                            onClick={() => handleLoadRecordedRide(ride)}
+                            style={{ flex: 1, padding: '0.5rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '0.75rem', cursor: 'pointer' }}
+                          >
+                            Load to Map
+                          </button>
+                          {canEdit && (
+                            <button 
+                              onClick={async () => {
+                                if (!window.confirm("Delete this recorded ride?")) return;
+                                await deleteDoc(doc(db, `users/${profileData.id}/recorded_routes`, ride.id));
+                              }}
+                              style={{ padding: '0.5rem', background: '#333', color: '#ff4444', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
+                            >
+                              🗑️
+                            </button>
+                          )}
+                        </div>
+                        <div style={{ fontSize: '0.6rem', color: '#444', marginTop: '1rem' }}>Recorded {ride.createdAt?.toDate().toLocaleDateString()}</div>
                       </div>
                     ))}
                   </div>
