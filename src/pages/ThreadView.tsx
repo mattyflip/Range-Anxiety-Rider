@@ -371,70 +371,70 @@ const ThreadView: React.FC = () => {
         <Link to={`/forum/c/${communityId}`} style={{ color: '#ff6600', textDecoration: 'none', fontSize: '0.85rem', fontWeight: 'bold', display: 'block', marginBottom: '1.5rem' }}>← Back to c/{communityData?.name || communityId}</Link>
 
         {thread && (
-          <article style={{ background: '#1a1a1a', borderRadius: '24px', border: '1px solid #333', padding: '1.5rem', marginBottom: '2rem', display: 'flex', gap: '1.5rem' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2rem', background: '#121212', padding: '0.6rem 0.8rem', borderRadius: '10px', alignSelf: 'flex-start' }}>
-               <button 
-                 onClick={() => handleVote(1)} 
-                 style={{ background: 'none', border: 'none', color: thread.upvotedBy?.includes(user?.uid) ? '#4ade80' : '#444', cursor: 'pointer', fontSize: '1.2rem', filter: thread.upvotedBy?.includes(user?.uid) ? 'none' : 'grayscale(100%)' }}
-                 title="Upvote"
-               >🔋</button>
-               <span style={{ color: 'white', fontWeight: 'bold', fontSize: '1rem' }}>{thread.score}</span>
-               <button 
-                 onClick={() => handleVote(-1)} 
-                 style={{ background: 'none', border: 'none', color: thread.downvotedBy?.includes(user?.uid) ? '#f87171' : '#444', cursor: 'pointer', fontSize: '1.2rem', filter: thread.downvotedBy?.includes(user?.uid) ? 'none' : 'grayscale(100%)' }}
-                 title="Downvote"
-               >🪫</button>
+          <article style={{ background: '#1a1a1a', borderRadius: '24px', border: '1px solid #333', padding: '2rem', marginBottom: '2rem' }}>
+            <div style={{ fontSize: '0.65rem', color: '#444', textTransform: 'uppercase', fontWeight: 'bold', marginBottom: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              Posted by <Link to={`/profile/${thread.authorUsername.replace(/\s+/g, '_')}`} style={{ color: '#888', textDecoration: 'none' }}>{thread.authorUsername}</Link> 
+              {(thread.authorUsername === 'MattyFlip' || thread.authorUsername === 'mattyflip') && <span style={{ background: '#ff0000', color: 'white', fontSize: '0.5rem', padding: '1px 3px', borderRadius: '2px', fontWeight: 900 }}>ADMIN</span>}
+              • {thread.createdAt?.toDate().toLocaleString()}
             </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: '0.65rem', color: '#444', textTransform: 'uppercase', fontWeight: 'bold', marginBottom: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                Posted by <Link to={`/profile/${thread.authorUsername.replace(/\s+/g, '_')}`} style={{ color: '#888', textDecoration: 'none' }}>{thread.authorUsername}</Link> 
-                {(thread.authorUsername === 'MattyFlip' || thread.authorUsername === 'mattyflip') && <span style={{ background: '#ff0000', color: 'white', fontSize: '0.5rem', padding: '1px 3px', borderRadius: '2px', fontWeight: 900 }}>ADMIN</span>}
-                • {thread.createdAt?.toDate().toLocaleString()}
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <h1 style={{ color: 'white', margin: 0, fontSize: '1.5rem', lineHeight: '1.3' }}>{thread.title}</h1>
+              {isAdmin && (
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button 
+                    onClick={() => setAdminEditingThread(true)}
+                    style={{ background: 'none', border: 'none', color: '#ffcc00', cursor: 'pointer', fontSize: '1.2rem', padding: '0.5rem' }}
+                    title="Edit Thread"
+                  >✏️</button>
+                  <button 
+                    onClick={handleDeleteThread}
+                    style={{ background: 'none', border: 'none', color: '#ff4444', cursor: 'pointer', fontSize: '1.2rem', padding: '0.5rem' }}
+                    title="Delete Thread as Moderator"
+                  >🗑️</button>
+                </div>
+              )}
+            </div>
+
+            {thread.body && (
+              <div style={{ color: '#ccc', fontSize: '1.1rem', lineHeight: '1.6', marginTop: '1.5rem', whiteSpace: 'pre-wrap' }}>
+                {thread.body}
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <h1 style={{ color: 'white', margin: 0, fontSize: '1.5rem', lineHeight: '1.3' }}>{thread.title}</h1>
-                {isAdmin && (
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button 
-                      onClick={() => setAdminEditingThread(true)}
-                      style={{ background: 'none', border: 'none', color: '#ffcc00', cursor: 'pointer', fontSize: '1.2rem', padding: '0.5rem' }}
-                      title="Edit Thread"
-                    >✏️</button>
-                    <button 
-                      onClick={handleDeleteThread}
-                      style={{ background: 'none', border: 'none', color: '#ff4444', cursor: 'pointer', fontSize: '1.2rem', padding: '0.5rem' }}
-                      title="Delete Thread as Moderator"
-                    >🗑️</button>
-                  </div>
+            )}
+
+            {thread.mediaUrl && (
+              <div style={{ marginTop: '2rem', borderRadius: '16px', overflow: 'hidden', border: '1px solid #333' }}>
+                {thread.mediaType === 'video' ? (
+                  <video 
+                    src={thread.mediaUrl} 
+                    controls 
+                    style={{ width: '100%', display: 'block', maxHeight: '500px', background: '#000' }} 
+                  />
+                ) : (
+                  <img 
+                    src={thread.mediaUrl} 
+                    alt="Thread Media" 
+                    style={{ width: '100%', display: 'block', maxHeight: '600px', objectFit: 'contain', background: '#000' }} 
+                  />
                 )}
               </div>
-              {thread.body && (
-                <div style={{ color: '#ccc', fontSize: '1.1rem', lineHeight: '1.6', marginTop: '1.5rem', whiteSpace: 'pre-wrap' }}>
-                  {thread.body}
-                </div>
-              )}
+            )}
 
-              {thread.mediaUrl && (
-                <div style={{ marginTop: '2rem', borderRadius: '16px', overflow: 'hidden', border: '1px solid #333' }}>
-                  {thread.mediaType === 'video' ? (
-                    <video 
-                      src={thread.mediaUrl} 
-                      controls 
-                      style={{ width: '100%', display: 'block', maxHeight: '500px', background: '#000' }} 
-                    />
-                  ) : (
-                    <img 
-                      src={thread.mediaUrl} 
-                      alt="Thread Media" 
-                      style={{ width: '100%', display: 'block', maxHeight: '600px', objectFit: 'contain', background: '#000' }} 
-                    />
-                  )}
-                </div>
-              )}
-
-              <div style={{ marginTop: '2rem', borderTop: '1px solid #333', paddingTop: '1.5rem', display: 'flex', gap: '1rem' }}>
-                 <div style={{ color: '#666', fontWeight: 'bold', fontSize: '0.9rem' }}>💬 {thread.commentCount} Comments</div>
-              </div>
+            <div style={{ marginTop: '2.5rem', borderTop: '1px solid #333', paddingTop: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: '#121212', padding: '0.5rem 1.2rem', borderRadius: '14px' }}>
+                  <button 
+                    onClick={() => handleVote(1)} 
+                    style={{ background: 'none', border: 'none', color: thread.upvotedBy?.includes(user?.uid) ? '#4ade80' : '#444', cursor: 'pointer', fontSize: '1.2rem', filter: thread.upvotedBy?.includes(user?.uid) ? 'none' : 'grayscale(100%)' }}
+                    title="Upvote"
+                  >🔋</button>
+                  <span style={{ color: 'white', fontWeight: 'bold', fontSize: '1.1rem' }}>{thread.score}</span>
+                  <button 
+                    onClick={() => handleVote(-1)} 
+                    style={{ background: 'none', border: 'none', color: thread.downvotedBy?.includes(user?.uid) ? '#f87171' : '#444', cursor: 'pointer', fontSize: '1.2rem', filter: thread.downvotedBy?.includes(user?.uid) ? 'none' : 'grayscale(100%)' }}
+                    title="Downvote"
+                  >🪫</button>
+               </div>
+               <div style={{ color: '#666', fontWeight: 'bold', fontSize: '0.9rem' }}>💬 {thread.commentCount} Comments</div>
             </div>
           </article>
         )}
