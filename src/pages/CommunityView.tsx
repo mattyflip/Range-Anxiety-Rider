@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
-import { db, auth } from '../firebase'
+import { db, auth, storage } from '../firebase'
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, getDoc, doc, updateDoc, increment, deleteDoc, arrayUnion, arrayRemove } from 'firebase/firestore'
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { useParams, Link } from 'react-router-dom'
 import NavBar from '../components/NavBar'
 import InstallTutorial from '../components/InstallTutorial'
@@ -14,6 +15,8 @@ interface Thread {
   authorUsername: string;
   title: string;
   body: string;
+  mediaUrl?: string;
+  mediaType?: 'image' | 'video';
   score: number;
   commentCount: number;
   upvotedBy: string[];
@@ -39,6 +42,8 @@ const CommunityView: React.FC = () => {
   const [showCreateThread, setShowCreatePost] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newBody, setNewBody] = useState('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showInstallTutorial, setShowInstallTutorial] = useState(false);
@@ -81,14 +86,27 @@ const CommunityView: React.FC = () => {
   }, [communityId]);
 
   const handleCreateThread = async () => {
-    if (!newTitle.trim() || !user || !userData || !communityId) return;
+    if (!newTitle.trim() || !user || !userData || !communityId || isUploading) return;
 
+    setIsUploading(true);
     try {
+      let mediaUrl = "";
+      let mediaType: 'image' | 'video' | undefined = undefined;
+
+      if (selectedFile) {
+        const fileRef = ref(storage, `forum/${communityId}/${user.uid}/${Date.now()}_${selectedFile.name}`);
+        await uploadBytes(fileRef, selectedFile);
+        mediaUrl = await getDownloadURL(fileRef);
+        mediaType = selectedFile.type.startsWith('video/') ? 'video' : 'image';
+      }
+
       await addDoc(collection(db, `communities/${communityId}/threads`), {
         authorId: user.uid,
         authorUsername: userData.username || user.email?.split('@')[0],
         title: newTitle,
         body: newBody,
+        mediaUrl,
+        mediaType,
         score: 0,
         commentCount: 0,
         upvotedBy: [],
@@ -99,8 +117,12 @@ const CommunityView: React.FC = () => {
       setShowCreatePost(false);
       setNewTitle('');
       setNewBody('');
+      setSelectedFile(null);
     } catch (e) {
       console.error("Thread creation failed", e);
+      alert("Failed to create thread. Please try again.");
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -225,6 +247,11 @@ const CommunityView: React.FC = () => {
                    <Link to={`/forum/c/${communityId}/t/${thread.id}`} style={{ textDecoration: 'none' }}><h2 style={{ color: 'white', margin: '0 0 0.5rem 0', fontSize: '1.2rem', lineHeight: '1.4' }}>{thread.title}</h2></Link>
                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                       <div style={{ fontSize: '0.75rem', color: '#666', fontWeight: 'bold' }}>💬 {thread.commentCount} Comments</div>
+                      {thread.mediaUrl && (
+                        <div style={{ fontSize: '0.75rem', color: '#ff6600', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                          {thread.mediaType === 'video' ? '🎥 Video' : '📸 Photo'}
+                        </div>
+                      )}
                       {isAdmin && (
                         <div style={{ display: 'flex', gap: '0.8rem', borderLeft: '1px solid #333', paddingLeft: '1rem' }}>
                           <button onClick={() => handleDeleteThread(thread)} style={{ background: 'none', border: 'none', color: '#ff4444', cursor: 'pointer', fontSize: '1rem' }}>🗑️</button>
@@ -243,9 +270,31 @@ const CommunityView: React.FC = () => {
             <h2 style={{ color: 'white', marginTop: 0 }}>Start a Discussion</h2>
             <div className="form-group" style={{ marginTop: '1.5rem' }}><label>Thread Title</label><input type="text" value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder="What's on your mind?" style={{ background: '#222', border: '1px solid #333', borderRadius: '12px', color: 'white', padding: '1rem', width: '100%', outline: 'none' }} /></div>
             <div className="form-group" style={{ marginTop: '1.5rem' }}><label>Body (Optional)</label><textarea value={newBody} onChange={e => setNewBody(e.target.value)} placeholder="Explain in more detail..." style={{ background: '#222', border: '1px solid #333', borderRadius: '12px', color: 'white', padding: '1rem', width: '100%', minHeight: '150px', outline: 'none', fontFamily: 'inherit' }} /></div>
+            
+            <div style={{ marginTop: '1.5rem' }}>
+              <label style={{ color: '#888', fontSize: '0.7rem', fontWeight: 'bold', textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>Add Media (Image/Video)</label>
+              <input 
+                type="file" 
+                accept="image/*,video/*" 
+                onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                style={{ color: '#888', fontSize: '0.9rem' }}
+              />
+              {selectedFile && (
+                <div style={{ marginTop: '0.5rem', color: '#ff6600', fontSize: '0.8rem', fontWeight: 'bold' }}>
+                  Selected: {selectedFile.name}
+                </div>
+              )}
+            </div>
+
             <div style={{ display: 'flex', gap: '1rem', marginTop: '2.5rem' }}>
-              <button onClick={() => setShowCreatePost(false)} style={{ flex: 1, padding: '1rem', background: '#333', color: 'white', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold' }}>Cancel</button>
-              <button onClick={handleCreateThread} disabled={!newTitle.trim()} style={{ flex: 2, padding: '1rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold', opacity: !newTitle.trim() ? 0.5 : 1 }}>Create Thread</button>
+              <button onClick={() => { setShowCreatePost(false); setSelectedFile(null); }} style={{ flex: 1, padding: '1rem', background: '#333', color: 'white', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold' }}>Cancel</button>
+              <button 
+                onClick={handleCreateThread} 
+                disabled={!newTitle.trim() || isUploading} 
+                style={{ flex: 2, padding: '1rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold', opacity: (!newTitle.trim() || isUploading) ? 0.5 : 1 }}
+              >
+                {isUploading ? 'Uploading...' : 'Create Thread'}
+              </button>
             </div>
           </div>
         </div>

@@ -413,6 +413,25 @@ const ThreadView: React.FC = () => {
                   {thread.body}
                 </div>
               )}
+
+              {thread.mediaUrl && (
+                <div style={{ marginTop: '2rem', borderRadius: '16px', overflow: 'hidden', border: '1px solid #333' }}>
+                  {thread.mediaType === 'video' ? (
+                    <video 
+                      src={thread.mediaUrl} 
+                      controls 
+                      style={{ width: '100%', display: 'block', maxHeight: '500px', background: '#000' }} 
+                    />
+                  ) : (
+                    <img 
+                      src={thread.mediaUrl} 
+                      alt="Thread Media" 
+                      style={{ width: '100%', display: 'block', maxHeight: '600px', objectFit: 'contain', background: '#000' }} 
+                    />
+                  )}
+                </div>
+              )}
+
               <div style={{ marginTop: '2rem', borderTop: '1px solid #333', paddingTop: '1.5rem', display: 'flex', gap: '1rem' }}>
                  <div style={{ color: '#666', fontWeight: 'bold', fontSize: '0.9rem' }}>💬 {thread.commentCount} Comments</div>
               </div>
