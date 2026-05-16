@@ -66,11 +66,16 @@ const FAQ: React.FC = () => {
         onShowAuth={() => setShowAuthModal(true)} 
       />
 
-      <main style={{ padding: '4rem 2rem', maxWidth: '800px', margin: '0 auto' }}>
-        <header style={{ textAlign: 'center', marginBottom: '4rem' }}>
-          <h1 style={{ fontSize: '3rem', fontWeight: 900, color: '#ff6600', marginBottom: '1rem' }}>Frequently Asked Questions</h1>
-          <p style={{ fontSize: '1.1rem', color: '#666' }}>Everything you need to know about the Range Anxiety platform.</p>
+      <main style={{ padding: '4rem 1.5rem', maxWidth: '800px', margin: '0 auto' }}>
+        <header style={{ textAlign: 'center', marginBottom: '2rem' }}>
+          <h1 style={{ fontSize: 'clamp(2rem, 8vw, 3.5rem)', fontWeight: 900, color: '#ff6600', margin: 0, lineHeight: '1.1', textTransform: 'uppercase' }}>Frequently Asked Questions</h1>
         </header>
+
+        <section style={{ textAlign: 'center', marginBottom: '5rem' }}>
+          <p style={{ fontSize: '1.1rem', color: '#666', maxWidth: '600px', margin: '0 auto' }}>
+            Everything you need to know about the Range Anxiety platform.
+          </p>
+        </section>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           {faqs.map((faq, index) => (
