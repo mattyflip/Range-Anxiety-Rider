@@ -46,6 +46,18 @@ const ExploreMap: React.FC = () => {
       }
       setLoading(false);
     });
+
+    // Fetch initial location for centering
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition((pos) => {
+        const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        if (!isTracking && path.length === 0) {
+          // Set a "starting point" for the map center if not tracking yet
+          setPath([loc]);
+        }
+      });
+    }
+
     return () => unsub();
   }, []);
 
@@ -171,12 +183,16 @@ const ExploreMap: React.FC = () => {
   }
 
   return (
-    <div className="container" style={{ minHeight: '100vh', background: '#121212', display: 'flex', flexDirection: 'column' }}>
+    <div className="container" style={{ height: '100vh', background: '#121212', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <SEO title="Explore Mode | Live Ride Tracking" description="Track your e-bike ride in real-time and save your routes." />
       <NavBar user={user} onShowInstall={() => setShowInstallTutorial(true)} onShowAuth={() => setShowAuthModal(true)} />
       
-      <div style={{ flex: 1, position: 'relative' }}>
-        {isLoaded && (
+      <div style={{ flex: 1, position: 'relative', width: '100%', height: '100%' }}>
+        {!isLoaded ? (
+          <div style={{ height: '100%', width: '100%', background: '#121212', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666' }}>
+             Loading Maps...
+          </div>
+        ) : (
           <GoogleMap
             mapContainerStyle={{ width: '100%', height: '100%' }}
             center={path.length > 0 ? path[path.length - 1] : { lat: 40.7128, lng: -74.0060 }}
@@ -196,10 +212,12 @@ const ExploreMap: React.FC = () => {
               ]
             }}
           >
-            <Polyline 
-              path={path}
-              options={{ strokeColor: '#ff6600', strokeOpacity: 1, strokeWeight: 5 }}
-            />
+            {path.length > 1 && (
+              <Polyline 
+                path={path}
+                options={{ strokeColor: '#ff6600', strokeOpacity: 1, strokeWeight: 5 }}
+              />
+            )}
             {path.length > 0 && <Marker position={path[path.length - 1]} icon={{ url: '/app-icon.png', scaledSize: new google.maps.Size(32, 32) }} />}
           </GoogleMap>
         )}
