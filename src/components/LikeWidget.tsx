@@ -42,15 +42,15 @@ const LikeWidget: React.FC<LikeWidgetProps> = ({ post, user, onAuthNeeded }) => 
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
       <button 
         onClick={handleLike}
-        style={{ background: 'none', border: 'none', color: isLiked ? '#ff4444' : 'white', fontSize: '1.5rem', cursor: 'pointer', padding: 0 }}
+        style={{ background: 'none', border: 'none', color: isLiked ? '#ff4444' : 'white', fontSize: '1.2rem', cursor: 'pointer', padding: 0 }}
       >
         {isLiked ? '🧡' : '🤍'}
       </button>
-      <div style={{ color: 'white', fontWeight: 'bold', fontSize: '0.85rem', marginBottom: '0.5rem', marginTop: '0.5rem' }}>
-        {likeCount} Likes
+      <div style={{ color: '#666', fontWeight: 'bold', fontSize: '0.85rem' }}>
+        {likeCount}
       </div>
     </div>
   );
