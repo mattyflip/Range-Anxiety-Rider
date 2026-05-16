@@ -421,20 +421,20 @@ const ThreadView: React.FC = () => {
             )}
 
             <div style={{ marginTop: '2.5rem', borderTop: '1px solid #333', paddingTop: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: '#121212', padding: '0.5rem 1.2rem', borderRadius: '14px' }}>
+               <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', background: '#121212', padding: '0.4rem 1rem', borderRadius: '14px' }}>
                   <button 
                     onClick={() => handleVote(1)} 
-                    style={{ background: 'none', border: 'none', color: thread.upvotedBy?.includes(user?.uid) ? '#4ade80' : '#444', cursor: 'pointer', fontSize: '1.2rem', filter: thread.upvotedBy?.includes(user?.uid) ? 'none' : 'grayscale(100%)' }}
+                    style={{ background: 'none', border: 'none', color: thread.upvotedBy?.includes(user?.uid) ? '#4ade80' : '#444', cursor: 'pointer', fontSize: '1.1rem', filter: thread.upvotedBy?.includes(user?.uid) ? 'none' : 'grayscale(100%)', padding: '0.2rem' }}
                     title="Upvote"
                   >🔋</button>
-                  <span style={{ color: 'white', fontWeight: 'bold', fontSize: '1.1rem' }}>{thread.score}</span>
+                  <span style={{ color: 'white', fontWeight: 'bold', fontSize: '1rem' }}>{thread.score}</span>
                   <button 
                     onClick={() => handleVote(-1)} 
-                    style={{ background: 'none', border: 'none', color: thread.downvotedBy?.includes(user?.uid) ? '#f87171' : '#444', cursor: 'pointer', fontSize: '1.2rem', filter: thread.downvotedBy?.includes(user?.uid) ? 'none' : 'grayscale(100%)' }}
+                    style={{ background: 'none', border: 'none', color: thread.downvotedBy?.includes(user?.uid) ? '#f87171' : '#444', cursor: 'pointer', fontSize: '1.1rem', filter: thread.downvotedBy?.includes(user?.uid) ? 'none' : 'grayscale(100%)', padding: '0.2rem' }}
                     title="Downvote"
                   >🪫</button>
                </div>
-               <div style={{ color: '#666', fontWeight: 'bold', fontSize: '0.9rem' }}>💬 {thread.commentCount} Comments</div>
+               <div style={{ color: '#666', fontWeight: 'bold', fontSize: '0.85rem' }}>💬 {thread.commentCount}</div>
             </div>
           </article>
         )}
