@@ -996,27 +996,30 @@ function MapHome() {
           {metrics && (
             <div ref={metricsCardRef} className="card metrics-card" style={{ marginTop: '1.5rem', borderLeft: '4px solid #ff6600', padding: '1.5rem', background: '#1a1a1a', borderRadius: '16px' }}>
               <div style={{ color: '#ff6600', fontWeight: 800, fontSize: '0.8rem', textTransform: 'uppercase' }}>Estimated Metrics</div>
-              <div style={{ color: '#666', fontSize: '0.7rem', marginBottom: '1rem' }}>SELECT ROUTE</div>
-              
-              <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem' }}>
-                {response!.routes.map((_r, idx) => {
-                  const routeColors = ['#ff6600', '#34a853', '#9c27b0'];
-                  return (
-                    <button 
-                      key={idx} 
-                      onClick={() => { setSelectedRouteIndex(idx); calculateMetrics(response!, idx); }}
-                      style={{ 
-                        flex: 1, padding: '0.6rem', borderRadius: '8px', border: selectedRouteIndex === idx ? `2px solid ${routeColors[idx]}` : '1px solid #444',
-                        background: selectedRouteIndex === idx ? routeColors[idx] : '#222',
-                        color: 'white', fontWeight: 'bold', fontSize: '0.8rem',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      Route {idx + 1}
-                    </button>
-                  );
-                })}
-              </div>
+              {response && (
+                <>
+                  <div style={{ color: '#666', fontSize: '0.7rem', marginBottom: '1rem' }}>SELECT ROUTE</div>
+                  <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem' }}>
+                    {response.routes.map((_r, idx) => {
+                      const routeColors = ['#ff6600', '#34a853', '#9c27b0'];
+                      return (
+                        <button 
+                          key={idx} 
+                          onClick={() => { setSelectedRouteIndex(idx); calculateMetrics(response, idx); }}
+                          style={{ 
+                            flex: 1, padding: '0.6rem', borderRadius: '8px', border: selectedRouteIndex === idx ? `2px solid ${routeColors[idx]}` : '1px solid #444',
+                            background: selectedRouteIndex === idx ? routeColors[idx] : '#222',
+                            color: 'white', fontWeight: 'bold', fontSize: '0.8rem',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Route {idx + 1}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
 
               <div style={{ fontSize: '1.8rem', fontWeight: 900, color: 'white' }}>Battery Left: {metrics.batteryPercentUsed.toFixed(1)}%</div>
               <div style={{ color: '#888', fontSize: '0.9rem', marginBottom: '1.5rem' }}>Est. End Voltage: {metrics.endingVoltage?.toFixed(1)}V</div>
@@ -1037,7 +1040,9 @@ function MapHome() {
 
               <button 
                 onClick={() => {
-                   const url = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(trip.origin)}&destination=${encodeURIComponent(trip.destination)}&travelmode=bicycling`;
+                   const origin = recordedPath && recordedPath.length > 0 ? `${recordedPath[0].lat},${recordedPath[0].lng}` : trip.origin;
+                   const destination = recordedPath && recordedPath.length > 0 ? `${recordedPath[recordedPath.length-1].lat},${recordedPath[recordedPath.length-1].lng}` : trip.destination;
+                   const url = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}&travelmode=bicycling`;
                    window.open(url, '_blank');
                 }} 
                 style={{ width: '100%', padding: '1rem', background: '#2e7d32', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 900, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
