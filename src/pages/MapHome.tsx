@@ -16,8 +16,7 @@ import WelcomeModal from '../components/WelcomeModal'
 import { STATE_COORDINATES } from '../utils/ebikeLaws'
 import SEO from '../components/SEO'
 
-const LIBRARIES
-: ("places" | "geometry")[] = ["places", "geometry"];
+const LIBRARIES: ("places" | "geometry")[] = ["places", "geometry"];
 
 interface GroupRide {
   id: string;
@@ -234,7 +233,6 @@ function MapHome() {
             if (data.hostTierExpiresAt?.toDate) setHostTierExpiresAt(data.hostTierExpiresAt.toDate());
             if (data.bikes) setSavedBikes(data.bikes);
           }
-          // Restore active ride from localStorage if user was in one
           const savedRideId = localStorage.getItem('active_ride_id');
           if (savedRideId && !activeRide) {
             const rideSnap = await getDoc(doc(db, "group_rides", savedRideId));
@@ -262,12 +260,8 @@ function MapHome() {
 
   useEffect(() => {
     if (!isLoaded || !mapRef.current) return;
-    
-    // Check if we are loading a saved route first
     const savedRoute = localStorage.getItem('ebike_load_route');
     if (savedRoute) return;
-
-    // Auto-center on load
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition((pos) => {
         const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
@@ -301,10 +295,8 @@ function MapHome() {
              batteryPercentUsed: 0,
              recommendedSpeedMph: 0
            });
-           
            const originStr = data.path.length > 0 ? `${data.path[0].lat.toFixed(6)}, ${data.path[0].lng.toFixed(6)}` : 'Recorded Ride Start';
            const destStr = data.path.length > 0 ? `${data.path[data.path.length - 1].lat.toFixed(6)}, ${data.path[data.path.length - 1].lng.toFixed(6)}` : 'Recorded Ride End';
-           
            setTrip({ origin: originStr, destination: destStr, waypoints: [] });
            setLocations([originStr, destStr, '', '', '']);
            setPois([]);
@@ -340,7 +332,6 @@ function MapHome() {
 
   useEffect(() => {
     if (authInitialized && !user && !localStorage.getItem('ebike_portal_visited')) {
-        // use setTimeout to jump out of synchronous render flow for modal state updates
         setTimeout(() => setShowWelcomeModal(true), 0);
     }
   }, [authInitialized, user]);
@@ -361,7 +352,6 @@ function MapHome() {
     }).catch(console.error);
   }, [response, selectedRouteIndex]);
 
-  // Sync Public Rides (20mi radius)
   useEffect(() => {
     if (!user) return;
     const q = query(collection(db, "group_rides"), where("isPublic", "==", true), where("status", "==", "active"));
@@ -373,7 +363,6 @@ function MapHome() {
     return () => unsub();
   }, [user]);
 
-  // Sync Participants
   useEffect(() => {
     if (!activeRide) return;
     const q = collection(db, `group_rides/${activeRide.id}/participants`);
@@ -385,7 +374,6 @@ function MapHome() {
     return () => unsub();
   }, [activeRide?.id]);
 
-  // Location Upload during Ride
   useEffect(() => {
     if (!activeRide || !user) return;
     const interval = setInterval(() => {
@@ -399,7 +387,6 @@ function MapHome() {
           if (activeRide.leaderId === user.uid) {
             await updateDoc(doc(db, "group_rides", activeRide.id), { leaderTrail: arrayUnion(loc) });
           }
-          // Auto-end check: if host and all participants near destination, end ride
           if (user.uid === activeRide.creatorId && rideRouteStops.length > 0 && rideParticipants.length > 0) {
             const dest = rideRouteStops[rideRouteStops.length - 1];
             const destLoc = new google.maps.LatLng(dest.lat, dest.lng);
@@ -419,7 +406,6 @@ function MapHome() {
     return () => clearInterval(interval);
   }, [activeRide?.id, user, userData?.username, rideRouteStops, rideParticipants]);
 
-  // Load host's route from Firestore (all participants see it)
   useEffect(() => {
     if (!activeRide) { 
         if (rideRoutePath.length > 0) setRideRoutePath([]); 
@@ -441,7 +427,6 @@ function MapHome() {
     return () => unsub();
   }, [activeRide?.id]);
 
-  // Navigation Logic
   const speak = (text: string) => {
     if (voiceEnabled && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
@@ -470,20 +455,15 @@ function MapHome() {
       const route = response.routes[selectedRouteIndex];
       const leg = route.legs[currentLegIndex];
       const step = leg.steps[currentStepIndex];
-      
       if (mapRef.current) { mapRef.current.panTo(userLoc); }
-      
       const endLoc = { lat: step.end_location.lat(), lng: step.end_location.lng() };
       const distMeters = google.maps.geometry.spherical.computeDistanceBetween(new google.maps.LatLng(userLoc.lat, userLoc.lng), new google.maps.LatLng(endLoc.lat, endLoc.lng));
       const distFeet = distMeters * 3.28084;
-
       setNextStepDist(distFeet > 528 ? `${(distFeet/5280).toFixed(1)} mi` : `${Math.round(distFeet)} ft`);
-
       if (distFeet < 300 && !hasAnnouncedNextStep) {
         speak(`In 300 feet, ${step.instructions.replace(/<[^>]*>?/gm, '')}`);
         setHasAnnouncedNextStep(true);
       }
-
       if (distFeet < 60) {
         if (currentStepIndex < leg.steps.length - 1) {
           setCurrentStepIndex(currentStepIndex + 1); setHasAnnouncedNextStep(false);
@@ -530,23 +510,15 @@ function MapHome() {
     let currentOrigin = trip.origin;
     let currentDest = trip.destination;
     const nonAt = locations.filter(l => l.trim() !== '');
-
-    if (nonAt.length === 0) {
-       alert("Please enter a destination.");
-       return;
-    }
-
-    // Fallback: If only 1 location provided, it's the destination, and origin is current location
+    if (nonAt.length === 0) { alert("Please enter a destination."); return; }
     if (nonAt.length === 1 && userLocation) {
        const origin = `${userLocation.lat.toFixed(6)}, ${userLocation.lng.toFixed(6)}`;
        const destination = nonAt[0];
        const newLocs = [origin, destination, '', '', ''];
        setLocations(newLocs);
        setTrip({ origin, destination, waypoints: [] });
-       currentOrigin = origin;
-       currentDest = destination;
+       currentOrigin = origin; currentDest = destination;
     } else if (!locations[0].trim() && userLocation) {
-       // Start is empty, but we have other locations. Use current location as start.
        const origin = `${userLocation.lat.toFixed(6)}, ${userLocation.lng.toFixed(6)}`;
        const newLocs = [...locations];
        newLocs[0] = origin;
@@ -554,32 +526,24 @@ function MapHome() {
        syncLocationsToStates(newLocs);
        currentOrigin = origin;
     }
-
     if (!currentOrigin || !currentDest) {
        if (!userLocation) alert("Please enter both start and end points, or enable location services.");
        return;
     }
-
-    setRecordedPath(null);
-    setIsLoading(true); setResponse(null); setMetrics(null); setPois([]); setSettingsDirty(false); 
+    setRecordedPath(null); setIsLoading(true); setResponse(null); setMetrics(null); setPois([]); setSettingsDirty(false); 
   };
 
   const addPoiToRoute = (poi: POI) => {
     const poiStr = `${poi.position.lat.toFixed(6)}, ${poi.position.lng.toFixed(6)}`;
     const newLocs = [...locations];
-    
-    // Find first empty slot
     const emptyIndex = newLocs.findIndex(l => !l.trim());
     if (emptyIndex !== -1) {
       newLocs[emptyIndex] = poiStr;
       setLocations(newLocs);
       syncLocationsToStates(newLocs);
-      markDirty();
-      setSelectedPoi(null);
+      markDirty(); setSelectedPoi(null);
       alert(`${poi.name} added to route!`);
-    } else {
-      alert("Route is full. Please remove a stop to add this location.");
-    }
+    } else { alert("Route is full. Please remove a stop to add this location."); }
   };
 
   const calculateMetrics = async (result: google.maps.DirectionsResult, routeIndex: number = 0) => {
@@ -589,59 +553,40 @@ function MapHome() {
       const multiplier = isRoundTrip ? 2 : 1;
       const distMiles = (distMeters / 1609.34) * multiplier;
       const path = route.overview_path.map(p => ({ lat: p.lat(), lng: p.lng() }));
-      
       let gainFeet = 0, lossFeet = 0;
       try {
         const encodedPath = google.maps.geometry.encoding.encodePath(route.overview_path);
         const elevResp = await axios.post('/api/elevation', { encodedPath, samples: 100 });
         if (elevResp.data?.gain) { gainFeet = elevResp.data.gain * multiplier; lossFeet = (elevResp.data.loss || 0) * multiplier; }
       } catch (e) { console.error(e); }
-
       let windSpeed = 0, headwindMph = 0;
       try {
         const res = await axios.get(`/api/weather?lat=${path[0].lat}&lng=${path[0].lng}`);
         windSpeed = res.data.wind_speed; headwindMph = windSpeed * 0.5;
       } catch (e) { console.error(e); }
-
       const massKg = (Number(specs.bikeWeightLbs) + Number(riderWeightLbs)) * 0.453592;
       const velocityMps = Number(targetSpeedMph) * 0.44704;
-      
-      // Temperature adjustments
       const tempF = Number(ambientTempF) || 70;
-      // Air density adjustment (baseline 1.225 at 59F/15C)
       const rho = 1.225 * (518.67 / (459.67 + tempF));
-      
-      // Tire pressure adjustment (Crr increases as PSI drops)
       let Crr = tireType === 'road' ? 0.007 : 0.015;
       if (tirePressurePsi && Number(tirePressurePsi) > 0) {
         const refPsi = tireType === 'road' ? 40 : 25;
         Crr = Crr * (refPsi / Number(tirePressurePsi));
       }
-
       const ForceRolling = Crr * massKg * 9.81;
       const ForceDrag = 0.5 * rho * 0.55 * Math.pow(Math.max(0.1, velocityMps + headwindMph * 0.44704), 2);
-      
-      // Motor and Battery efficiency adjustments
       let motorEff = mode === 'eco' ? 0.85 : 0.80;
-      // Battery capacity drops in cold (approx 0.5% per degree F below 70)
       const tempEfficiency = tempF < 70 ? Math.max(0.7, 1 - (70 - tempF) * 0.005) : 1;
-      
       const totalWhUsable = (Number(specs.voltage) * Number(specs.capacityAh)) * 0.92 * tempEfficiency;
       const WhPerMile = Math.max(10, ((ForceRolling + ForceDrag) * velocityMps / velocityMps) * (1609.34 / 3600) / motorEff);
       const estimatedWh = (distMiles * WhPerMile) + (gainFeet * 0.1);
-
       const { min, max } = getBatteryLevels(Number(specs.voltage));
       const startWh = batteryInputMode === 'percent' ? (totalWhUsable * (Number(startBattery)/100)) : (totalWhUsable * ((Number(startVoltage)-min)/(max-min)));
       const remaining = ((startWh - estimatedWh) / totalWhUsable) * 100;
       const endingVoltage = min + (Math.max(0, remaining / 100) * (max - min));
-      
       let deathPoint; if (remaining <= 0) deathPoint = path[Math.floor(path.length * 0.8)];
-
       setMetrics({ distanceMiles: distMiles, durationMin: distMiles / (Number(targetSpeedMph) || 15) * 60, elevationGainFeet: gainFeet, elevationLossFeet: lossFeet, estimatedWh, batteryPercentUsed: Math.max(0, remaining), recommendedSpeedMph: 20, deathPoint, endingVoltage, windConditions: { speed: windSpeed, direction: 0, headwindComponent: headwindMph } });
-      
-      // If host is in an active ride, save route to Firestore so participants can see it
       if (activeRide && user?.uid === activeRide.creatorId) {
-        // Build stop markers from DirectionsResult legs
         const stops: {lat:number;lng:number;label:string}[] = [];
         stops.push({ lat: route.legs[0].start_location.lat(), lng: route.legs[0].start_location.lng(), label: 'Start' });
         trip.waypoints.filter(w => w.trim()).forEach((_wp, i) => {
@@ -651,15 +596,8 @@ function MapHome() {
         });
         const lastLeg = route.legs[route.legs.length - 1];
         stops.push({ lat: lastLeg.end_location.lat(), lng: lastLeg.end_location.lng(), label: 'Stop 1' });
-        
-        updateDoc(doc(db, "group_rides", activeRide.id), {
-          routePath: path,
-          routeStops: stops,
-          routeOrigin: trip.origin,
-          routeDestination: trip.destination,
-        }).catch(console.error);
+        updateDoc(doc(db, "group_rides", activeRide.id), { routePath: path, routeStops: stops, routeOrigin: trip.origin, routeDestination: trip.destination }).catch(console.error);
       }
-      
       setIsLoading(false);
     } catch (e) { console.error(e); setIsLoading(false); }
   };
@@ -681,86 +619,35 @@ function MapHome() {
   };
 
   const checkoutProTier = async () => {
-    if (!user) { 
-      setShowGroupRidePaywall(false);
-      setShowAuthModal(true); 
-      return; 
-    }
+    if (!user) { setShowGroupRidePaywall(false); setShowAuthModal(true); return; }
     try {
       const token = await user.getIdToken();
-      const res = await fetch('/api/create-checkout-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ userId: user.uid, email: user.email, tier: 'pro' })
-      });
+      const res = await fetch('/api/create-checkout-session', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ userId: user.uid, email: user.email, tier: 'pro' }) });
       const data = await res.json();
-      if (data.url) {
-        window.location.href = data.url;
-      } else {
-        console.error('Checkout error:', data);
-        alert(`Checkout failed: ${data.error || 'Please try again.'}`);
-      }
-    } catch (e: any) {
-      console.error(e);
-      alert(`Checkout failed: ${e.message || 'Unknown error'}`);
-    }
+      if (data.url) window.location.href = data.url;
+      else alert(`Checkout failed: ${data.error || 'Please try again.'}`);
+    } catch (e: any) { alert(`Checkout failed: ${e.message || 'Unknown error'}`); }
   };
 
   const checkoutHostTier = async () => {
-    if (!user) { 
-      setShowGroupRidePaywall(false);
-      setShowAuthModal(true); 
-      return; 
-    }
+    if (!user) { setShowGroupRidePaywall(false); setShowAuthModal(true); return; }
     try {
       const token = await user.getIdToken();
-      const res = await fetch('/api/create-checkout-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ userId: user.uid, email: user.email, tier: 'host' })
-      });
+      const res = await fetch('/api/create-checkout-session', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ userId: user.uid, email: user.email, tier: 'host' }) });
       const data = await res.json();
-      if (data.url) {
-        window.location.href = data.url;
-      } else {
-        console.error('Checkout error:', data);
-        alert(`Checkout failed: ${data.error || 'Please try again.'}`);
-      }
-    } catch (e: any) {
-      console.error(e);
-      alert(`Checkout failed: ${e.message || 'Unknown error'}`);
-    }
+      if (data.url) window.location.href = data.url;
+      else alert(`Checkout failed: ${data.error || 'Please try again.'}`);
+    } catch (e: any) { alert(`Checkout failed: ${e.message || 'Unknown error'}`); }
   };
 
-  // We calculate timestamp offset on load once assuming stable clock over session logic, avoiding dynamic changing `Date.now` purity breaking in render.
   const [sessionTimeStart] = useState(() => new Date().getTime());
-
-  const canHostRide = () => {
-    if (!isHostTier || !hostTierExpiresAt) return false;
-    return hostTierExpiresAt.getTime() > sessionTimeStart;
-  };
-
-  const canJoinRide = () => {
-    return isPro || canHostRide();
-  };
+  const canHostRide = () => isHostTier && hostTierExpiresAt && hostTierExpiresAt.getTime() > sessionTimeStart;
+  const canJoinRide = () => isPro || canHostRide();
 
   const createRide = async () => {
-    if (!user) { 
-      setShowAuthModal(true); 
-      // After login, the user will need to click 'Host' again to trigger the paywall
-      return; 
-    }
+    if (!user) { setShowAuthModal(true); return; }
     if (!canHostRide()) { setPaywallTier('host'); setShowGroupRidePaywall(true); return; }
     if (!groupRideName) { alert("Name required."); return; }
-    // Prevent duplicate hosting
-    if (localStorage.getItem('active_ride_id')) {
-      const existingSnap = await getDoc(doc(db, "group_rides", localStorage.getItem('active_ride_id')!));
-      if (existingSnap.exists() && existingSnap.data().status === 'active') {
-        alert("You already have an active group ride. End it before starting a new one.");
-        return;
-      }
-      localStorage.removeItem('active_ride_id');
-    }
     const pin = Math.floor(1000 + (crypto.getRandomValues(new Uint32Array(1))[0] / 4294967295) * 9000).toString();
     const rideData = { name: groupRideName, isPublic: isPublicRide, pin, creatorId: user.uid, leaderId: user.uid, status: 'active', startLat: center.lat, startLng: center.lng };
     const rideRef = await addDoc(collection(db, "group_rides"), rideData);
@@ -770,10 +657,7 @@ function MapHome() {
   };
 
   const joinRide = async (rideId?: string) => {
-    if (!user) { 
-      setShowAuthModal(true); 
-      return; 
-    }
+    if (!user) { setShowAuthModal(true); return; }
     if (!canJoinRide()) { setPaywallTier('pro'); setShowGroupRidePaywall(true); return; }
     let targetRide;
     if (rideId) {
@@ -784,27 +668,22 @@ function MapHome() {
       const snap = await getDocs(q);
       if (!snap.empty) targetRide = { id: snap.docs[0].id, ...snap.docs[0].data() };
     }
-
     if (targetRide) {
       await setDoc(doc(db, `group_rides/${targetRide.id}/participants`, user.uid), { userId: user.uid, name: userData?.username || 'Rider', lat: center.lat, lng: center.lng, lastUpdatedAt: new Date().getTime() });
-      setActiveRide(targetRide as any);
-      localStorage.setItem('active_ride_id', targetRide.id);
-      setJoinPin('');
+      setActiveRide(targetRide as any); localStorage.setItem('active_ride_id', targetRide.id); setJoinPin('');
     } else { alert("Ride not found."); }
   };
 
   const leaveRide = async () => {
     if (!activeRide || !user) return;
     await deleteDoc(doc(db, `group_rides/${activeRide.id}/participants`, user.uid));
-    localStorage.removeItem('active_ride_id');
-    setActiveRide(null); setRideParticipants([]);
+    localStorage.removeItem('active_ride_id'); setActiveRide(null); setRideParticipants([]);
   };
 
   const endRide = async () => {
     if (!activeRide) return;
     await updateDoc(doc(db, "group_rides", activeRide.id), { status: 'offline' });
-    localStorage.removeItem('active_ride_id');
-    setActiveRide(null); setRideParticipants([]);
+    localStorage.removeItem('active_ride_id'); setActiveRide(null); setRideParticipants([]);
   };
 
   const setRideLeader = async (participantId: string) => {
@@ -823,27 +702,14 @@ function MapHome() {
   };
 
   const useCurrentLocation = () => {
-    if (!navigator.geolocation) {
-      alert("Geolocation is not supported by your browser.");
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
+    if (!navigator.geolocation) { alert("Geolocation is not supported by your browser."); return; }
+    navigator.geolocation.getCurrentPosition((pos) => {
         const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         setUserLocation(loc);
-        if (mapRef.current) {
-          mapRef.current.panTo(loc);
-          mapRef.current.setZoom(15);
-        }
+        if (mapRef.current) { mapRef.current.panTo(loc); mapRef.current.setZoom(15); }
         setTrip(p => ({ ...p, origin: `${loc.lat.toFixed(6)}, ${loc.lng.toFixed(6)}` }));
         markDirty();
-      },
-      (err) => {
-        console.error("Locate me error:", err);
-        alert(`Location failed: ${err.message}. Please ensure location services are enabled.`);
-      },
-      { enableHighAccuracy: true, timeout: 8000 }
+      }, (err) => { alert(`Location failed: ${err.message}.`); }, { enableHighAccuracy: true, timeout: 8000 }
     );
   };
 
@@ -881,25 +747,35 @@ function MapHome() {
   };
 
   const onMapLoad = useCallback((map: google.maps.Map) => { mapRef.current = map; }, []);
+
+  const handlePoiClick = (e: any) => {
+    if (e.placeId && mapRef.current) {
+      if (e.stop) e.stop();
+      const service = new google.maps.places.PlacesService(mapRef.current);
+      service.getDetails({ placeId: e.placeId, fields: ['name', 'formatted_address', 'geometry'] }, (place, status) => {
+        if (status === google.maps.places.PlacesServiceStatus.OK && place && place.geometry?.location) {
+          setSelectedPoi({ id: e.placeId, name: place.name || "Map Location", address: place.formatted_address || "", position: { lat: place.geometry.location.lat(), lng: place.geometry.location.lng() }, type: 'generic' });
+        }
+      });
+    }
+  };
+
   const filteredBikes = [...STANDARD_BIKES, ...savedBikes].filter(b => b.name.toLowerCase().includes(bikeSearchQuery.toLowerCase()));
 
   return (
     <div className="container">
       <SEO />
-      <NavBar 
- user={user} onShowInstall={() => setShowInstallTutorial(true)} onShowAuth={() => setShowAuthModal(true)} />
+      <NavBar user={user} onShowInstall={() => setShowInstallTutorial(true)} onShowAuth={() => setShowAuthModal(true)} />
       <div className="main-layout">
         <aside className={`sidebar ${showMobileMenu ? 'mobile-visible' : ''}`}>
           <div className="form-group"><label>Units</label><div className="mode-toggle">
             <button className={unitSystem === 'imperial' ? 'active' : ''} onClick={() => setUnitSystem('imperial')}>Imperial</button>
             <button className={unitSystem === 'metric' ? 'active' : ''} onClick={() => setUnitSystem('metric')}>Metric</button>
           </div></div>
-
           <div className="form-group"><label>Voice Navigation</label><div className="mode-toggle">
             <button className={voiceEnabled ? 'active' : ''} onClick={() => setVoiceEnabled(true)}>Enabled 🔊</button>
             <button className={!voiceEnabled ? 'active' : ''} onClick={() => setVoiceEnabled(false)}>Muted 🔇</button>
           </div></div>
-
           <section className="form-group" style={{ position: 'relative' }}>
             <label>Bike Library</label>
             <input type="text" placeholder="Search..." value={bikeSearchQuery} onFocus={() => setShowBikeResults(true)} onChange={e => setBikeSearchQuery(e.target.value)} />
@@ -913,39 +789,20 @@ function MapHome() {
               <button onClick={saveCurrentBike} style={{ padding: '0.4rem 0.8rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '4px' }}>Save</button>
             </div>
           </section>
-
           <section className="form-group">
             <label>Route</label>
             {locations.map((loc, index) => {
-              // Show if it's the first two, or if the previous one is not empty
               const show = index < 2 || locations[index - 1].trim() !== '';
               if (!show) return null;
-              
               return (
                 <div key={index} style={{ display: 'flex', gap: '0.4rem', marginTop: index > 0 ? '0.5rem' : '0', alignItems: 'center' }}>
                   <div style={{ flex: 1, display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-                    <input 
-                      type="text" 
-                      placeholder={index === 0 ? "Start" : `Stop ${index}`} 
-                      value={loc} 
-                      onChange={e => updateLocation(index, e.target.value)} 
-                      style={{ flex: 1 }} 
-                    />
-                    {index === 0 && (
-                      <button onClick={useCurrentLocation} style={{ background: 'none', border: 'none', fontSize: '1.2rem', padding: 0, cursor: 'pointer' }} title="Locate Me">📍</button>
-                    )}
+                    <input type="text" placeholder={index === 0 ? "Start" : `Stop ${index}`} value={loc} onChange={e => updateLocation(index, e.target.value)} style={{ flex: 1 }} />
+                    {index === 0 && <button onClick={useCurrentLocation} style={{ background: 'none', border: 'none', fontSize: '1.2rem', padding: 0, cursor: 'pointer' }} title="Locate Me">📍</button>}
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                    <button 
-                      disabled={index === 0} 
-                      onClick={() => moveLocation(index, 'up')}
-                      style={{ background: '#222', border: 'none', color: index === 0 ? '#444' : '#888', padding: '2px 6px', borderRadius: '4px', fontSize: '0.6rem', cursor: index === 0 ? 'default' : 'pointer', fontWeight: 'bold' }}
-                    >▲</button>
-                    <button 
-                      disabled={index === locations.length - 1 || !locations[index].trim()} 
-                      onClick={() => moveLocation(index, 'down')}
-                      style={{ background: '#222', border: 'none', color: (index === locations.length - 1 || !locations[index].trim()) ? '#444' : '#888', padding: '2px 6px', borderRadius: '4px', fontSize: '0.6rem', cursor: (index === locations.length - 1 || !locations[index].trim()) ? 'default' : 'pointer', fontWeight: 'bold' }}
-                    >▼</button>
+                    <button disabled={index === 0} onClick={() => moveLocation(index, 'up')} style={{ background: '#222', border: 'none', color: index === 0 ? '#444' : '#888', padding: '2px 6px', borderRadius: '4px', fontSize: '0.6rem', cursor: index === 0 ? 'default' : 'pointer', fontWeight: 'bold' }}>▲</button>
+                    <button disabled={index === locations.length - 1 || !locations[index].trim()} onClick={() => moveLocation(index, 'down')} style={{ background: '#222', border: 'none', color: (index === locations.length - 1 || !locations[index].trim()) ? '#444' : '#888', padding: '2px 6px', borderRadius: '4px', fontSize: '0.6rem', cursor: (index === locations.length - 1 || !locations[index].trim()) ? 'default' : 'pointer', fontWeight: 'bold' }}>▼</button>
                   </div>
                 </div>
               );
@@ -998,12 +855,10 @@ function MapHome() {
             </div>
             <input type="number" value={batteryInputMode === 'percent' ? startBattery : startVoltage} onChange={e => { if (batteryInputMode === 'percent') setStartBattery(parseFloat(e.target.value) || ''); else setStartVoltage(parseFloat(e.target.value) || ''); markDirty(); }} />
           </section>
-
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
             <button onClick={() => setPois([])} style={{ padding: '0.8rem', background: '#222', border: '1px solid #333', color: 'white', borderRadius: '12px' }}>Clear Map</button>
             <button onClick={handleCalculate} style={{ padding: '0.8rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold' }}>Update Route</button>
           </div>
-
           <section className="form-group" style={{ borderTop: '1px solid #333', paddingTop: '1rem', paddingBottom: '2rem', marginTop: '1rem' }}>
             <label style={{ color: '#ff6600', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span>Group Ride {canHostRide() ? <span style={{ color: '#34a853', fontSize: '0.6rem', marginLeft: '0.5rem' }}>✓ HOST</span> : isPro ? <span style={{ color: '#ff9900', fontSize: '0.6rem', marginLeft: '0.5rem' }}>✓ JOIN</span> : <span style={{ color: '#888', fontSize: '0.6rem', marginLeft: '0.5rem' }}>🔒 FREE</span>}</span>
@@ -1011,16 +866,8 @@ function MapHome() {
                  <button onClick={() => { setPaywallTier('host'); setShowGroupRidePaywall(true); }} style={{ padding: '0.2rem 0.6rem', background: '#34a853', color: 'white', border: 'none', borderRadius: '4px', fontSize: '0.7rem', cursor: 'pointer' }}>Unlock 30 Days</button>
               )}
             </label>
-            {canHostRide() && hostTierExpiresAt && (
-              <div style={{ fontSize: '0.6rem', color: '#666', marginTop: '0.2rem' }}>
-                Host access expires {hostTierExpiresAt.toLocaleDateString()}
-              </div>
-            )}
-            {!isPro && !canHostRide() && (
-              <div style={{ fontSize: '0.6rem', color: '#ff9900', marginTop: '0.2rem' }}>
-                You can join rides. Upgrade to HOST to create your own.
-              </div>
-            )}
+            {canHostRide() && hostTierExpiresAt && <div style={{ fontSize: '0.6rem', color: '#666', marginTop: '0.2rem' }}>Host access expires {hostTierExpiresAt.toLocaleDateString()}</div>}
+            {!isPro && !canHostRide() && <div style={{ fontSize: '0.6rem', color: '#ff9900', marginTop: '0.2rem' }}>You can join rides. Upgrade to HOST to create your own.</div>}
             {!activeRide ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', marginTop: '1rem' }}>
                 {canJoinRide() || canHostRide() ? (
@@ -1065,45 +912,25 @@ function MapHome() {
                 <div style={{ color: '#aaa', fontSize: '0.9rem', marginBottom: '1rem' }}>PIN: <span style={{ letterSpacing: '2px', color: 'white' }}>{activeRide.pin}</span></div>
                 <div style={{ fontSize: '0.8rem', color: '#888', marginBottom: '0.5rem' }}>Participants ({rideParticipants.length})</div>
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
-                  {rideParticipants.map(p => (
-                    <span key={p.userId} style={{ background: '#333', padding: '0.2rem 0.5rem', borderRadius: '12px', fontSize: '0.75rem', color: 'white' }}>{p.name} {p.userId === activeRide.leaderId && '👑'}</span>
-                  ))}
+                  {rideParticipants.map(p => <span key={p.userId} style={{ background: '#333', padding: '0.2rem 0.5rem', borderRadius: '12px', fontSize: '0.75rem', color: 'white' }}>{p.name} {p.userId === activeRide.leaderId && '👑'}</span>)}
                 </div>
                 {user?.uid === activeRide.creatorId && rideParticipants.length > 1 && (
                   <div style={{ marginBottom: '0.5rem' }}>
                     <label style={{ fontSize: '0.6rem', color: '#888' }}>LEADER</label>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem' }}>
                       {rideParticipants.map(p => (
-                        <button
-                          key={p.userId}
-                          onClick={() => setRideLeader(p.userId)}
-                          style={{
-                            padding: '0.25rem 0.6rem',
-                            background: activeRide.leaderId === p.userId ? '#ff6600' : '#333',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '12px',
-                            fontSize: '0.65rem',
-                            cursor: 'pointer',
-                            fontWeight: activeRide.leaderId === p.userId ? 'bold' : 'normal'
-                          }}
-                        >
+                        <button key={p.userId} onClick={() => setRideLeader(p.userId)} style={{ padding: '0.25rem 0.6rem', background: activeRide.leaderId === p.userId ? '#ff6600' : '#333', color: 'white', border: 'none', borderRadius: '12px', fontSize: '0.65rem', cursor: 'pointer', fontWeight: activeRide.leaderId === p.userId ? 'bold' : 'normal' }}>
                           {activeRide.leaderId === p.userId ? '⭐ ' : ''}{p.name}
                         </button>
                       ))}
                     </div>
                   </div>
                 )}
-                {user?.uid === activeRide.creatorId && (
-                  <button onClick={endRide} style={{ width: '100%', background: 'transparent', border: '1px solid #ff3333', color: '#ff3333', padding: '0.6rem', borderRadius: '8px', marginTop: '0.5rem' }}>End Ride for Everyone</button>
-                )}
-                {user?.uid !== activeRide.creatorId && (
-                  <button onClick={leaveRide} style={{ width: '100%', background: 'transparent', border: '1px solid #888', color: '#bbb', padding: '0.6rem', borderRadius: '8px', marginTop: '0.5rem' }}>Leave Ride</button>
-                )}
+                {user?.uid === activeRide.creatorId && <button onClick={endRide} style={{ width: '100%', background: 'transparent', border: '1px solid #ff3333', color: '#ff3333', padding: '0.6rem', borderRadius: '8px', marginTop: '0.5rem' }}>End Ride for Everyone</button>}
+                {user?.uid !== activeRide.creatorId && <button onClick={leaveRide} style={{ width: '100%', background: 'transparent', border: '1px solid #888', color: '#bbb', padding: '0.6rem', borderRadius: '8px', marginTop: '0.5rem' }}>Leave Ride</button>}
               </div>
             )}
           </section>
-
           {metrics && (
             <div ref={metricsCardRef} className="card metrics-card" style={{ marginTop: '1.5rem', borderLeft: '4px solid #ff6600', padding: '1.5rem', background: '#1a1a1a', borderRadius: '16px' }}>
               <div style={{ color: '#ff6600', fontWeight: 800, fontSize: '0.8rem', textTransform: 'uppercase' }}>Estimated Metrics</div>
@@ -1114,16 +941,7 @@ function MapHome() {
                     {response.routes.map((_r, idx) => {
                       const routeColors = ['#ff6600', '#34a853', '#9c27b0'];
                       return (
-                        <button 
-                          key={idx} 
-                          onClick={() => { setSelectedRouteIndex(idx); calculateMetrics(response, idx); }}
-                          style={{ 
-                            flex: 1, padding: '0.6rem', borderRadius: '8px', border: selectedRouteIndex === idx ? `2px solid ${routeColors[idx]}` : '1px solid #444',
-                            background: selectedRouteIndex === idx ? routeColors[idx] : '#222',
-                            color: 'white', fontWeight: 'bold', fontSize: '0.8rem',
-                            cursor: 'pointer',
-                          }}
-                        >
+                        <button key={idx} onClick={() => { setSelectedRouteIndex(idx); calculateMetrics(response, idx); }} style={{ flex: 1, padding: '0.6rem', borderRadius: '8px', border: selectedRouteIndex === idx ? `2px solid ${routeColors[idx]}` : '1px solid #444', background: selectedRouteIndex === idx ? routeColors[idx] : '#222', color: 'white', fontWeight: 'bold', fontSize: '0.8rem', cursor: 'pointer' }}>
                           Route {idx + 1}
                         </button>
                       );
@@ -1131,55 +949,27 @@ function MapHome() {
                   </div>
                 </>
               )}
-
               <div style={{ fontSize: '1.8rem', fontWeight: 900, color: 'white' }}>Battery Left: {metrics.batteryPercentUsed.toFixed(1)}%</div>
               <div style={{ color: '#888', fontSize: '0.9rem', marginBottom: '1.5rem' }}>Est. End Voltage: {metrics.endingVoltage?.toFixed(1)}V</div>
-
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '12px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#666' }}>Travel Time:</span><span style={{ fontWeight: 'bold' }}>{Math.floor(metrics.durationMin/60)}h {Math.round(metrics.durationMin%60)}m</span></div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#666' }}>Distance:</span><span style={{ fontWeight: 'bold' }}>{metrics.distanceMiles.toFixed(1)} mi</span></div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#666' }}>Elevation Gain:</span><span style={{ fontWeight: 'bold' }}>{metrics.elevationGainFeet.toFixed(0)} ft</span></div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: '#666' }}>🌬️ Wind:</span>
-                  <span style={{ color: '#4caf50', fontWeight: 'bold' }}>
-                    {metrics.windConditions?.speed.toFixed(1)} mph ({metrics.windConditions && metrics.windConditions.headwindComponent > 0 ? 'Headwind' : 'Tailwind'})
-                  </span>
-                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#666' }}>🌬️ Wind:</span><span style={{ color: '#4caf50', fontWeight: 'bold' }}>{metrics.windConditions?.speed.toFixed(1)} mph ({metrics.windConditions && metrics.windConditions.headwindComponent > 0 ? 'Headwind' : 'Tailwind'})</span></div>
               </div>
-
               <div style={{ textAlign: 'center', color: '#666', fontSize: '0.8rem', margin: '1rem 0' }}>Wh/mile: {(metrics.estimatedWh / metrics.distanceMiles).toFixed(1)}</div>
-
-              <button 
-                onClick={() => {
+              <button onClick={() => {
                    const origin = recordedPath && recordedPath.length > 0 ? `${recordedPath[0].lat},${recordedPath[0].lng}` : trip.origin;
                    const destination = recordedPath && recordedPath.length > 0 ? `${recordedPath[recordedPath.length-1].lat},${recordedPath[recordedPath.length-1].lng}` : trip.destination;
                    const url = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}&travelmode=bicycling`;
                    window.open(url, '_blank');
-                }} 
-                style={{ width: '100%', padding: '1rem', background: '#2e7d32', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 900, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
-              >
-                🚀 Open Maps
-              </button>
-              
-              <button onClick={() => {
-                if (isPro) {
-                  setShowSharePreview(true);
-                } else {
-                  setPaywallTier('pro');
-                  setShowGroupRidePaywall(true);
-                }
-              }} style={{ width: '100%', padding: '1rem', background: isPro ? '#333' : '#444', color: isPro ? 'white' : '#888', border: 'none', borderRadius: '12px', fontWeight: 900, marginBottom: '1.5rem', cursor: 'pointer' }}>
-                Save Image {isPro ? '' : '🔒 (PRO)'}
-              </button>
-
-              <button onClick={startNavigation} style={{ width: '100%', padding: '1.2rem', background: 'linear-gradient(to bottom, #ff8800, #ff6600)', color: 'white', border: 'none', borderRadius: '16px', fontWeight: 900, fontSize: '1.2rem', boxShadow: '0 4px 15px rgba(255,102,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
-                🏁 START TRIP
-              </button>
+                }} style={{ width: '100%', padding: '1rem', background: '#2e7d32', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 900, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>🚀 Open Maps</button>
+              <button onClick={() => { if (isPro) setShowSharePreview(true); else { setPaywallTier('pro'); setShowGroupRidePaywall(true); } }} style={{ width: '100%', padding: '1rem', background: isPro ? '#333' : '#444', color: isPro ? 'white' : '#888', border: 'none', borderRadius: '12px', fontWeight: 900, marginBottom: '1.5rem', cursor: 'pointer' }}>Save Image {isPro ? '' : '🔒 (PRO)'}</button>
+              <button onClick={startNavigation} style={{ width: '100%', padding: '1.2rem', background: 'linear-gradient(to bottom, #ff8800, #ff6600)', color: 'white', border: 'none', borderRadius: '16px', fontWeight: 900, fontSize: '1.2rem', boxShadow: '0 4px 15px rgba(255,102,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>🏁 START TRIP</button>
             </div>
           )}
           <AdBanner isPro={isPro} />
         </aside>
-
         <main style={{ flex: 1, position: 'relative' }}>
           {isNavigating && response && (
             <div style={{ position: 'fixed', top: '5.5rem', left: '50%', transform: 'translateX(-50%)', width: '90%', maxWidth: '500px', zIndex: 10000, background: '#1a1a1a', border: '2px solid #ff6600', borderRadius: '20px', padding: '1.2rem', boxShadow: '0 10px 40px rgba(0,0,0,0.8)', display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
@@ -1208,13 +998,12 @@ function MapHome() {
               )}
             </div>
           )}
-
           <div style={{ position: 'absolute', top: '1rem', right: '1rem', zIndex: 10, display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
             <button onClick={() => searchPOIs('charging')} style={{ padding: '1rem 1.5rem', background: 'rgba(20,20,20,0.95)', color: 'white', border: '1px solid #333', borderRadius: '16px', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '0.6rem', boxShadow: '0 8px 30px rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)' }}><span style={{ color: '#ff6600', fontSize: '1.2rem' }}>⚡</span> Chargers</button>
             <button onClick={() => searchPOIs('cafe')} style={{ padding: '1rem 1.5rem', background: 'rgba(20,20,20,0.95)', color: 'white', border: '1px solid #333', borderRadius: '16px', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '0.6rem', boxShadow: '0 8px 30px rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)' }}><span style={{ color: '#ffcc00', fontSize: '1.2rem' }}>☕</span> Cafes</button>
           </div>
           {isLoaded ? (
-            <GoogleMap mapContainerStyle={{ width: '100%', height: '100%' }} center={center} zoom={10} onLoad={onMapLoad}>
+            <GoogleMap mapContainerStyle={{ width: '100%', height: '100%' }} center={center} zoom={10} onLoad={onMapLoad} onClick={handlePoiClick}>
               {trip.origin && trip.destination && isLoading && !response && (() => {
                 const wps = trip.waypoints?.filter(w => w.trim()).map(w => ({ location: w, stopover: true } as google.maps.DirectionsWaypoint)) || [];
                 const travelMode = wps.length > 0 ? google.maps.TravelMode.DRIVING : google.maps.TravelMode.BICYCLING;
@@ -1223,91 +1012,30 @@ function MapHome() {
               {response && (
                 <>
                   <DirectionsRenderer options={{ directions: response, routeIndex: selectedRouteIndex }} />
-                  {/* Alternative route polylines (clickable) */}
                   {(() => {
                     const res = response!;
                     return res.routes.map((r, i) => {
                       if (i === selectedRouteIndex) return null;
                       const routeColors = ['#34a853', '#9c27b0'];
-                      return (
-                        <Polyline
-                          key={`alt-route-${i}`}
-                          path={r.overview_path.map(p => ({ lat: p.lat(), lng: p.lng() }))}
-                          options={{
-                            strokeColor: routeColors[i - (i > selectedRouteIndex ? 1 : 0)],
-                            strokeOpacity: 0.7,
-                            strokeWeight: 4,
-                            clickable: true,
-                            zIndex: 1,
-                          }}
-                          onClick={() => {
-                            setSelectedRouteIndex(i);
-                            calculateMetrics(res, i);
-                          }}
-                        />
-                      );
+                      return <Polyline key={`alt-route-${i}`} path={r.overview_path.map(p => ({ lat: p.lat(), lng: p.lng() }))} options={{ strokeColor: routeColors[i - (i > selectedRouteIndex ? 1 : 0)], strokeOpacity: 0.7, strokeWeight: 4, clickable: true, zIndex: 1 }} onClick={() => { setSelectedRouteIndex(i); calculateMetrics(res, i); }} />
                     });
                   })()}
                 </>
               )}
               {metrics?.deathPoint && <Marker position={metrics.deathPoint} label="☠️" />}
-              {pois.map(p => (
-                <Marker key={p.id} position={p.position} onClick={() => setSelectedPoi(p)} label={p.type === 'charging' ? { text: '⚡', color: 'white', fontWeight: 'bold' } : undefined} icon={{ url: p.type === 'charging' ? 'https://maps.google.com/mapfiles/ms/icons/green-dot.png' : 'https://maps.google.com/mapfiles/ms/icons/blue-dot.png' }} />
-              ))}
-              
-              {/* Ride Participants */}
-              {rideParticipants.map(p => (
-                <Marker key={p.userId} position={{ lat: p.lat, lng: p.lng }} label={{ text: p.name, color: 'white', fontSize: '12px', fontWeight: 'bold', className: 'rider-label' }} icon={{ path: google.maps.SymbolPath.CIRCLE, fillColor: activeRide?.leaderId === p.userId ? '#34a853' : '#ff6600', fillOpacity: 1, strokeColor: 'white', strokeWeight: 2, scale: 8 }} />
-              ))}
-
-              {/* Host's planned route (visible to all participants) */}
-              {rideRoutePath.length > 1 && (
-                <Polyline path={rideRoutePath} options={{ strokeColor: '#4285F4', strokeOpacity: 0.8, strokeWeight: 5 }} />
-              )}
-
-              {/* Recorded Ride Path */}
-              {recordedPath && recordedPath.length > 1 && (
-                <Polyline path={recordedPath} options={{ strokeColor: '#ff6600', strokeOpacity: 0.9, strokeWeight: 6 }} />
-              )}
-
-              {/* Route stop markers (Start, Stop 3, Stop 4, Stop 5, End) */}
-              {rideRouteStops.map((s, i) => (
-                <Marker
-                  key={`stop-${i}`}
-                  position={{ lat: s.lat, lng: s.lng }}
-                  label={{ text: s.label, color: '#4285F4', fontSize: '11px', fontWeight: 'bold', className: 'rider-label' }}
-                  icon={{ path: google.maps.SymbolPath.BACKWARD_CLOSED_ARROW, fillColor: '#4285F4', fillOpacity: 1, strokeColor: 'white', strokeWeight: 2, scale: 5 }}
-                />
-              ))}
-
-              {activeRide?.leaderTrail && activeRide.leaderTrail.length > 1 && (
-                <Polyline path={activeRide.leaderTrail} options={{ strokeColor: '#ff6600', strokeOpacity: 0.9, strokeWeight: 6 }} />
-              )}
-
-              {userLocation && (
-                <Marker 
-                  position={userLocation} 
-                  icon={{
-                    path: google.maps.SymbolPath.CIRCLE,
-                    scale: 8,
-                    fillColor: "#4285F4",
-                    fillOpacity: 1,
-                    strokeColor: "white",
-                    strokeWeight: 2,
-                  }}
-                />
-              )}
+              {pois.map(p => <Marker key={p.id} position={p.position} onClick={() => setSelectedPoi(p)} label={p.type === 'charging' ? { text: '⚡', color: 'white', fontWeight: 'bold' } : undefined} icon={{ url: p.type === 'charging' ? 'https://maps.google.com/mapfiles/ms/icons/green-dot.png' : 'https://maps.google.com/mapfiles/ms/icons/blue-dot.png' }} />)}
+              {rideParticipants.map(p => <Marker key={p.userId} position={{ lat: p.lat, lng: p.lng }} label={{ text: p.name, color: 'white', fontSize: '12px', fontWeight: 'bold', className: 'rider-label' }} icon={{ path: google.maps.SymbolPath.CIRCLE, fillColor: activeRide?.leaderId === p.userId ? '#34a853' : '#ff6600', fillOpacity: 1, strokeColor: 'white', strokeWeight: 2, scale: 8 }} />)}
+              {rideRoutePath.length > 1 && <Polyline path={rideRoutePath} options={{ strokeColor: '#4285F4', strokeOpacity: 0.8, strokeWeight: 5 }} />}
+              {recordedPath && recordedPath.length > 1 && <Polyline path={recordedPath} options={{ strokeColor: '#ff6600', strokeOpacity: 0.9, strokeWeight: 6 }} />}
+              {rideRouteStops.map((s, i) => <Marker key={`stop-${i}`} position={{ lat: s.lat, lng: s.lng }} label={{ text: s.label, color: '#4285F4', fontSize: '11px', fontWeight: 'bold', className: 'rider-label' }} icon={{ path: google.maps.SymbolPath.BACKWARD_CLOSED_ARROW, fillColor: '#4285F4', fillOpacity: 1, strokeColor: 'white', strokeWeight: 2, scale: 5 }} />)}
+              {activeRide?.leaderTrail && activeRide.leaderTrail.length > 1 && <Polyline path={activeRide.leaderTrail} options={{ strokeColor: '#ff6600', strokeOpacity: 0.9, strokeWeight: 6 }} />}
+              {userLocation && <Marker position={userLocation} icon={{ path: google.maps.SymbolPath.CIRCLE, scale: 8, fillColor: "#4285F4", fillOpacity: 1, strokeColor: "white", strokeWeight: 2 }} />}
               {selectedPoi && (
                 <InfoWindow position={selectedPoi.position} onCloseClick={() => setSelectedPoi(null)}>
                   <div style={{ color: 'black', padding: '0.4rem' }}>
                     <div style={{ fontWeight: 'bold', fontSize: '0.9rem', marginBottom: '0.2rem' }}>{selectedPoi.name}</div>
                     <div style={{ fontSize: '0.75rem', color: '#444', marginBottom: '0.8rem' }}>{selectedPoi.address}</div>
-                    <button 
-                      onClick={() => addPoiToRoute(selectedPoi)}
-                      style={{ width: '100%', padding: '0.5rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', fontSize: '0.75rem', cursor: 'pointer' }}
-                    >
-                      Add to Route
-                    </button>
+                    <button onClick={() => addPoiToRoute(selectedPoi)} style={{ width: '100%', padding: '0.5rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', fontSize: '0.75rem', cursor: 'pointer' }}>Add to Route</button>
                   </div>
                 </InfoWindow>
               )}
@@ -1316,24 +1044,8 @@ function MapHome() {
         </main>
       </div>
       <div className="persistent-controls" style={{ position: 'fixed', bottom: '2rem', left: '50%', transform: 'translateX(-50%)', zIndex: 2000, display: 'flex', gap: '1rem', background: 'rgba(20,20,20,0.9)', padding: '0.8rem 1.5rem', borderRadius: '40px', border: '1px solid #333' }}>
-        <button onClick={useCurrentLocation} style={{ background: 'rgba(255,255,255,0.05)', color: 'white', border: 'none', width: '45px', height: '45px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', cursor: 'pointer' }}>
-          📍
-        </button>
-        <button 
-          onClick={() => { 
-            if (showMobileMenu) {
-              if (settingsDirty && trip.origin && trip.destination) {
-                handleCalculate();
-                setShowMobileMenu(false);
-              } else {
-                setShowMobileMenu(false);
-              }
-            } else {
-              setShowMobileMenu(true);
-            }
-          }} 
-          style={{ background: '#ff6600', color: 'white', border: 'none', padding: '0.8rem 1.5rem', borderRadius: '25px', fontWeight: 'bold' }}
-        >
+        <button onClick={useCurrentLocation} style={{ background: 'rgba(255,255,255,0.05)', color: 'white', border: 'none', width: '45px', height: '45px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', cursor: 'pointer' }}>📍</button>
+        <button onClick={() => { if (showMobileMenu) { if (settingsDirty && trip.origin && trip.destination) { handleCalculate(); setShowMobileMenu(false); } else { setShowMobileMenu(false); } } else { setShowMobileMenu(true); } }} style={{ background: '#ff6600', color: 'white', border: 'none', padding: '0.8rem 1.5rem', borderRadius: '25px', fontWeight: 'bold' }}>
           {!showMobileMenu ? (metrics && !settingsDirty ? '📊 Stats' : '🏁 Start Here') : (settingsDirty ? (metrics ? '🔄 Update Trip' : '🚀 Find Route') : '🗺️ Map')}
         </button>
       </div>
@@ -1373,14 +1085,8 @@ function MapHome() {
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.95)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(10px)' }}>
           <div style={{ background: '#1a1a1a', border: '1px solid #ff6600', borderRadius: '24px', padding: '2.5rem', maxWidth: '400px', width: '90%', textAlign: 'center' }}>
             <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>{paywallTier === 'host' ? '🏍️' : '👥'}</div>
-            <h2 style={{ color: '#ff6600', fontSize: '1.4rem', marginBottom: '0.5rem' }}>
-              {paywallTier === 'host' ? 'Host Group Rides' : 'Join Group Rides'}
-            </h2>
-            <p style={{ color: '#aaa', fontSize: '0.85rem', lineHeight: '1.5', marginBottom: '1.5rem' }}>
-              {paywallTier === 'host'
-                ? 'Create and host group rides with live rider tracking. Includes all PRO features.'
-                : 'Join live group rides and see riders on the map in real time.'}
-            </p>
+            <h2 style={{ color: '#ff6600', fontSize: '1.4rem', marginBottom: '0.5rem' }}>{paywallTier === 'host' ? 'Host Group Rides' : 'Join Group Rides'}</h2>
+            <p style={{ color: '#aaa', fontSize: '0.85rem', lineHeight: '1.5', marginBottom: '1.5rem' }}>{paywallTier === 'host' ? 'Create and host group rides with live rider tracking. Includes all PRO features.' : 'Join live group rides and see riders on the map in real time.'}</p>
             <div style={{ background: '#222', padding: '1rem', borderRadius: '12px', marginBottom: '1.5rem' }}>
               <div style={{ fontSize: '2rem', fontWeight: 900, color: 'white' }}>{paywallTier === 'host' ? '$9.99' : '$4.99'}</div>
               <div style={{ color: '#888', fontSize: '0.7rem' }}>{paywallTier === 'host' ? '30 days of host access' : 'one-time · lifetime access'}</div>
@@ -1391,27 +1097,11 @@ function MapHome() {
               {paywallTier === 'pro' && <div style={{ color: '#888', fontSize: '0.7rem' }}>• Remove all ads</div>}
               {paywallTier === 'pro' && <div style={{ color: '#888', fontSize: '0.7rem' }}>• Charger search on map</div>}
             </div>
-            {isPro && paywallTier === 'host' && (
-              <div style={{ background: 'rgba(255,153,0,0.1)', padding: '0.6rem', borderRadius: '8px', marginBottom: '1rem', color: '#ff9900', fontSize: '0.75rem' }}>
-                You're already PRO! Upgrade to HOST for just $9.99.
-              </div>
-            )}
-            <button onClick={paywallTier === 'host' ? checkoutHostTier : checkoutProTier} style={{ width: '100%', padding: '1rem', background: 'linear-gradient(45deg, #ff6600, #ff9900)', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 900, fontSize: '1.1rem', cursor: 'pointer', marginBottom: '0.8rem' }}>
-              {paywallTier === 'host' ? 'Unlock Host — $9.99' : 'Get PRO — $4.99'}
-            </button>
-            {paywallTier === 'host' && !isPro && (
-              <button onClick={() => { setPaywallTier('pro'); }} style={{ width: '100%', padding: '0.8rem', background: '#333', color: '#ff9900', border: '1px solid #ff9900', borderRadius: '12px', cursor: 'pointer', fontSize: '0.8rem', marginBottom: '0.5rem' }}>
-                Just want to join rides? PRO — $4.99
-              </button>
-            )}
-            {paywallTier === 'pro' && (
-              <button onClick={() => { setPaywallTier('host'); }} style={{ width: '100%', padding: '0.8rem', background: '#333', color: '#ff6600', border: '1px solid #ff6600', borderRadius: '12px', cursor: 'pointer', fontSize: '0.8rem', marginBottom: '0.5rem' }}>
-                Want to host rides? HOST — $9.99
-              </button>
-            )}
-            <button onClick={() => setShowGroupRidePaywall(false)} style={{ width: '100%', padding: '0.8rem', background: 'none', color: '#888', border: 'none', borderRadius: '12px', cursor: 'pointer', fontSize: '0.8rem' }}>
-              Maybe Later
-            </button>
+            {isPro && paywallTier === 'host' && <div style={{ background: 'rgba(255,153,0,0.1)', padding: '0.6rem', borderRadius: '8px', marginBottom: '1rem', color: '#ff9900', fontSize: '0.75rem' }}>You're already PRO! Upgrade to HOST for just $9.99.</div>}
+            <button onClick={paywallTier === 'host' ? checkoutHostTier : checkoutProTier} style={{ width: '100%', padding: '1rem', background: 'linear-gradient(45deg, #ff6600, #ff9900)', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 900, fontSize: '1.1rem', cursor: 'pointer', marginBottom: '0.8rem' }}>{paywallTier === 'host' ? 'Unlock Host — $9.99' : 'Get PRO — $4.99'}</button>
+            {paywallTier === 'host' && !isPro && <button onClick={() => setPaywallTier('pro')} style={{ width: '100%', padding: '0.8rem', background: '#333', color: '#ff9900', border: '1px solid #ff9900', borderRadius: '12px', cursor: 'pointer', fontSize: '0.8rem', marginBottom: '0.5rem' }}>Just want to join rides? PRO — $4.99</button>}
+            {paywallTier === 'pro' && <button onClick={() => setPaywallTier('host')} style={{ width: '100%', padding: '0.8rem', background: '#333', color: '#ff6600', border: '1px solid #ff6600', borderRadius: '12px', cursor: 'pointer', fontSize: '0.8rem', marginBottom: '0.5rem' }}>Want to host rides? HOST — $9.99</button>}
+            <button onClick={() => setShowGroupRidePaywall(false)} style={{ width: '100%', padding: '0.8rem', background: 'none', color: '#888', border: 'none', borderRadius: '12px', cursor: 'pointer', fontSize: '0.8rem' }}>Maybe Later</button>
           </div>
         </div>
       )}
