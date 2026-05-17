@@ -260,7 +260,11 @@ function MapHome() {
              batteryPercentUsed: 0,
              recommendedSpeedMph: 0
            });
-           setTrip({ origin: 'Recorded Ride', destination: data.name || 'Recorded Ride', waypoints: [] });
+           
+           const originStr = data.path.length > 0 ? `${data.path[0].lat.toFixed(6)}, ${data.path[0].lng.toFixed(6)}` : 'Recorded Ride Start';
+           const destStr = data.path.length > 0 ? `${data.path[data.path.length - 1].lat.toFixed(6)}, ${data.path[data.path.length - 1].lng.toFixed(6)}` : 'Recorded Ride End';
+           
+           setTrip({ origin: originStr, destination: destStr, waypoints: [] });
            setPois([]);
            localStorage.removeItem('ebike_load_route');
            if (mapRef.current && data.path.length > 0) {
