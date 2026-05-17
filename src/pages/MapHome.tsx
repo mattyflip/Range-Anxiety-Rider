@@ -162,6 +162,55 @@ function MapHome() {
   const [settingsDirty, setSettingsDirty] = useState(true);
   const [userLocation, setUserLocation] = useState<google.maps.LatLngLiteral | null>(null);
 
+  // Reorderable locations state
+  const [locations, setLocations] = useState<string[]>(['', '', '', '', '']);
+
+  const syncLocationsToStates = (locs: string[]) => {
+    const filtered = locs.filter(l => l.trim() !== '');
+    if (filtered.length === 0) {
+      setTrip({ origin: '', destination: '', waypoints: [] });
+      setWaypoint3(''); setWaypoint4(''); setWaypoint5('');
+      return;
+    }
+    
+    if (filtered.length === 1) {
+      setTrip(p => ({ ...p, origin: filtered[0], destination: '', waypoints: [] }));
+      setWaypoint3(''); setWaypoint4(''); setWaypoint5('');
+      return;
+    }
+
+    const origin = filtered[0];
+    const destination = filtered[filtered.length - 1];
+    const waypoints = filtered.slice(1, filtered.length - 1);
+
+    setTrip({ origin, destination, waypoints });
+    setWaypoint3(waypoints[0] || '');
+    setWaypoint4(waypoints[1] || '');
+    setWaypoint5(waypoints[2] || '');
+  };
+
+  const updateLocation = (index: number, value: string) => {
+    const newLocs = [...locations];
+    newLocs[index] = value;
+    setLocations(newLocs);
+    syncLocationsToStates(newLocs);
+    markDirty();
+  };
+
+  const moveLocation = (index: number, direction: 'up' | 'down') => {
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= locations.length) return;
+
+    const newLocs = [...locations];
+    const temp = newLocs[index];
+    newLocs[index] = newLocs[targetIndex];
+    newLocs[targetIndex] = temp;
+    
+    setLocations(newLocs);
+    syncLocationsToStates(newLocs);
+    markDirty();
+  };
+
   // Group Ride State
   const [activeRide, setActiveRide] = useState<GroupRide | null>(null);
   const [publicRides, setPublicRides] = useState<GroupRide[]>([]);
@@ -265,6 +314,7 @@ function MapHome() {
            const destStr = data.path.length > 0 ? `${data.path[data.path.length - 1].lat.toFixed(6)}, ${data.path[data.path.length - 1].lng.toFixed(6)}` : 'Recorded Ride End';
            
            setTrip({ origin: originStr, destination: destStr, waypoints: [] });
+           setLocations([originStr, destStr, '', '', '']);
            setPois([]);
            localStorage.removeItem('ebike_load_route');
            if (mapRef.current && data.path.length > 0) {
@@ -279,11 +329,12 @@ function MapHome() {
         ) {
           setRecordedPath(null);
           setTrip({ origin: data.origin, destination: data.destination, waypoints: data.waypoints });
-          if (typeof data.isRoundTrip === 'boolean') setIsRoundTrip(data.isRoundTrip);
           const wps = data.waypoints.filter((w: any) => typeof w === 'string');
           setWaypoint3(wps[0] || '');
           setWaypoint4(wps[1] || '');
           setWaypoint5(wps[2] || '');
+          setLocations([data.origin, data.destination, wps[0] || '', wps[1] || '', wps[2] || '']);
+          if (typeof data.isRoundTrip === 'boolean') setIsRoundTrip(data.isRoundTrip);
           setIsLoading(true);
           setResponse(null);
           setMetrics(null);
@@ -488,9 +539,6 @@ function MapHome() {
 
   const handleCalculate = () => { 
     if (!trip.origin || !trip.destination) return;
-    // Build waypoints from individual fields
-    const wps = [waypoint3, waypoint4, waypoint5].filter(w => w.trim());
-    setTrip(p => ({ ...p, waypoints: wps }));
     setRecordedPath(null);
     setIsLoading(true); setResponse(null); setMetrics(null); setPois([]); setSettingsDirty(false); 
   };
@@ -829,21 +877,41 @@ function MapHome() {
 
           <section className="form-group">
             <label>Route</label>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <input type="text" placeholder="Start" value={trip.origin} onChange={e => { setTrip(p => ({ ...p, origin: e.target.value })); markDirty(); }} style={{ flex: 1 }} />
-              <button onClick={useCurrentLocation} style={{ background: 'none', border: 'none', fontSize: '1.2rem' }}>📍</button>
-            </div>
-            <input type="text" placeholder="Stop 1" value={trip.destination} onChange={e => { setTrip(p => ({ ...p, destination: e.target.value })); markDirty(); }} style={{ marginTop: '0.5rem' }} />
-            {trip.destination.trim() && (
-              <input type="text" placeholder="Stop 2 (optional)" value={waypoint3} onChange={e => { setWaypoint3(e.target.value); markDirty(); }} style={{ marginTop: '0.5rem' }} />
-            )}
-            {waypoint3.trim() && (
-              <input type="text" placeholder="Stop 3 (optional)" value={waypoint4} onChange={e => { setWaypoint4(e.target.value); markDirty(); }} style={{ marginTop: '0.5rem' }} />
-            )}
-            {waypoint4.trim() && (
-              <input type="text" placeholder="Stop 4 (optional)" value={waypoint5} onChange={e => { setWaypoint5(e.target.value); markDirty(); }} style={{ marginTop: '0.5rem' }} />
-            )}
-            <div className="mode-toggle" style={{ marginTop: '0.5rem' }}>
+            {locations.map((loc, index) => {
+              // Show if it's the first two, or if the previous one is not empty
+              const show = index < 2 || locations[index - 1].trim() !== '';
+              if (!show) return null;
+              
+              return (
+                <div key={index} style={{ display: 'flex', gap: '0.4rem', marginTop: index > 0 ? '0.5rem' : '0', alignItems: 'center' }}>
+                  <div style={{ flex: 1, display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                    <input 
+                      type="text" 
+                      placeholder={index === 0 ? "Start" : `Stop ${index}`} 
+                      value={loc} 
+                      onChange={e => updateLocation(index, e.target.value)} 
+                      style={{ flex: 1 }} 
+                    />
+                    {index === 0 && (
+                      <button onClick={useCurrentLocation} style={{ background: 'none', border: 'none', fontSize: '1.2rem', padding: 0, cursor: 'pointer' }} title="Locate Me">📍</button>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    <button 
+                      disabled={index === 0} 
+                      onClick={() => moveLocation(index, 'up')}
+                      style={{ background: '#222', border: 'none', color: index === 0 ? '#444' : '#888', padding: '2px 6px', borderRadius: '4px', fontSize: '0.6rem', cursor: index === 0 ? 'default' : 'pointer', fontWeight: 'bold' }}
+                    >▲</button>
+                    <button 
+                      disabled={index === locations.length - 1 || !locations[index].trim()} 
+                      onClick={() => moveLocation(index, 'down')}
+                      style={{ background: '#222', border: 'none', color: (index === locations.length - 1 || !locations[index].trim()) ? '#444' : '#888', padding: '2px 6px', borderRadius: '4px', fontSize: '0.6rem', cursor: (index === locations.length - 1 || !locations[index].trim()) ? 'default' : 'pointer', fontWeight: 'bold' }}
+                    >▼</button>
+                  </div>
+                </div>
+              );
+            })}
+            <div className="mode-toggle" style={{ marginTop: '1rem' }}>
               <button className={!isRoundTrip ? 'active' : ''} onClick={() => { setIsRoundTrip(false); markDirty(); }}>One Way</button>
               <button className={isRoundTrip ? 'active' : ''} onClick={() => { setIsRoundTrip(true); markDirty(); }}>Round Trip</button>
             </div>
