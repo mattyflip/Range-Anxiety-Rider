@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { GoogleMap, useJsApiLoader, DirectionsService, DirectionsRenderer, Marker } from '@react-google-maps/api'
+import { useLocation } from 'react-router-dom';
 import { auth, db } from '../firebase'
 import { onAuthStateChanged } from 'firebase/auth'
 import type { User } from 'firebase/auth'
@@ -29,6 +30,17 @@ function MapHome() {
   const [isWorking, setIsWorking] = useState(false);
   const [fleetBikes, setFleetBikes] = useState<any[]>([]);
   const [orgData, setOrgData] = useState<any>(null);
+  const [chargers, setChargers] = useState<any[]>([]);
+  const [showChargers, setShowChargers] = useState(false);
+  const location = useLocation();
+
+  // Handle ?chargers=true from NavBar
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('chargers') === 'true' && !showChargers) {
+      handleFetchChargers();
+    }
+  }, [location]);
 
   // 1. Auth & Org Initialization
   useEffect(() => {
@@ -58,6 +70,33 @@ function MapHome() {
     });
   }, []);
 
+  // Fetch Chargers near current location
+  const handleFetchChargers = async () => {
+    if (showChargers) {
+      setShowChargers(false);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      // Get current location
+      navigator.geolocation.getCurrentPosition(async (pos) => {
+        const res = await fetch(`/api/charging?lat=${pos.coords.latitude}&lng=${pos.coords.longitude}&distance=15`);
+        const data = await res.json();
+        setChargers(data);
+        setShowChargers(true);
+        setIsLoading(false);
+      }, (err) => {
+        console.error(err);
+        setIsLoading(false);
+        alert("Enable location to find chargers.");
+      });
+    } catch (e) {
+      console.error(e);
+      setIsLoading(false);
+    }
+  };
+
   // 2. Fleet Manager: Listen to live bike updates
   useEffect(() => {
     if (userRole !== 'fleet' || !userData?.orgId) return;
@@ -83,6 +122,16 @@ function MapHome() {
 
     return () => navigator.geolocation.clearWatch(watchId);
   }, [isWorking, user, userData?.orgId, userRole, response]);
+  const [currentLocation, setCurrentLocation] = useState<google.maps.LatLngLiteral | null>(null);
+
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition((pos) => {
+        setCurrentLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+      });
+    }
+  }, []);
+
   const directionsCallback = (res: any, status: any) => {
     if (status === 'OK' && res) { 
         setResponse(res); 
@@ -93,7 +142,7 @@ function MapHome() {
 
   const CustomerView = () => (
     <div className="main-layout" style={{ display: 'flex', height: '100vh' }}>
-      <aside style={{ width: '300px', padding: '20px', background: '#1a1a1a', borderRight: '1px solid #333' }}>
+      <aside style={{ width: '300px', padding: '20px', background: '#1a1a1a', borderRight: '1px solid #333', display: 'flex', flexDirection: 'column' }}>
         <h2 style={{ color: '#ff6600', fontSize: '1rem', marginBottom: '1.5rem' }}>RENTAL DASHBOARD</h2>
         
         <div style={{ marginBottom: '2rem', padding: '1rem', background: isWorking ? 'rgba(52,168,83,0.1)' : 'rgba(255,255,255,0.05)', borderRadius: '12px', border: `1px solid ${isWorking ? '#34a853' : '#444'}` }}>
@@ -111,10 +160,19 @@ function MapHome() {
           </p>
         </div>
 
+        <div style={{ marginBottom: '1.5rem' }}>
+           <button 
+             onClick={handleFetchChargers} 
+             style={{ width: '100%', padding: '0.8rem', background: showChargers ? '#ff6600' : '#222', border: '1px solid #333', borderRadius: '8px', color: 'white', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+           >
+             {showChargers ? '🔌 HIDE CHARGERS' : '🔌 FIND CHARGERS'}
+           </button>
+        </div>
+
         <div style={{ marginBottom: '1rem' }}>
           <label style={{ color: '#666', fontSize: '0.7rem', textTransform: 'uppercase' }}>Plan Your Route</label>
-          <input placeholder="Where to?" style={{ width: '100%', marginTop: '0.5rem', marginBottom: '1rem' }} onChange={e => setTrip({...trip, destination: e.target.value})} />
-          <button onClick={() => setIsLoading(true)} style={{ width: '100%', padding: '0.8rem', background: '#333', border: '1px solid #444', borderRadius: '8px', color: 'white', fontWeight: 'bold' }}>Check Range</button>
+          <input placeholder="Where to?" style={{ width: '100%', marginTop: '0.5rem', marginBottom: '1rem', background: '#111', border: '1px solid #333', color: 'white', padding: '0.8rem', borderRadius: '8px' }} onChange={e => setTrip({...trip, destination: e.target.value})} />
+          <button onClick={() => setIsLoading(true)} style={{ width: '100%', padding: '0.8rem', background: '#333', border: '1px solid #444', borderRadius: '8px', color: 'white', fontWeight: 'bold', cursor: 'pointer' }}>Check Range</button>
         </div>
         
         {metrics && (
@@ -128,16 +186,25 @@ function MapHome() {
         <div style={{ marginTop: 'auto', paddingTop: '2rem' }}>
           <button 
              onClick={() => { setTrip({ origin: '', destination: orgData?.address || 'Shop Location' }); setIsLoading(true); }}
-             style={{ width: '100%', padding: '0.8rem', background: 'transparent', border: '1px solid #ff6600', color: '#ff6600', borderRadius: '8px', fontWeight: 'bold' }}
+             style={{ width: '100%', padding: '0.8rem', background: 'transparent', border: '1px solid #ff6600', color: '#ff6600', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
           >
             Return to Shop
           </button>
         </div>
       </aside>
       <main style={{ flex: 1 }}>
-        <GoogleMap mapContainerStyle={{ width: '100%', height: '100%' }} center={{lat: 40.71, lng: -74.00}} zoom={13} onLoad={m => {mapRef.current = m}}>
-          {trip.destination && isLoading && <DirectionsService options={{ origin: 'current location', destination: trip.destination, travelMode: google.maps.TravelMode.BICYCLING }} callback={directionsCallback} />}
+        <GoogleMap mapContainerStyle={{ width: '100%', height: '100%' }} center={currentLocation || {lat: 40.71, lng: -74.00}} zoom={13} onLoad={m => {mapRef.current = m}}>
+          {trip.destination && isLoading && <DirectionsService options={{ origin: currentLocation || 'current location', destination: trip.destination, travelMode: google.maps.TravelMode.BICYCLING }} callback={directionsCallback} />}
           {response && <DirectionsRenderer options={{ directions: response }} />}
+          
+          {showChargers && chargers.map(c => (
+            <Marker 
+              key={c.id} 
+              position={c.position} 
+              icon={{ path: google.maps.SymbolPath.CIRCLE, fillColor: c.is110v ? '#34a853' : '#ff6600', fillOpacity: 1, scale: 6, strokeColor: 'white', strokeWeight: 2 }}
+              title={`${c.name} (${c.chargerClass})`}
+            />
+          ))}
         </GoogleMap>
       </main>
     </div>
@@ -151,6 +218,7 @@ function MapHome() {
           <div style={{ color: '#888', fontSize: '0.7rem' }}>Live oversight • {fleetBikes.length} active units</div>
         </div>
         <div style={{ display: 'flex', gap: '2rem' }}>
+           <button onClick={handleFetchChargers} style={{ background: showChargers ? '#ff6600' : '#222', color: 'white', border: '1px solid #333', padding: '0.4rem 1rem', borderRadius: '8px', fontSize: '0.7rem', fontWeight: 'bold', cursor: 'pointer' }}>🔌 {showChargers ? 'HIDE CHARGERS' : 'SHOW CHARGERS'}</button>
            <div style={{ textAlign: 'center' }}><div style={{ fontSize: '0.6rem', color: '#666' }}>ACTIVE</div><div style={{ fontWeight: '900', color: 'white' }}>{fleetBikes.filter(b => b.status === 'rented').length}</div></div>
            <div style={{ textAlign: 'center' }}><div style={{ fontSize: '0.6rem', color: '#666' }}>AVAILABLE</div><div style={{ fontWeight: '900', color: '#34a853' }}>{fleetBikes.filter(b => b.status === 'available').length}</div></div>
         </div>
@@ -176,13 +244,21 @@ function MapHome() {
           )}
         </aside>
         <main style={{ flex: 1 }}>
-          <GoogleMap mapContainerStyle={{ width: '100%', height: '100%' }} center={{lat: 40.71, lng: -74.00}} zoom={12}>
+          <GoogleMap mapContainerStyle={{ width: '100%', height: '100%' }} center={currentLocation || {lat: 40.71, lng: -74.00}} zoom={12}>
             {fleetBikes.map(b => (
               <Marker 
                 key={b.id} 
                 position={b.position} 
                 label={{ text: `${b.unitName}`, color: 'white', fontSize: '11px', fontWeight: 'bold' }} 
                 icon={{ path: google.maps.SymbolPath.CIRCLE, fillColor: b.battery < 20 ? '#ff3333' : '#34a853', fillOpacity: 1, scale: 8, strokeColor: 'white', strokeWeight: 2 }}
+              />
+            ))}
+            {showChargers && chargers.map(c => (
+              <Marker 
+                key={c.id} 
+                position={c.position} 
+                icon={{ path: google.maps.SymbolPath.CIRCLE, fillColor: c.is110v ? '#34a853' : '#ff6600', fillOpacity: 1, scale: 6, strokeColor: 'white', strokeWeight: 2 }}
+                title={`${c.name} (${c.chargerClass})`}
               />
             ))}
           </GoogleMap>

@@ -86,6 +86,12 @@ const Profile: React.FC = () => {
   const [newReviewCommentText, setNewReviewCommentText] = useState('');
 
   useEffect(() => {
+    if (username === 'me') {
+      navigate('/settings');
+    }
+  }, [username, navigate]);
+
+  useEffect(() => {
     const unsubAuth = auth.onAuthStateChanged(u => setUser(u));
     return () => unsubAuth();
   }, []);

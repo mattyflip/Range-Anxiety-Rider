@@ -169,7 +169,7 @@ const ExploreMap: React.FC = () => {
         createdAt: serverTimestamp()
       });
       alert("Ride saved successfully!");
-      navigate('/profile/me');
+      navigate('/settings');
     } catch (e) {
       console.error("Save failed", e);
       alert("Failed to save ride.");
