@@ -68,6 +68,71 @@ const Settings: React.FC = () => {
   const [newBikeName, setNewBikeName] = useState('');
   const [newBikeVolts, setNewBikeVolts] = useState('48');
   const [newBikeAh, setNewBikeAh] = useState('15');
+  const [orgBikes, setOrgBikes] = useState<any[]>([]);
+
+  // Org states
+  const [shopName, setShopName] = useState('');
+  const [shopAddress, setShopAddress] = useState('');
+
+  useEffect(() => {
+    if (userData?.orgId && userData?.role === 'fleet') {
+      setShopName(userData.orgName || '');
+      setShopAddress(userData.orgAddress || '');
+      
+      // Fetch org bikes
+      const q = query(collection(db, `organizations/${userData.orgId}/bikes`));
+      const unsub = onSnapshot(q, (snap) => {
+        setOrgBikes(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      });
+      return () => unsub();
+    }
+  }, [userData]);
+
+  const handleUpdateOrg = async () => {
+    if (!user || !userData?.orgId) return;
+    setIsPosting(true);
+    try {
+      await updateDoc(doc(db, "users", user.uid), {
+        orgName: shopName,
+        orgAddress: shopAddress
+      });
+      // Also update the organization document
+      await setDoc(doc(db, "organizations", userData.orgId), {
+        name: shopName,
+        address: shopAddress,
+        ownerId: user.uid
+      }, { merge: true });
+      alert("Shop settings updated!");
+    } catch (e) {
+      console.error(e);
+    } finally { setIsPosting(false); }
+  };
+
+  const handleAddFleetBike = async () => {
+    if (!newBikeName.trim() || !user || !userData?.orgId) return;
+    const bikeId = Date.now().toString();
+    try {
+      await setDoc(doc(db, `organizations/${userData.orgId}/bikes`, bikeId), {
+        unitId: newBikeName,
+        model: "Standard Rental",
+        specs: {
+          voltage: parseFloat(newBikeVolts),
+          capacityAh: parseFloat(newBikeAh),
+          motorWatts: 750
+        },
+        status: 'available',
+        createdAt: new Date().toISOString()
+      });
+      setNewBikeName('');
+    } catch (e) { console.error(e); }
+  };
+
+  const handleDeleteFleetBike = async (id: string) => {
+    if (!window.confirm("Remove this bike from fleet?") || !userData?.orgId) return;
+    try {
+      await deleteDoc(doc(db, `organizations/${userData.orgId}/bikes`, id));
+    } catch (e) { console.error(e); }
+  };
 
   const handleAddBike = async () => {
     if (!newBikeName.trim() || !user) return;
@@ -279,72 +344,147 @@ const Settings: React.FC = () => {
           </button>
         </section>
 
-        {/* Vehicle Management */}
-        <section className="card" style={{ background: '#1a1a1a', padding: '2rem', borderRadius: '24px', border: '1px solid #333', marginBottom: '2rem' }}>
-          <h2 style={{ color: '#ff6600', fontSize: '1.2rem', marginBottom: '1.5rem' }}>Vehicle Profiles</h2>
-          
-          {/* Add Bike Form */}
-          <div style={{ background: '#222', padding: '1.5rem', borderRadius: '16px', marginBottom: '2rem', border: '1px dashed #444' }}>
-            <h3 style={{ color: 'white', fontSize: '0.9rem', marginBottom: '1rem' }}>Add New Profile</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <input 
-                type="text" 
-                placeholder="Vehicle Name (e.g. Fleet Unit 01)" 
-                value={newBikeName} 
-                onChange={e => setNewBikeName(e.target.value)}
-                style={{ width: '100%', padding: '0.8rem', background: '#111', border: '1px solid #333', borderRadius: '8px', color: 'white' }}
-              />
-              <div style={{ display: 'flex', gap: '1rem' }}>
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', color: '#666', fontSize: '0.7rem', marginBottom: '0.3rem' }}>Nominal Voltage (V)</label>
-                  <input 
-                    type="number" 
-                    value={newBikeVolts} 
-                    onChange={e => setNewBikeVolts(e.target.value)}
-                    style={{ width: '100%', padding: '0.8rem', background: '#111', border: '1px solid #333', borderRadius: '8px', color: 'white' }}
-                  />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', color: '#666', fontSize: '0.7rem', marginBottom: '0.3rem' }}>Capacity (Ah)</label>
-                  <input 
-                    type="number" 
-                    value={newBikeAh} 
-                    onChange={e => setNewBikeAh(e.target.value)}
-                    style={{ width: '100%', padding: '0.8rem', background: '#111', border: '1px solid #333', borderRadius: '8px', color: 'white' }}
-                  />
-                </div>
+        {/* Fleet/Organization Management (Conditional) */}
+        {userData?.role === 'fleet' && (
+          <>
+            <section className="card" style={{ background: '#1a1a1a', padding: '2rem', borderRadius: '24px', border: '1px solid #ff6600', marginBottom: '2rem' }}>
+              <h2 style={{ color: '#ff6600', fontSize: '1.2rem', marginBottom: '1.5rem' }}>Shop Configuration</h2>
+              <div className="form-group" style={{ marginBottom: '1.2rem' }}>
+                <label style={{ display: 'block', color: '#888', fontSize: '0.8rem', marginBottom: '0.5rem' }}>Shop Name</label>
+                <input 
+                  type="text" 
+                  value={shopName} 
+                  onChange={e => setShopName(e.target.value)} 
+                  style={{ width: '100%', padding: '0.8rem', background: '#222', border: '1px solid #444', borderRadius: '8px', color: 'white' }} 
+                />
+              </div>
+              <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+                <label style={{ display: 'block', color: '#888', fontSize: '0.8rem', marginBottom: '0.5rem' }}>Shop Address (HQ)</label>
+                <input 
+                  type="text" 
+                  value={shopAddress} 
+                  onChange={e => setShopAddress(e.target.value)} 
+                  style={{ width: '100%', padding: '0.8rem', background: '#222', border: '1px solid #444', borderRadius: '8px', color: 'white' }} 
+                />
               </div>
               <button 
-                onClick={handleAddBike}
-                style={{ padding: '0.8rem', background: '#333', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
+                onClick={handleUpdateOrg}
+                disabled={isUpdating}
+                style={{ width: '100%', padding: '1rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer' }}
               >
-                + Save Vehicle Profile
+                {isUpdating ? 'Saving...' : 'Update Shop Details'}
               </button>
-            </div>
-          </div>
+            </section>
 
-          {userData?.bikes && userData.bikes.length > 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              {userData.bikes.map((bike: any) => (
-                <div key={bike.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#222', padding: '1rem', borderRadius: '12px' }}>
-                  <div>
-                    <div style={{ color: 'white', fontWeight: 'bold' }}>{bike.name}</div>
-                    <div style={{ color: '#888', fontSize: '0.75rem' }}>Saved Profile</div>
+            <section className="card" style={{ background: '#1a1a1a', padding: '2rem', borderRadius: '24px', border: '1px solid #333', marginBottom: '2rem' }}>
+              <h2 style={{ color: '#ff6600', fontSize: '1.2rem', marginBottom: '1.5rem' }}>Fleet Inventory</h2>
+              
+              <div style={{ background: '#222', padding: '1.5rem', borderRadius: '16px', marginBottom: '2rem', border: '1px dashed #444' }}>
+                <h3 style={{ color: 'white', fontSize: '0.9rem', marginBottom: '1rem' }}>Register New Fleet Unit</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <input 
+                    type="text" 
+                    placeholder="Unit ID (e.g. B-01)" 
+                    value={newBikeName} 
+                    onChange={e => setNewBikeName(e.target.value)}
+                    style={{ width: '100%', padding: '0.8rem', background: '#111', border: '1px solid #333', borderRadius: '8px', color: 'white' }}
+                  />
+                  <div style={{ display: 'flex', gap: '1rem' }}>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ display: 'block', color: '#666', fontSize: '0.7rem', marginBottom: '0.3rem' }}>Voltage (V)</label>
+                      <input type="number" value={newBikeVolts} onChange={e => setNewBikeVolts(e.target.value)} style={{ width: '100%', padding: '0.8rem', background: '#111', border: '1px solid #333', borderRadius: '8px', color: 'white' }} />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ display: 'block', color: '#666', fontSize: '0.7rem', marginBottom: '0.3rem' }}>Ah</label>
+                      <input type="number" value={newBikeAh} onChange={e => setNewBikeAh(e.target.value)} style={{ width: '100%', padding: '0.8rem', background: '#111', border: '1px solid #333', borderRadius: '8px', color: 'white' }} />
+                    </div>
                   </div>
-                  <button 
-                    onClick={() => handleDeleteBike(bike.id)}
-                    style={{ background: 'none', border: 'none', color: '#ff4444', cursor: 'pointer', fontSize: '1.2rem' }}
-                    title="Remove Bike"
-                  >
-                    🗑️
-                  </button>
+                  <button onClick={handleAddFleetBike} style={{ padding: '0.8rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold' }}>+ Add to Fleet</button>
                 </div>
-              ))}
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                {orgBikes.map(b => (
+                  <div key={b.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#222', padding: '1rem', borderRadius: '12px', border: '1px solid #333' }}>
+                    <div>
+                      <div style={{ color: 'white', fontWeight: 'bold' }}>{b.unitId}</div>
+                      <div style={{ color: '#888', fontSize: '0.7rem' }}>{b.specs.voltage}V {b.specs.capacityAh}Ah • {b.status}</div>
+                    </div>
+                    <button onClick={() => handleDeleteFleetBike(b.id)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>🗑️</button>
+                  </div>
+                ))}
+              </div>
+            </section>
+          </>
+        )}
+
+        {/* Vehicle Management (Personal - Only if not fleet) */}
+        {userData?.role !== 'fleet' && (
+          <section className="card" style={{ background: '#1a1a1a', padding: '2rem', borderRadius: '24px', border: '1px solid #333', marginBottom: '2rem' }}>
+            <h2 style={{ color: '#ff6600', fontSize: '1.2rem', marginBottom: '1.5rem' }}>Vehicle Profiles</h2>
+            {/* ... keep existing vehicle management ... */}
+            <div style={{ background: '#222', padding: '1.5rem', borderRadius: '16px', marginBottom: '2rem', border: '1px dashed #444' }}>
+              <h3 style={{ color: 'white', fontSize: '0.9rem', marginBottom: '1rem' }}>Add New Profile</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <input 
+                  type="text" 
+                  placeholder="Vehicle Name (e.g. My Surron)" 
+                  value={newBikeName} 
+                  onChange={e => setNewBikeName(e.target.value)}
+                  style={{ width: '100%', padding: '0.8rem', background: '#111', border: '1px solid #333', borderRadius: '8px', color: 'white' }}
+                />
+                <div style={{ display: 'flex', gap: '1rem' }}>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ display: 'block', color: '#666', fontSize: '0.7rem', marginBottom: '0.3rem' }}>Nominal Voltage (V)</label>
+                    <input 
+                      type="number" 
+                      value={newBikeVolts} 
+                      onChange={e => setNewBikeVolts(e.target.value)}
+                      style={{ width: '100%', padding: '0.8rem', background: '#111', border: '1px solid #333', borderRadius: '8px', color: 'white' }}
+                    />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ display: 'block', color: '#666', fontSize: '0.7rem', marginBottom: '0.3rem' }}>Capacity (Ah)</label>
+                    <input 
+                      type="number" 
+                      value={newBikeAh} 
+                      onChange={e => setNewBikeAh(e.target.value)}
+                      style={{ width: '100%', padding: '0.8rem', background: '#111', border: '1px solid #333', borderRadius: '8px', color: 'white' }}
+                    />
+                  </div>
+                </div>
+                <button 
+                  onClick={handleAddBike}
+                  style={{ padding: '0.8rem', background: '#333', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
+                >
+                  + Save Vehicle Profile
+                </button>
+              </div>
             </div>
-          ) : (
-            <p style={{ color: '#666', textAlign: 'center' }}>No bikes in your garage yet.</p>
-          )}
-        </section>
+
+            {userData?.bikes && userData.bikes.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {userData.bikes.map((bike: any) => (
+                  <div key={bike.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#222', padding: '1rem', borderRadius: '12px' }}>
+                    <div>
+                      <div style={{ color: 'white', fontWeight: 'bold' }}>{bike.name}</div>
+                      <div style={{ color: '#888', fontSize: '0.75rem' }}>Saved Profile</div>
+                    </div>
+                    <button 
+                      onClick={() => handleDeleteBike(bike.id)}
+                      style={{ background: 'none', border: 'none', color: '#ff4444', cursor: 'pointer', fontSize: '1.2rem' }}
+                      title="Remove Bike"
+                    >
+                      🗑️
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p style={{ color: '#666', textAlign: 'center' }}>No bikes in your garage yet.</p>
+            )}
+          </section>
+        )}
 
         {/* Danger Zone */}
         <section className="card" style={{ background: '#1a1a1a', padding: '2rem', borderRadius: '24px', border: '1px solid #333' }}>

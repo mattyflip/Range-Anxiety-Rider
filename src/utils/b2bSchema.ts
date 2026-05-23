@@ -1,72 +1,97 @@
 /**
- * RANGE ANXIETY BUSINESS - B2B SCHEMA DESIGN (v1)
+ * RANGE ANXIETY RIDER - RENTAL FLEET SCHEMA DESIGN (v2)
  * 
- * This file serves as a reference for the Firestore structure required 
- * to support multi-tenant fleet management.
+ * Optimized for E-Bike Rental Shops.
+ * Focuses on asset (Bike) management rather than just rider tracking.
  */
 
 /*
   /organizations/{orgId}
-    - name: string
-    - ownerId: string (UID of the person who created it)
-    - createdAt: timestamp
-    - plan: 'fleet_basic' | 'fleet_pro' | 'enterprise'
+    - name: string (e.g., "Main Street E-Bikes")
+    - ownerId: string
+    - location: { lat: number, lng: number, address: string }
     - settings: {
-        highFrequencyTracking: boolean (for 10s updates)
-        allowRiderPrivacyMode: boolean
+        rentalZoneRadius: number (in miles, for geofencing)
+        lowBatteryAlertThreshold: number (default 20%)
       }
 
-  /organizations/{orgId}/members/{userId}
-    - role: 'admin' | 'manager' | 'rider'
-    - joinedAt: timestamp
-    - status: 'active' | 'suspended'
+  /organizations/{orgId}/bikes/{bikeId} (Physical Assets)
+    - unitId: string (e.g., "BIKE-001")
+    - model: string (e.g., "Surron Light Bee X")
+    - specs: {
+        voltage: number
+        capacityAh: number
+        motorWatts: number
+      }
+    - status: 'available' | 'rented' | 'maintenance' | 'lost' | 'charging'
+    - currentRentalId: string | null
+    - totalOdometer: number
+    - lastMaintenanceDate: timestamp
 
-  /organizations/{orgId}/fleets/{fleetId} (Logical groupings, e.g., "NJ North", "NYC Delivery")
-    - name: string
-    - managerIds: string[] (UIDs of managers overseeing this fleet)
-    - riderIds: string[] (UIDs of riders assigned)
-
-  /organizations/{orgId}/active_tracking/{userId} (High-frequency live data)
-    - lat: number
-    - lng: number
+  /organizations/{orgId}/live_units/{bikeId} (Live Telemetry)
+    - position: { lat: number, lng: number }
     - batteryPercent: number
-    - voltage: number (if BMS connected)
-    - currentAmps: number (if BMS connected)
-    - estRemainingRange: number (Calculated by our Physics Engine)
+    - estRemainingRange: number
+    - currentSpeedMph: number
     - lastUpdatedAt: timestamp
-    - currentJobId: string | null
+    - bmsData: {
+        voltage: number
+        temp: number
+      } | null
 
-  /organizations/{orgId}/jobs/{jobId}
-    - status: 'pending' | 'active' | 'completed' | 'failed'
-    - assignedRiderId: string
-    - pickupLoc: geopoint
-    - deliveryLoc: geopoint
-    - estWhRequired: number (The Physics Engine result)
-    - batteryAtStart: number
-    - batteryAtEnd: number
-    - pathTaken: geopoint[]
+  /organizations/{orgId}/rentals/{rentalId} (Rental Sessions)
+    - bikeId: string
+    - customerId: string (UID if they have an account, or "Guest")
+    - customerName: string
+    - startTime: timestamp
+    - endTime: timestamp | null (scheduled return)
+    - actualReturnTime: timestamp | null
+    - startBattery: number
+    - endBattery: number
+    - status: 'active' | 'completed' | 'overdue' | 'cancelled'
 */
 
-export interface Organization {
+export interface RentalShop {
   id: string;
   name: string;
   ownerId: string;
-  plan: 'fleet_basic' | 'fleet_pro' | 'enterprise';
+  location: {
+    lat: number;
+    lng: number;
+    address: string;
+  };
 }
 
-export interface FleetMember {
-  userId: string;
-  role: 'admin' | 'manager' | 'rider';
-  status: 'active' | 'suspended';
+export interface BikeUnit {
+  id: string;
+  unitId: string; // Shop-facing label like "B12"
+  model: string;
+  specs: {
+    voltage: number;
+    capacityAh: number;
+    motorWatts: number;
+  };
+  status: 'available' | 'rented' | 'maintenance' | 'lost' | 'charging';
+  currentRentalId: string | null;
 }
 
-export interface LiveTrackingData {
-  userId: string;
-  lat: number;
-  lng: number;
+export interface RentalSession {
+  id: string;
+  bikeId: string;
+  customerName: string;
+  startTime: any;
+  endTime: any;
+  status: 'active' | 'completed' | 'overdue' | 'cancelled';
+  startBattery: number;
+}
+
+export interface LiveUnitData {
+  bikeId: string;
+  position: {
+    lat: number;
+    lng: number;
+  };
   batteryPercent: number;
   estRemainingRange: number;
   lastUpdatedAt: number;
-  voltage?: number;
-  currentAmps?: number;
 }

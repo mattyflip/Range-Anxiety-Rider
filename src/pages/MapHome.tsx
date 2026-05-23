@@ -27,7 +27,8 @@ function MapHome() {
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [showToSPage, setShowToSPage] = useState(false);
   const [isWorking, setIsWorking] = useState(false);
-  const [fleetRiders, setFleetRiders] = useState<any[]>([]);
+  const [fleetBikes, setFleetBikes] = useState<any[]>([]);
+  const [orgData, setOrgData] = useState<any>(null);
 
   // 1. Auth & Org Initialization
   useEffect(() => {
@@ -40,43 +41,48 @@ function MapHome() {
           setUserData(d);
           const isAdmin = u.email?.toLowerCase() === 'mattyfliptv@gmail.com';
           setUserRole(isAdmin ? 'fleet' : (d.role || 'rider'));
-          
+
           // Auto-setup test org for admin
           if (isAdmin && !d.orgId) {
-            await updateDoc(doc(db, "users", u.uid), { orgId: 'default_fleet' });
-            setUserData({ ...d, orgId: 'default_fleet' });
+            await updateDoc(doc(db, "users", u.uid), { orgId: 'rental_shop_test' });
+            setUserData({ ...d, orgId: 'rental_shop_test' });
+          }
+
+          // Fetch Org Data
+          if (d.orgId) {
+            const oSnap = await getDoc(doc(db, "organizations", d.orgId));
+            if (oSnap.exists()) setOrgData(oSnap.data());
           }
         }
-      } else { setUserData(null); setUserRole('rider'); }
+      } else { setUserData(null); setUserRole('rider'); setOrgData(null); }
     });
   }, []);
 
-  // 2. Fleet Manager: Listen to live updates
+  // 2. Fleet Manager: Listen to live bike updates
   useEffect(() => {
     if (userRole !== 'fleet' || !userData?.orgId) return;
-    const q = query(collection(db, `organizations/${userData.orgId}/active_tracking`));
+    const q = query(collection(db, `organizations/${userData.orgId}/live_units`));       
     return onSnapshot(q, (snapshot) => {
-      setFleetRiders(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      setFleetBikes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
   }, [userRole, userData?.orgId]);
 
-  // 3. Professional Rider: Push GPS updates
+  // 3. Rental Bike Tracking Simulation (Mock GPS updates from bikes)
   useEffect(() => {
     if (userRole !== 'rider' || !isWorking || !user || !userData?.orgId) return;
 
     const watchId = navigator.geolocation.watchPosition(async (pos) => {
-      await setDoc(doc(db, `organizations/${userData.orgId}/active_tracking`, user.uid), {
-        name: userData.displayName || 'Pro Rider',
+      await setDoc(doc(db, `organizations/${userData.orgId}/live_units`, user.uid), {    
+        unitName: userData.displayName || 'Bike #1',
         position: { lat: pos.coords.latitude, lng: pos.coords.longitude },
-        battery: 100, // Placeholder
+        battery: 100, 
         lastSeen: Date.now(),
-        status: response ? 'delivering' : 'available'
+        status: response ? 'rented' : 'available'
       }, { merge: true });
     }, null, { enableHighAccuracy: true });
 
     return () => navigator.geolocation.clearWatch(watchId);
   }, [isWorking, user, userData?.orgId, userRole, response]);
-
   const directionsCallback = (res: any, status: any) => {
     if (status === 'OK' && res) { 
         setResponse(res); 
@@ -85,40 +91,52 @@ function MapHome() {
     setIsLoading(false);
   };
 
-  const RiderView = () => (
+  const CustomerView = () => (
     <div className="main-layout" style={{ display: 'flex', height: '100vh' }}>
       <aside style={{ width: '300px', padding: '20px', background: '#1a1a1a', borderRight: '1px solid #333' }}>
-        <h2 style={{ color: '#ff6600', fontSize: '1rem', marginBottom: '1.5rem' }}>PROFESSIONAL RIDER</h2>
+        <h2 style={{ color: '#ff6600', fontSize: '1rem', marginBottom: '1.5rem' }}>RENTAL DASHBOARD</h2>
         
         <div style={{ marginBottom: '2rem', padding: '1rem', background: isWorking ? 'rgba(52,168,83,0.1)' : 'rgba(255,255,255,0.05)', borderRadius: '12px', border: `1px solid ${isWorking ? '#34a853' : '#444'}` }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontWeight: 'bold', color: 'white' }}>WORK MODE</span>
+            <span style={{ fontWeight: 'bold', color: 'white' }}>RENTAL STATUS</span>
             <button 
               onClick={() => setIsWorking(!isWorking)}
-              style={{ background: isWorking ? '#34a853' : '#666', color: 'white', border: 'none', padding: '0.4rem 1rem', borderRadius: '20px', cursor: 'pointer', fontWeight: 'bold' }}
+              style={{ background: isWorking ? '#34a853' : '#ff6600', color: 'white', border: 'none', padding: '0.4rem 1rem', borderRadius: '20px', cursor: 'pointer', fontWeight: 'bold' }}
             >
-              {isWorking ? 'ON DUTY' : 'OFF DUTY'}
+              {isWorking ? 'ACTIVE' : 'START RIDE'}
             </button>
           </div>
           <p style={{ fontSize: '0.65rem', color: '#888', marginTop: '0.5rem' }}>
-            {isWorking ? 'GPS tracking is active. Fleet managers can see your location.' : 'GPS tracking is disabled.'}
+            {isWorking ? 'Rental is active. Shop manager is monitoring battery & location.' : 'Click START RIDE to begin your session.'}
           </p>
         </div>
 
-        <input placeholder="Origin" style={{ width: '100%', marginBottom: '0.5rem' }} onChange={e => setTrip({...trip, origin: e.target.value})} />
-        <input placeholder="Dest" style={{ width: '100%', marginBottom: '1rem' }} onChange={e => setTrip({...trip, destination: e.target.value})} />
-        <button onClick={() => setIsLoading(true)} style={{ width: '100%', padding: '0.8rem', background: '#ff6600', border: 'none', borderRadius: '8px', color: 'white', fontWeight: 'bold' }}>Find Route</button>
+        <div style={{ marginBottom: '1rem' }}>
+          <label style={{ color: '#666', fontSize: '0.7rem', textTransform: 'uppercase' }}>Plan Your Route</label>
+          <input placeholder="Where to?" style={{ width: '100%', marginTop: '0.5rem', marginBottom: '1rem' }} onChange={e => setTrip({...trip, destination: e.target.value})} />
+          <button onClick={() => setIsLoading(true)} style={{ width: '100%', padding: '0.8rem', background: '#333', border: '1px solid #444', borderRadius: '8px', color: 'white', fontWeight: 'bold' }}>Check Range</button>
+        </div>
         
         {metrics && (
           <div style={{ marginTop: '2rem', borderTop: '1px solid #333', paddingTop: '1rem' }}>
-            <div style={{ fontSize: '0.8rem', color: '#888' }}>ESTIMATED RANGE</div>
-            <h2 style={{ color: 'white' }}>{metrics.batteryPercentUsed}% Left</h2>
+            <div style={{ fontSize: '0.8rem', color: '#888' }}>ESTIMATED BATTERY AT DESTINATION</div>
+            <h2 style={{ color: metrics.batteryPercentUsed < 20 ? '#ff3333' : '#34a853' }}>{metrics.batteryPercentUsed}% Left</h2>
+            <p style={{ fontSize: '0.65rem', color: '#666' }}>*Based on current wind and elevation.</p>
           </div>
         )}
+
+        <div style={{ marginTop: 'auto', paddingTop: '2rem' }}>
+          <button 
+             onClick={() => { setTrip({ origin: '', destination: orgData?.address || 'Shop Location' }); setIsLoading(true); }}
+             style={{ width: '100%', padding: '0.8rem', background: 'transparent', border: '1px solid #ff6600', color: '#ff6600', borderRadius: '8px', fontWeight: 'bold' }}
+          >
+            Return to Shop
+          </button>
+        </div>
       </aside>
       <main style={{ flex: 1 }}>
         <GoogleMap mapContainerStyle={{ width: '100%', height: '100%' }} center={{lat: 40.71, lng: -74.00}} zoom={13} onLoad={m => {mapRef.current = m}}>
-          {trip.origin && trip.destination && isLoading && <DirectionsService options={{ origin: trip.origin, destination: trip.destination, travelMode: google.maps.TravelMode.BICYCLING }} callback={directionsCallback} />}
+          {trip.destination && isLoading && <DirectionsService options={{ origin: 'current location', destination: trip.destination, travelMode: google.maps.TravelMode.BICYCLING }} callback={directionsCallback} />}
           {response && <DirectionsRenderer options={{ directions: response }} />}
         </GoogleMap>
       </main>
@@ -130,28 +148,28 @@ function MapHome() {
       <div style={{ padding: '1rem 2rem', background: '#111', borderBottom: '1px solid #333', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h1 style={{ color: '#ff6600', margin: 0, fontSize: '1.2rem' }}>FLEET DASHBOARD</h1>
-          <div style={{ color: '#888', fontSize: '0.7rem' }}>Live oversight • {fleetRiders.length} active units</div>
+          <div style={{ color: '#888', fontSize: '0.7rem' }}>Live oversight • {fleetBikes.length} active units</div>
         </div>
         <div style={{ display: 'flex', gap: '2rem' }}>
-           <div style={{ textAlign: 'center' }}><div style={{ fontSize: '0.6rem', color: '#666' }}>ACTIVE</div><div style={{ fontWeight: '900', color: 'white' }}>{fleetRiders.length}</div></div>
-           <div style={{ textAlign: 'center' }}><div style={{ fontSize: '0.6rem', color: '#666' }}>IDLE</div><div style={{ fontWeight: '900', color: '#ffcc00' }}>0</div></div>
+           <div style={{ textAlign: 'center' }}><div style={{ fontSize: '0.6rem', color: '#666' }}>ACTIVE</div><div style={{ fontWeight: '900', color: 'white' }}>{fleetBikes.filter(b => b.status === 'rented').length}</div></div>
+           <div style={{ textAlign: 'center' }}><div style={{ fontSize: '0.6rem', color: '#666' }}>AVAILABLE</div><div style={{ fontWeight: '900', color: '#34a853' }}>{fleetBikes.filter(b => b.status === 'available').length}</div></div>
         </div>
       </div>
       <div style={{ flex: 1, display: 'flex' }}>
         <aside style={{ width: '300px', padding: '1.5rem', background: '#111', borderRight: '1px solid #333', overflowY: 'auto' }}>
-          <h2 style={{ fontSize: '0.8rem', color: '#666', textTransform: 'uppercase', marginBottom: '1rem' }}>Rider Status</h2>
-          {fleetRiders.length === 0 ? (
-            <div style={{ color: '#444', textAlign: 'center', marginTop: '2rem' }}>Waiting for riders to clock in...</div>
+          <h2 style={{ fontSize: '0.8rem', color: '#666', textTransform: 'uppercase', marginBottom: '1rem' }}>Unit Status</h2>
+          {fleetBikes.length === 0 ? (
+            <div style={{ color: '#444', textAlign: 'center', marginTop: '2rem' }}>No bikes connected to fleet.</div>
           ) : (
-            fleetRiders.map(r => (
-              <div key={r.id} style={{ background: '#1a1a1a', padding: '1rem', borderRadius: '12px', marginBottom: '0.8rem', border: '1px solid #222' }}>
+            fleetBikes.map(b => (
+              <div key={b.id} style={{ background: '#1a1a1a', padding: '1rem', borderRadius: '12px', marginBottom: '0.8rem', border: '1px solid #222' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ fontWeight: 'bold', color: 'white' }}>{r.name}</div>
-                  <div style={{ fontSize: '0.6rem', padding: '2px 6px', background: r.status === 'delivering' ? '#ff6600' : '#34a853', borderRadius: '4px', color: 'white', textTransform: 'uppercase' }}>{r.status}</div>
+                  <div style={{ fontWeight: 'bold', color: 'white' }}>{b.unitName}</div>
+                  <div style={{ fontSize: '0.6rem', padding: '2px 6px', background: b.status === 'rented' ? '#ff6600' : '#34a853', borderRadius: '4px', color: 'white', textTransform: 'uppercase' }}>{b.status}</div>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.5rem' }}>
-                  <div style={{ fontSize: '0.75rem', color: r.battery < 20 ? '#ff3333' : '#34a853' }}>Battery: {r.battery}%</div>
-                  <div style={{ fontSize: '0.7rem', color: '#666' }}>{new Date(r.lastSeen).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                  <div style={{ fontSize: '0.75rem', color: b.battery < 20 ? '#ff3333' : '#34a853' }}>Battery: {b.battery}%</div>
+                  <div style={{ fontSize: '0.7rem', color: '#666' }}>{new Date(b.lastSeen).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
                 </div>
               </div>
             ))
@@ -159,12 +177,12 @@ function MapHome() {
         </aside>
         <main style={{ flex: 1 }}>
           <GoogleMap mapContainerStyle={{ width: '100%', height: '100%' }} center={{lat: 40.71, lng: -74.00}} zoom={12}>
-            {fleetRiders.map(r => (
+            {fleetBikes.map(b => (
               <Marker 
-                key={r.id} 
-                position={r.position} 
-                label={{ text: `${r.name}`, color: 'white', fontSize: '11px', fontWeight: 'bold' }} 
-                icon={{ path: google.maps.SymbolPath.CIRCLE, fillColor: r.battery < 20 ? '#ff3333' : '#34a853', fillOpacity: 1, scale: 8, strokeColor: 'white', strokeWeight: 2 }}
+                key={b.id} 
+                position={b.position} 
+                label={{ text: `${b.unitName}`, color: 'white', fontSize: '11px', fontWeight: 'bold' }} 
+                icon={{ path: google.maps.SymbolPath.CIRCLE, fillColor: b.battery < 20 ? '#ff3333' : '#34a853', fillOpacity: 1, scale: 8, strokeColor: 'white', strokeWeight: 2 }}
               />
             ))}
           </GoogleMap>
@@ -179,7 +197,7 @@ function MapHome() {
         <>
           <SEO />
           <NavBar user={user} onShowInstall={() => {}} onShowAuth={() => setShowAuthModal(true)} />
-          {userRole === 'fleet' ? <FleetView /> : <RiderView />}
+          {userRole === 'fleet' ? <FleetView /> : <CustomerView />}
           {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
           {showWelcomeModal && <WelcomeModal onClose={() => setShowWelcomeModal(false)} />}
           {showToSPage && <TermsOfService onClose={() => setShowToSPage(false)} />}
