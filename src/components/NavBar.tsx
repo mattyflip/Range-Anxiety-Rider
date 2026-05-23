@@ -85,7 +85,7 @@ const NavBar: React.FC<NavBarProps> = ({ user, onShowInstall, onShowAuth }) => {
           <Link to="/" style={{ color: '#ff6600', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Fleet Map</Link>
           <Link to="/analytics" style={{ color: '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Analytics</Link>
           <Link to="/explore" style={{ color: '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Chargers</Link>
-          <Link to="/how-it-works" style={{ color: '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Physics Engine</Link>
+          <Link to="/about" style={{ color: '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>About</Link>
           {user && <Link to={`/profile/me`} style={{ color: '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Org Settings</Link>}
           
           {isSuperAdmin && (

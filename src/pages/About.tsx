@@ -3,22 +3,15 @@ import { auth, db } from '../firebase'
 import { getDoc, doc } from 'firebase/firestore'
 import NavBar from '../components/NavBar'
 import AuthModal from '../components/AuthModal'
-import AdBanner from '../components/AdBanner'
 import SEO from '../components/SEO'
-import wattSonDiagram from '../assets/watt-son-how-it-works.png'
 
 const About: React.FC = () => {
   const [user, setUser] = useState<any>(null);
-  const [userData, setUserData] = useState<any>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
 
   useEffect(() => {
     const unsub = auth.onAuthStateChanged(async u => {
       setUser(u);
-      if (u) {
-        const snap = await getDoc(doc(db, "users", u.uid));
-        if (snap.exists()) setUserData(snap.data());
-      }
     });
     return () => unsub();
   }, []);
@@ -26,9 +19,9 @@ const About: React.FC = () => {
   return (
     <div className="container" style={{ minHeight: '100vh', background: '#121212', color: 'white' }}>
       <SEO 
-        title="How It Works" 
-        description="The science behind conquering range anxiety. Learn how our physics-based model calculates your e-bike's battery life using wind, elevation, and rider weight."
-        url="https://rangeanxiety.app/how-it-works"
+        title="About" 
+        description="Learn more about Range Anxiety Rider, the professional fleet and rental management platform for electric bikes."
+        url="https://range-anxiety-rider.vercel.app/about"
       />
       <NavBar 
         user={user} 
@@ -36,76 +29,31 @@ const About: React.FC = () => {
         onShowAuth={() => setShowAuthModal(true)} 
       />
 
-      <main style={{ padding: '4rem 1.5rem', maxWidth: '800px', margin: '0 auto' }}>
-        <header style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <h1 style={{ fontSize: 'clamp(2rem, 8vw, 3.5rem)', fontWeight: 900, color: '#ff6600', margin: 0, lineHeight: '1.1', textTransform: 'uppercase' }}>Conquer Range Anxiety</h1>
+      <main style={{ padding: '4rem 1.5rem', maxWidth: '800px', margin: '0 auto', textAlign: 'center' }}>
+        <header style={{ marginBottom: '2rem' }}>
+          <h1 style={{ fontSize: 'clamp(2rem, 8vw, 3.5rem)', fontWeight: 900, color: '#ff6600', margin: 0, lineHeight: '1.1', textTransform: 'uppercase' }}>Range Anxiety Rider</h1>
         </header>
 
-        <section style={{ textAlign: 'center', marginBottom: '5rem' }}>
-          <p style={{ fontSize: '1.1rem', color: '#888', maxWidth: '600px', margin: '0 auto 1.5rem auto' }}>
-            The most accurate physics-based range estimator for electric bikes, Sur-Rons, and electric motorcycles.
+        <section style={{ marginBottom: '5rem' }}>
+          <p style={{ fontSize: '1.2rem', color: '#888', maxWidth: '600px', margin: '0 auto 1.5rem auto', lineHeight: '1.6' }}>
+            The professional fleet and rental management platform optimized for electric bike shops and delivery services.
           </p>
-          <div style={{ maxWidth: '700px', margin: '0 auto', borderRadius: '24px', overflow: 'hidden', border: '1px solid #333', boxShadow: '0 20px 40px rgba(0,0,0,0.5)' }}>
-            <img src={wattSonDiagram} alt="Watt-son's Guide to Precise Range" style={{ width: '100%', display: 'block' }} />
-          </div>
-        </section>
-
-        <section style={{ marginBottom: '4rem' }}>
-          <h2 style={{ color: 'white', borderLeft: '4px solid #ff6600', paddingLeft: '1rem', marginBottom: '1.5rem' }}>The Science of Range</h2>
-          <p style={{ lineHeight: 1.8, color: '#ccc' }}>
-            Unlike basic calculators that only look at Amp Hours, Range Anxiety uses a complex physics model to determine your actual battery usage. We account for:
-          </p>
-          <ul style={{ marginTop: '1.5rem', color: '#ccc', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem', padding: 0, listStyle: 'none' }}>
-            <li>💨 <strong>Air Resistance:</strong> Drag increases exponentially with speed.</li>
-            <li>⛰️ <strong>Elevation Change:</strong> Climbing uses significantly more Wh than flat ground.</li>
-            <li>⚖️ <strong>Total Mass:</strong> Combined weight of rider and bike.</li>
-            <li>🔋 <strong>Voltage Sag:</strong> Battery efficiency drops as voltage decreases.</li>
-          </ul>
         </section>
 
         <div style={{ background: '#1a1a1a', padding: '2rem', borderRadius: '24px', border: '1px solid #333', marginBottom: '4rem' }}>
-          <h2 style={{ marginTop: 0, color: '#ff6600' }}>Why trust us?</h2>
+          <h2 style={{ marginTop: 0, color: '#ff6600' }}>Our Mission</h2>
           <p style={{ color: '#aaa', lineHeight: 1.6 }}>
-            Our model has been tuned against real-world GPS data from thousands of miles of riding on popular platforms like the Sur-Ron Light Bee, Talaria Sting, and Specialized Turbo Levo. Whether you're commuting or shredding trails, our goal is to ensure you never push your bike home.
+            We provide the tools necessary for e-bike shops to manage their rental inventory, track live unit status, and help customers conquer range anxiety with precision data.
           </p>
         </div>
 
-        <section style={{ marginBottom: '4rem' }}>
-          <h2 style={{ color: 'white', borderLeft: '4px solid #ff6600', paddingLeft: '1rem', marginBottom: '1.5rem' }}>Advanced Features</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '2rem', marginTop: '2rem' }}>
-            <div>
-              <h3 style={{ color: 'white' }}>Live Navigation</h3>
-              <p style={{ color: '#777', fontSize: '0.9rem' }}>Turn-by-turn voice directions optimized for e-bike paths and trails.</p>
-            </div>
-            <div>
-              <h3 style={{ color: 'white' }}>Group Rides</h3>
-              <p style={{ color: '#777', fontSize: '0.9rem' }}>See your friends on the map in real-time and share planned routes instantly.</p>
-            </div>
-            <div>
-              <h3 style={{ color: 'white' }}>Charger Map</h3>
-              <p style={{ color: '#777', fontSize: '0.9rem' }}>Find public charging stations and cafes to top off mid-ride.</p>
-            </div>
-          </div>
-        </section>
-
-        <AdBanner isPro={userData?.isPro || false} />
-
         <div style={{ textAlign: 'center', marginTop: '6rem', padding: '4rem 0', borderTop: '1px solid #222' }}>
-          <h2 style={{ marginBottom: '2rem' }}>Ready to plan your next trip?</h2>
-          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <button 
-              onClick={() => window.location.href = '/'}
-              style={{ padding: '1rem 2rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold', fontSize: '1.1rem', cursor: 'pointer', flex: '1', minWidth: '200px', maxWidth: '300px' }}
-            >
-              Launch Map
-            </button>
-            <button 
-              onClick={() => window.location.href = '/faq'}
-              style={{ padding: '1rem 2rem', background: '#333', color: 'white', border: '1px solid #444', borderRadius: '12px', fontWeight: 'bold', fontSize: '1.1rem', cursor: 'pointer', flex: '1', minWidth: '200px', maxWidth: '300px' }}
-            >
-              Read FAQs
-            </button>
-          </div>
+          <button 
+            onClick={() => window.location.href = '/'}
+            style={{ padding: '1rem 2rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold', fontSize: '1.1rem', cursor: 'pointer', minWidth: '200px' }}
+          >
+            Go to Map
+          </button>
         </div>
       </main>
 

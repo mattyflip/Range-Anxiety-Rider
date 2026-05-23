@@ -16,7 +16,7 @@ function App() {
     <Router>
       <Routes>
         <Route path="/" element={<MapHome />} />
-        <Route path="/how-it-works" element={<About />} />
+        <Route path="/about" element={<About />} />
         <Route path="/faq" element={<FAQ />} />
         <Route path="/explore" element={<ExploreMap />} />
         <Route path="/feed" element={<Feed />} />
