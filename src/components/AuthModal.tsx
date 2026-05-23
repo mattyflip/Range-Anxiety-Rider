@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { auth, db } from '../firebase'
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth'
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth'
 import { doc, setDoc, serverTimestamp, getDocs, collection, query, where } from 'firebase/firestore'
 import TermsOfService from './TermsOfService'
 import { US_STATES, OTHER_REGIONS, calculateAge, getEbikeSafetyInfo } from '../utils/ebikeLaws'
@@ -22,6 +22,23 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
   const [agreedToToS, setAgreedToToS] = useState(false);
   const [showToSPage, setShowToSPage] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+
+  const handleForgotPassword = async () => {
+    if (!authEmail) {
+      setError("Please enter your email address first.");
+      return;
+    }
+    setError(null);
+    setMessage(null);
+    try {
+      await sendPasswordResetEmail(auth, authEmail);
+      setMessage("Password reset email sent! Check your inbox.");
+    } catch (err: any) {
+      console.error("Reset password error:", err);
+      setError(err.message);
+    }
+  };
 
   const handleAuth = async () => {
     setError(null);
@@ -109,6 +126,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
         <h2 style={{ color: '#ff6600', marginBottom: '1.5rem', textAlign: 'center' }}>{isRegistering ? 'Create Account' : 'Sign In'}</h2>
         
         {error && <div style={{ color: '#ff4444', fontSize: '0.8rem', marginBottom: '1rem', textAlign: 'center', background: 'rgba(255,68,68,0.1)', padding: '0.5rem', borderRadius: '4px' }}>{error}</div>}
+        {message && <div style={{ color: '#34a853', fontSize: '0.8rem', marginBottom: '1rem', textAlign: 'center', background: 'rgba(52,168,83,0.1)', padding: '0.5rem', borderRadius: '4px' }}>{message}</div>}
 
         {isRegistering && (
           <>
@@ -176,6 +194,11 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
         </button>
         
         <p style={{ marginTop: '1rem', textAlign: 'center', fontSize: '0.8rem', color: '#888' }}>
+          {!isRegistering && (
+            <button onClick={handleForgotPassword} style={{ background: 'none', border: 'none', color: '#ff6600', cursor: 'pointer', textDecoration: 'underline', marginRight: '1rem' }}>
+              Forgot Password?
+            </button>
+          )}
           {isRegistering ? 'Already have an account?' : 'Need an account?'} 
           <button onClick={() => setIsRegistering(!isRegistering)} style={{ background: 'none', border: 'none', color: '#ff6600', cursor: 'pointer', textDecoration: 'underline', marginLeft: '0.3rem' }}>
             {isRegistering ? 'Sign In' : 'Register Now'}
