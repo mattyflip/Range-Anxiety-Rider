@@ -20,18 +20,28 @@ const Settings: React.FC = () => {
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
+      console.log("Auth state changed:", u?.uid);
       if (u) {
         setUser(u);
         setEmail(u.email || '');
-        const snap = await getDoc(doc(db, "users", u.uid));
-        if (snap.exists()) {
-          const data = snap.data();
-          setUserData(data);
-          setUsername(data.username || '');
-          setBio(data.bio || '');
+        try {
+          const snap = await getDoc(doc(db, "users", u.uid));
+          if (snap.exists()) {
+            const data = snap.data();
+            setUserData(data);
+            setUsername(data.username || '');
+            setBio(data.bio || '');
+          } else {
+            console.warn("User document does not exist in Firestore.");
+          }
+        } catch (err) {
+          console.error("Error fetching user settings:", err);
+          setError("Failed to load user profile. Please try refreshing.");
+        } finally {
+          setLoading(false);
         }
-        setLoading(false);
       } else {
+        console.log("No user found, redirecting to home.");
         navigate('/');
       }
     });
