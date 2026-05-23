@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Range Anxiety</string>
+    <string name="title_activity_main">Range Anxiety</string>
+    <string name="package_name">com.ebikeking.rangeanxiety</string>
+    <string name="custom_url_scheme">com.ebikeking.rangeanxiety</string>
+</resources>

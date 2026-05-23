@@ -548,7 +548,7 @@ const Profile: React.FC = () => {
                         </div>
                         <div style={{ padding: '0.8rem' }}>
                           <div style={{ fontWeight: 'bold', color: 'white', fontSize: '0.85rem' }}>{bike.name}</div>
-                          <div style={{ fontSize: '0.7rem', color: '#888' }}>{bike.specs.voltage}V {bike.specs.capacityAh}Ah</div>
+                          <div style={{ fontSize: '0.7rem', color: '#888' }}>Vehicle Configuration Saved</div>
                         </div>
                         {canEdit && <button onClick={() => removeBike(bike)} style={{ position: 'absolute', bottom: '0.5rem', right: '0.5rem', background: 'none', border: 'none', color: isAdmin ? '#ff4444' : '#444', cursor: 'pointer', fontSize: '0.8rem' }}>✕</button>}
                       </div>

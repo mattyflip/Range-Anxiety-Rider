@@ -279,24 +279,24 @@ const Settings: React.FC = () => {
           </button>
         </section>
 
-        {/* Garage Management */}
+        {/* Vehicle Management */}
         <section className="card" style={{ background: '#1a1a1a', padding: '2rem', borderRadius: '24px', border: '1px solid #333', marginBottom: '2rem' }}>
-          <h2 style={{ color: '#ff6600', fontSize: '1.2rem', marginBottom: '1.5rem' }}>Your Garage</h2>
+          <h2 style={{ color: '#ff6600', fontSize: '1.2rem', marginBottom: '1.5rem' }}>Vehicle Profiles</h2>
           
           {/* Add Bike Form */}
           <div style={{ background: '#222', padding: '1.5rem', borderRadius: '16px', marginBottom: '2rem', border: '1px dashed #444' }}>
-            <h3 style={{ color: 'white', fontSize: '0.9rem', marginBottom: '1rem' }}>Add New Bike</h3>
+            <h3 style={{ color: 'white', fontSize: '0.9rem', marginBottom: '1rem' }}>Add New Profile</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <input 
                 type="text" 
-                placeholder="Bike Name (e.g. Sur-Ron X)" 
+                placeholder="Vehicle Name (e.g. Fleet Unit 01)" 
                 value={newBikeName} 
                 onChange={e => setNewBikeName(e.target.value)}
                 style={{ width: '100%', padding: '0.8rem', background: '#111', border: '1px solid #333', borderRadius: '8px', color: 'white' }}
               />
               <div style={{ display: 'flex', gap: '1rem' }}>
                 <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', color: '#666', fontSize: '0.7rem', marginBottom: '0.3rem' }}>Voltage (V)</label>
+                  <label style={{ display: 'block', color: '#666', fontSize: '0.7rem', marginBottom: '0.3rem' }}>Nominal Voltage (V)</label>
                   <input 
                     type="number" 
                     value={newBikeVolts} 
@@ -318,7 +318,7 @@ const Settings: React.FC = () => {
                 onClick={handleAddBike}
                 style={{ padding: '0.8rem', background: '#333', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
               >
-                + Add to Garage
+                + Save Vehicle Profile
               </button>
             </div>
           </div>
@@ -329,7 +329,7 @@ const Settings: React.FC = () => {
                 <div key={bike.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#222', padding: '1rem', borderRadius: '12px' }}>
                   <div>
                     <div style={{ color: 'white', fontWeight: 'bold' }}>{bike.name}</div>
-                    <div style={{ color: '#888', fontSize: '0.75rem' }}>{bike.specs.voltage}V {bike.specs.capacityAh}Ah</div>
+                    <div style={{ color: '#888', fontSize: '0.75rem' }}>Saved Profile</div>
                   </div>
                   <button 
                     onClick={() => handleDeleteBike(bike.id)}

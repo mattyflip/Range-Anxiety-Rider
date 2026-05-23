@@ -1,7 +1,7 @@
 {
-  "name": "range-anxiety",
+  "name": "range-anxiety-rider",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0-b2b-alpha",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,6 +11,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@capacitor/android": "^8.3.4",
+    "@capacitor/cli": "^8.3.4",
+    "@capacitor/core": "^8.3.4",
     "@react-google-maps/api": "^2.20.8",
     "@stripe/stripe-js": "^9.5.0",
     "axios": "^1.16.1",

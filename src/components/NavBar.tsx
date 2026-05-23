@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { db, auth } from '../firebase'
 import { signOut } from 'firebase/auth'
-import { collection, query, where, onSnapshot } from 'firebase/firestore'
+import { collection, query, where, onSnapshot, doc, getDoc, updateDoc } from 'firebase/firestore'
 
 interface NavBarProps {
   user: any;
@@ -13,9 +13,13 @@ interface NavBarProps {
 const NavBar: React.FC<NavBarProps> = ({ user, onShowInstall, onShowAuth }) => {
   const navigate = useNavigate();
   const [unreadCount, setUnreadCount] = useState(0);
+  const [userData, setUserData] = useState<any>(null);
 
   useEffect(() => {
-    if (!user) return; // Don't explicitly zero out state on unmount if it doesn't matter
+    if (!user) return;
+    getDoc(doc(db, "users", user.uid)).then(snap => {
+      if (snap.exists()) setUserData(snap.data());
+    });
 
     const q = query(
       collection(db, `users/${user.uid}/notifications`),
@@ -28,6 +32,16 @@ const NavBar: React.FC<NavBarProps> = ({ user, onShowInstall, onShowAuth }) => {
 
     return () => unsubscribe();
   }, [user]);
+
+  const isSuperAdmin = user?.email?.toLowerCase() === 'mattyfliptv@gmail.com';
+
+  const toggleRole = async () => {
+    if (!user || !isSuperAdmin) return;
+    const newRole = userData?.role === 'fleet' ? 'rider' : 'fleet';
+    await updateDoc(doc(db, "users", user.uid), { role: newRole });
+    setUserData({ ...userData, role: newRole });
+    window.location.reload(); // Refresh to trigger the dashboard switch
+  };
 
   const handleLogout = async () => {
     try {
@@ -68,12 +82,30 @@ const NavBar: React.FC<NavBarProps> = ({ user, onShowInstall, onShowAuth }) => {
             paddingBottom: '8px'
           }}
         >
-          <Link to="/" style={{ color: '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Map</Link>
-          <Link to="/explore" style={{ color: '#ff6600', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Explore</Link>
-          <Link to="/how-it-works" style={{ color: '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Info</Link>
-          <Link to="/feed" style={{ color: '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Feed</Link>
-          <Link to="/forum" style={{ color: '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Forum</Link>
-          {user && <Link to={`/profile/me`} style={{ color: '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Profile</Link>}
+          <Link to="/" style={{ color: '#ff6600', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Fleet Map</Link>
+          <Link to="/analytics" style={{ color: '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Analytics</Link>
+          <Link to="/explore" style={{ color: '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Chargers</Link>
+          <Link to="/how-it-works" style={{ color: '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Physics Engine</Link>
+          {user && <Link to={`/profile/me`} style={{ color: '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Org Settings</Link>}
+          
+          {isSuperAdmin && (
+            <button 
+              onClick={toggleRole}
+              style={{ 
+                background: 'rgba(255,102,0,0.1)', 
+                border: '1px solid #ff6600', 
+                color: '#ff6600', 
+                borderRadius: '20px', 
+                padding: '0.3rem 0.8rem', 
+                fontSize: '0.65rem', 
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              Switch: {userData?.role === 'fleet' ? 'Rider View' : 'Fleet View'}
+            </button>
+          )}
           
           {user && (
             <button 
