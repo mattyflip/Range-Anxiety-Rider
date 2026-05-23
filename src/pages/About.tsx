@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { auth, db } from '../firebase'
-import { getDoc, doc } from 'firebase/firestore'
+import { auth } from '../firebase'
 import NavBar from '../components/NavBar'
 import AuthModal from '../components/AuthModal'
 import SEO from '../components/SEO'
