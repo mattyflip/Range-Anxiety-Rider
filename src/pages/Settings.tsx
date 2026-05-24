@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { auth, db } from '../firebase'
 import { onAuthStateChanged, updateEmail, deleteUser, signOut } from 'firebase/auth'
-import { doc, updateDoc, deleteDoc, query, collection, onSnapshot, setDoc } from 'firebase/firestore'
+import { doc, updateDoc, deleteDoc, query, collection, onSnapshot, setDoc, getDoc } from 'firebase/firestore'
 import NavBar from '../components/NavBar'
 
 const Settings: React.FC = () => {
@@ -21,15 +21,15 @@ const Settings: React.FC = () => {
   useEffect(() => {
     const unsubAuth = onAuthStateChanged(auth, (u) => {
       console.log("Auth state changed:", u?.uid);
-      console.log("Firebase Project ID:", db.app.options.projectId);
       if (u) {
+        window.alert("Connected to Project: " + db.app.options.projectId);
         setUser(u);
         setEmail(u.email || '');
         
         // DIAGNOSTIC: Try to read public document
         getDoc(doc(db, "system", "status")).then(() => {
           console.log("DIAGNOSTIC: Public read SUCCESS (Rules are active)");
-        }).catch(err => {
+        }).catch((err: any) => {
           console.error("DIAGNOSTIC: Public read FAILED. This usually means rules are NOT deployed or project ID is wrong.", err);
         });
 
