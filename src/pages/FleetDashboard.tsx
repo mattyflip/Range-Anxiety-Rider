@@ -20,6 +20,9 @@ const FleetDashboard = () => {
   const [userRole, setUserRole] = useState<'rider' | 'fleet'>('rider');
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [fleetBikes, setFleetBikes] = useState<any[]>([]);
+  const [suggestedRoutes, setSuggestedRoutes] = useState<any[]>([]);
+  const [newRouteStops, setNewRouteStops] = useState<string[]>(['']);
+  const [newRouteName, setNewRouteName] = useState('');
   const [chargers, setChargers] = useState<any[]>([]);
   const [showChargers, setShowChargers] = useState(false);
   const [currentLocation, setCurrentLocation] = useState<google.maps.LatLngLiteral | null>(null);
@@ -77,14 +80,45 @@ const FleetDashboard = () => {
     }
   };
 
-  // Fleet Manager: Listen to live bike updates
+  // Fleet Manager: Listen to live bike updates & suggested routes
   useEffect(() => {
     if (userRole !== 'fleet' || !userData?.orgId) return;
-    const q = query(collection(db, `organizations/${userData.orgId}/live_units`));       
-    return onSnapshot(q, (snapshot) => {
+    
+    const qBikes = query(collection(db, `organizations/${userData.orgId}/live_units`));       
+    const unsubBikes = onSnapshot(qBikes, (snapshot) => {
       setFleetBikes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
+
+    const qRoutes = query(collection(db, `organizations/${userData.orgId}/suggested_routes`));
+    const unsubRoutes = onSnapshot(qRoutes, (snapshot) => {
+      setSuggestedRoutes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+
+    return () => { unsubBikes(); unsubRoutes(); };
   }, [userRole, userData?.orgId]);
+
+  const handleSaveRoute = async () => {
+    if (!newRouteName.trim() || newRouteStops.filter(s => s).length === 0 || !userData?.orgId) return;
+    try {
+      const { addDoc, collection } = await import('firebase/firestore');
+      await addDoc(collection(db, `organizations/${userData.orgId}/suggested_routes`), {
+        name: newRouteName,
+        stops: newRouteStops.filter(s => s),
+        createdAt: new Date().toISOString()
+      });
+      setNewRouteName('');
+      setNewRouteStops(['']);
+      alert("Suggested route saved!");
+    } catch (e) { console.error(e); }
+  };
+
+  const handleDeleteRoute = async (id: string) => {
+    if (!window.confirm("Delete this suggested route?") || !userData?.orgId) return;
+    try {
+      const { deleteDoc, doc } = await import('firebase/firestore');
+      await deleteDoc(doc(db, `organizations/${userData.orgId}/suggested_routes`, id));
+    } catch (e) { console.error(e); }
+  };
 
   useEffect(() => {
     if (navigator.geolocation) {
@@ -116,22 +150,65 @@ const FleetDashboard = () => {
         <div style={{ flex: 1, display: 'flex' }}>
           <aside style={{ width: '300px', padding: '1.5rem', background: '#111', borderRight: '1px solid #333', overflowY: 'auto' }}>
             <h2 style={{ fontSize: '0.8rem', color: '#666', textTransform: 'uppercase', marginBottom: '1rem' }}>Unit Status</h2>
-            {fleetBikes.length === 0 ? (
-              <div style={{ color: '#444', textAlign: 'center', marginTop: '2rem' }}>No bikes connected to fleet.</div>
-            ) : (
-              fleetBikes.map(b => (
-                <div key={b.id} style={{ background: '#1a1a1a', padding: '1rem', borderRadius: '12px', marginBottom: '0.8rem', border: '1px solid #222' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ fontWeight: 'bold', color: 'white' }}>{b.unitName}</div>
-                    <div style={{ fontSize: '0.6rem', padding: '2px 6px', background: b.status === 'rented' ? '#ff6600' : '#34a853', borderRadius: '4px', color: 'white', textTransform: 'uppercase' }}>{b.status}</div>
+            <div style={{ marginBottom: '2.5rem' }}>
+              {fleetBikes.length === 0 ? (
+                <div style={{ color: '#444', textAlign: 'center', marginTop: '1rem', fontSize: '0.8rem' }}>No bikes active.</div>
+              ) : (
+                fleetBikes.map(b => (
+                  <div key={b.id} style={{ background: '#1a1a1a', padding: '1rem', borderRadius: '12px', marginBottom: '0.8rem', border: '1px solid #222' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ fontWeight: 'bold', color: 'white' }}>{b.unitName}</div>
+                      <div style={{ fontSize: '0.6rem', padding: '2px 6px', background: b.status === 'rented' ? '#ff6600' : '#34a853', borderRadius: '4px', color: 'white', textTransform: 'uppercase' }}>{b.status}</div>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.5rem' }}>
+                      <div style={{ fontSize: '0.75rem', color: b.battery < 20 ? '#ff3333' : '#34a853' }}>Battery: {b.battery}%</div>
+                      <div style={{ fontSize: '0.7rem', color: '#666' }}>{new Date(b.lastSeen).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                    </div>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.5rem' }}>
-                    <div style={{ fontSize: '0.75rem', color: b.battery < 20 ? '#ff3333' : '#34a853' }}>Battery: {b.battery}%</div>
-                    <div style={{ fontSize: '0.7rem', color: '#666' }}>{new Date(b.lastSeen).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
-                  </div>
+                ))
+              )}
+            </div>
+
+            <h2 style={{ fontSize: '0.8rem', color: '#666', textTransform: 'uppercase', marginBottom: '1rem' }}>Suggested Routes</h2>
+            <div style={{ background: '#1a1a1a', padding: '1rem', borderRadius: '16px', border: '1px dashed #333', marginBottom: '1.5rem' }}>
+              <input 
+                placeholder="Route Name (e.g. Mountain Loop)" 
+                value={newRouteName}
+                onChange={e => setNewRouteName(e.target.value)}
+                style={{ width: '100%', background: '#111', border: '1px solid #333', color: 'white', padding: '0.6rem', borderRadius: '8px', fontSize: '0.75rem', marginBottom: '0.8rem' }}
+              />
+              {newRouteStops.map((stop, i) => (
+                <div key={i} style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.5rem' }}>
+                  <input 
+                    placeholder="Stop address..." 
+                    value={stop}
+                    onChange={e => {
+                      const ns = [...newRouteStops];
+                      ns[i] = e.target.value;
+                      setNewRouteStops(ns);
+                    }}
+                    style={{ flex: 1, background: '#111', border: '1px solid #333', color: 'white', padding: '0.5rem', borderRadius: '8px', fontSize: '0.7rem' }}
+                  />
+                  {newRouteStops.length > 1 && (
+                    <button onClick={() => setNewRouteStops(newRouteStops.filter((_, idx) => idx !== i))} style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer' }}>×</button>
+                  )}
                 </div>
-              ))
-            )}
+              ))}
+              <button onClick={() => setNewRouteStops([...newRouteStops, ''])} style={{ width: '100%', background: 'none', border: '1px dashed #444', color: '#666', fontSize: '0.6rem', padding: '0.4rem', borderRadius: '8px', cursor: 'pointer', marginBottom: '0.8rem' }}>+ ADD STOP</button>
+              <button onClick={handleSaveRoute} style={{ width: '100%', background: '#ff6600', color: 'white', border: 'none', padding: '0.6rem', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer' }}>SAVE ROUTE</button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+              {suggestedRoutes.map(r => (
+                <div key={r.id} style={{ background: '#1a1a1a', padding: '0.8rem', borderRadius: '12px', border: '1px solid #222', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <div style={{ color: 'white', fontSize: '0.8rem', fontWeight: 'bold' }}>{r.name}</div>
+                    <div style={{ color: '#666', fontSize: '0.65rem' }}>{r.stops.length} stops</div>
+                  </div>
+                  <button onClick={() => handleDeleteRoute(r.id)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>🗑️</button>
+                </div>
+              ))}
+            </div>
           </aside>
           <main style={{ flex: 1 }}>
             <GoogleMap mapContainerStyle={{ width: '100%', height: '100%' }} center={currentLocation || {lat: 40.71, lng: -74.00}} zoom={12} onLoad={m => {mapRef.current = m}}>

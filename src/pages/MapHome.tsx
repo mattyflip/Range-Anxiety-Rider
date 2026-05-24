@@ -17,10 +17,11 @@ function MapHome() {
   const { isLoaded } = useJsApiLoader({ id: 'google-map-script', googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "", libraries: LIBRARIES });
   const mapRef = useRef<google.maps.Map | null>(null);
 
-  const [trip, setTrip] = useState({ origin: '', destination: '' });
+  const [stops, setStops] = useState<string[]>(['']);
   const [metrics, setMetrics] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [response, setResponse] = useState<any>(null);
+  const [suggestedRoutes, setSuggestedRoutes] = useState<any[]>([]);
   const [user, setUser] = useState<User | null>(null);
   const [userData, setUserData] = useState<any>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -41,6 +42,27 @@ function MapHome() {
       handleFetchChargers();
     }
   }, [location]);
+
+  // Handle external route loading (from Feed, Search, etc)
+  useEffect(() => {
+    const handleRouteLoaded = () => {
+      const saved = localStorage.getItem('ebike_load_route');
+      if (saved) {
+        try {
+          const tripData = JSON.parse(saved);
+          if (tripData.stops) {
+            setStops(tripData.stops);
+            setIsLoading(true);
+            localStorage.removeItem('ebike_load_route');
+          }
+        } catch (e) { console.error("Failed to parse loaded route", e); }
+      }
+    };
+    window.addEventListener('ebike-route-loaded', handleRouteLoaded);
+    // Also check on mount
+    handleRouteLoaded();
+    return () => window.removeEventListener('ebike-route-loaded', handleRouteLoaded);
+  }, []);
 
   // Auth & Org Initialization
   useEffect(() => {
@@ -64,7 +86,14 @@ function MapHome() {
               const bikes = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
               setShopBikes(bikes);
             });
-            return () => bUnsub();
+
+            // Fetch Suggested Routes
+            const rQuery = query(collection(db, `organizations/${d.orgId}/suggested_routes`));
+            const rUnsub = onSnapshot(rQuery, (snap) => {
+              setSuggestedRoutes(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+            });
+
+            return () => { bUnsub(); rUnsub(); };
           }
         }
       } else { setUserData(null); setOrgData(null); setShopBikes([]); }
@@ -124,57 +153,87 @@ function MapHome() {
     }
   }, []);
 
-  const directionsCallback = (res: any, status: any) => {
+  const directionsCallback = async (res: any, status: any) => {
     if (status === 'OK' && res) { 
         setResponse(res); 
         
-        // Physics Engine Calculation
-        const route = res.routes[0].legs[0];
-        const distanceMeters = route.distance.value;
-        const durationSeconds = route.duration.value;
+        // 1. Multi-Stop Metrics Aggregation
+        const totalDistance = res.routes[0].legs.reduce((acc: number, leg: any) => acc + leg.distance.value, 0);
+        const totalDuration = res.routes[0].legs.reduce((acc: number, leg: any) => acc + leg.duration.value, 0);
+        const polyline = res.routes[0].overview_polyline;
+        const startLoc = res.routes[0].legs[0].start_location;
+
         const bike = shopBikes.find(b => b.id === selectedBikeId) || shopBikes[0];
 
         if (bike && bike.specs) {
-          const { voltage, capacityAh, motorWatts, tirePSI, bikeWeightLbs, targetSpeedMph, cycleCount, controllerAmps } = bike.specs;
-          
-          // 1. Constants & Basic Metrics
-          const riderWeightLbs = 180;
-          const totalMassKg = (bikeWeightLbs + riderWeightLbs) * 0.453592;
-          const speedMps = Math.min(distanceMeters / durationSeconds, targetSpeedMph * 0.44704);
-          const gravity = 9.81;
-          
-          // 2. Rolling Resistance (Crr increases as PSI decreases)
-          // Rough approximation: Crr = 0.005 + (50 / PSI) * 0.0001
-          const crr = 0.005 + (50 / (tirePSI || 30)) * 0.0005;
-          const fRoll = crr * totalMassKg * gravity;
-          
-          // 3. Aerodynamic Drag (F_aero = 0.5 * rho * Cd * A * v^2)
-          const rho = 1.225; // Air density kg/m3
-          const cdA = 0.5;   // Drag coefficient * frontal area
-          const fAero = 0.5 * rho * cdA * Math.pow(speedMps, 2);
-          
-          // 4. Total Power (Watts)
-          let powerWatts = (fRoll + fAero) * speedMps;
-          powerWatts = powerWatts / 0.85; // 85% motor/controller efficiency
-          
-          // Power limit based on controller amps (if provided) or motor watts
-          const maxPowerAmps = controllerAmps ? (controllerAmps * voltage) : (motorWatts || 750);
-          powerWatts = Math.min(powerWatts, maxPowerAmps);
-          
-          // 5. Total Energy Consumed (Watt-hours)
-          const energyWh = powerWatts * (durationSeconds / 3600);
-          
-          // 6. Battery Capacity with Degradation
-          // Approximation: 10% loss per 500 cycles
-          const degradationFactor = 1 - ((cycleCount || 0) / 500) * 0.1;
-          const totalWh = voltage * capacityAh * Math.max(0.7, degradationFactor);
-          
-          const percentUsed = Math.min(Math.round((energyWh / totalWh) * 100), 100);
-          setMetrics({ 
-            batteryPercentUsed: 100 - percentUsed,
-            energyWh: energyWh.toFixed(1),
-            estRangeRemaining: ((totalWh - energyWh) / (energyWh / (distanceMeters / 1609.34))).toFixed(1)
-          });
+          // 2. Fetch Environmental Data (Elevation & Wind)
+          try {
+            const [elevRes, weatherRes] = await Promise.all([
+              fetch('/api/elevation', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ encodedPath: polyline })
+              }).then(r => r.json()),
+              fetch(`/api/weather?lat=${startLoc.lat()}&lng=${startLoc.lng()}`).then(r => r.json())
+            ]);
+
+            const { voltage, capacityAh, motorWatts, tirePSI, bikeWeightLbs, targetSpeedMph, cycleCount, controllerAmps } = bike.specs;
+            
+            // 3. Constants & Physics Core
+            const riderWeightLbs = 180;
+            const totalMassKg = (bikeWeightLbs + riderWeightLbs) * 0.453592;
+            const speedMps = Math.min(totalDistance / totalDuration, (targetSpeedMph || 20) * 0.44704);
+            const gravity = 9.81;
+            
+            // 4. Rolling Resistance
+            const crr = 0.005 + (50 / (tirePSI || 30)) * 0.0005;
+            const fRoll = crr * totalMassKg * gravity;
+            
+            // 5. Environmental Resistance
+            // A. Grade Resistance (simplified over total climb)
+            const slope = (elevRes.gain * 0.3048) / totalDistance; 
+            const fGrade = totalMassKg * gravity * Math.max(0, slope);
+
+            // B. Wind Resistance: Calculate relative headwind/tailwind
+            const endLoc = res.routes[0].legs[res.routes[0].legs.length - 1].end_location;
+            const dy = endLoc.lat() - startLoc.lat();
+            const dx = Math.cos(Math.PI / 180 * startLoc.lat()) * (endLoc.lng() - startLoc.lng());
+            const routeBearing = Math.atan2(dx, dy) * 180 / Math.PI;
+            const windMps = (weatherRes.wind_speed || 0) * 0.44704;
+            const angleDeg = (weatherRes.wind_deg - routeBearing + 360) % 360;
+            const headwindMps = windMps * Math.cos(angleDeg * Math.PI / 180);
+            
+            // 6. Aerodynamic Drag (v_relative^2)
+            const rho = 1.225; // Air density kg/m3
+            const cdA = 0.5;   // Drag coefficient * frontal area
+            const effectiveAirSpeedMps = Math.max(0, speedMps + headwindMps);
+            const fAero = 0.5 * rho * cdA * Math.pow(effectiveAirSpeedMps, 2);
+            
+            // 7. Total Power and Energy
+            let powerWatts = (fRoll + fGrade + fAero) * speedMps;
+            powerWatts = powerWatts / 0.85; // Efficiency factor
+            
+            const maxPowerWatts = controllerAmps ? (controllerAmps * voltage) : (motorWatts || 750);
+            powerWatts = Math.min(powerWatts, maxPowerWatts);
+            
+            const energyWh = powerWatts * (totalDuration / 3600);
+            
+            // 8. Capacity with Degradation
+            const degradationFactor = 1 - ((cycleCount || 0) / 500) * 0.1;
+            const totalWh = voltage * capacityAh * Math.max(0.7, degradationFactor);
+            
+            const percentRemaining = Math.max(0, Math.round(100 - (energyWh / totalWh) * 100));
+            setMetrics({ 
+              batteryPercentUsed: percentRemaining,
+              energyWh: energyWh.toFixed(1),
+              estRangeRemaining: ((totalWh - energyWh) / (energyWh / (totalDistance / 1609.34))).toFixed(1),
+              elevationGain: elevRes.gain?.toFixed(0),
+              windInfo: `${weatherRes.wind_speed}mph ${headwindMps > 0 ? 'Headwind' : 'Tailwind'}`
+            });
+          } catch (e) {
+             console.error("Advanced physics calculation failed:", e);
+             setMetrics({ batteryPercentUsed: 75 });
+          }
         } else {
           setMetrics({ batteryPercentUsed: 75 });
         }
@@ -230,23 +289,70 @@ function MapHome() {
              </button>
           </div>
 
-          <div style={{ marginBottom: '1rem' }}>
-            <label style={{ color: '#666', fontSize: '0.7rem', textTransform: 'uppercase' }}>Plan Your Route</label>
-            <input placeholder="Where to?" style={{ width: '100%', marginTop: '0.5rem', marginBottom: '1rem', background: '#111', border: '1px solid #333', color: 'white', padding: '0.8rem', borderRadius: '8px' }} onChange={e => setTrip({...trip, destination: e.target.value})} />
-            <button onClick={() => setIsLoading(true)} style={{ width: '100%', padding: '0.8rem', background: '#333', border: '1px solid #444', borderRadius: '8px', color: 'white', fontWeight: 'bold', cursor: 'pointer' }}>Check Range</button>
+          <div style={{ marginBottom: '1.5rem' }}>
+            <label style={{ color: '#666', fontSize: '0.7rem', textTransform: 'uppercase' }}>Itinerary</label>
+            {stops.map((stop, i) => (
+              <div key={i} style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                <input 
+                  placeholder={i === 0 ? "First stop..." : "Next stop..."}
+                  value={stop} 
+                  onChange={e => {
+                    const newStops = [...stops];
+                    newStops[i] = e.target.value;
+                    setStops(newStops);
+                  }}
+                  style={{ flex: 1, background: '#111', border: '1px solid #333', color: 'white', padding: '0.6rem', borderRadius: '8px', fontSize: '0.8rem' }} 
+                />
+                {stops.length > 1 && (
+                  <button onClick={() => setStops(stops.filter((_, idx) => idx !== i))} style={{ background: '#222', border: '1px solid #333', color: '#ff4444', borderRadius: '8px', padding: '0 0.8rem', cursor: 'pointer' }}>×</button>
+                )}
+              </div>
+            ))}
+            <button 
+              onClick={() => setStops([...stops, ''])}
+              style={{ width: '100%', padding: '0.6rem', background: 'transparent', border: '1px dashed #444', color: '#888', borderRadius: '8px', marginTop: '0.8rem', fontSize: '0.7rem', cursor: 'pointer', fontWeight: 'bold' }}
+            >
+              + ADD STOP
+            </button>
+            <button 
+              onClick={() => setIsLoading(true)} 
+              style={{ width: '100%', padding: '0.8rem', background: '#333', border: '1px solid #444', borderRadius: '8px', color: 'white', fontWeight: 'bold', cursor: 'pointer', marginTop: '1rem' }}
+            >
+              Update Range Estimates
+            </button>
           </div>
-          
+
+          {suggestedRoutes.length > 0 && (
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{ color: '#666', fontSize: '0.7rem', textTransform: 'uppercase' }}>Shop Recommendations</label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
+                {suggestedRoutes.map(r => (
+                  <button 
+                    key={r.id} 
+                    onClick={() => { setStops(r.stops); setIsLoading(true); }}
+                    style={{ textAlign: 'left', padding: '0.6rem', background: '#222', border: '1px solid #333', color: 'white', borderRadius: '8px', fontSize: '0.75rem', cursor: 'pointer' }}
+                  >
+                    📍 {r.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {metrics && (
             <div style={{ marginTop: '2rem', borderTop: '1px solid #333', paddingTop: '1rem' }}>
               <div style={{ fontSize: '0.8rem', color: '#888' }}>ESTIMATED BATTERY AT DESTINATION</div>
               <h2 style={{ color: metrics.batteryPercentUsed < 20 ? '#ff3333' : '#34a853' }}>{metrics.batteryPercentUsed}% Left</h2>
-              <p style={{ fontSize: '0.65rem', color: '#666' }}>*Based on current wind and elevation.</p>
+              <div style={{ fontSize: '0.65rem', color: '#666', marginTop: '0.5rem' }}>
+                <div>⛰️ {metrics.elevationGain}ft Gain</div>
+                <div>💨 {metrics.windInfo}</div>
+              </div>
             </div>
           )}
 
           <div style={{ marginTop: 'auto', paddingTop: '2rem' }}>
             <button 
-               onClick={() => { setTrip({ origin: '', destination: orgData?.address || 'Shop Location' }); setIsLoading(true); }}
+               onClick={() => { setStops([orgData?.address || 'Shop Location']); setIsLoading(true); }}
                style={{ width: '100%', padding: '0.8rem', background: 'transparent', border: '1px solid #ff6600', color: '#ff6600', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
             >
               Return to Shop
@@ -255,7 +361,17 @@ function MapHome() {
         </aside>
         <main style={{ flex: 1 }}>
           <GoogleMap mapContainerStyle={{ width: '100%', height: '100%' }} center={currentLocation || {lat: 40.71, lng: -74.00}} zoom={13} onLoad={m => {mapRef.current = m}}>
-            {trip.destination && isLoading && <DirectionsService options={{ origin: currentLocation || 'current location', destination: trip.destination, travelMode: google.maps.TravelMode.BICYCLING }} callback={directionsCallback} />}
+            {stops[stops.length - 1] && isLoading && (
+              <DirectionsService 
+                options={{ 
+                  origin: currentLocation || 'current location', 
+                  destination: stops[stops.length - 1], 
+                  waypoints: stops.slice(0, -1).filter(s => s).map(s => ({ location: s, stopover: true })),
+                  travelMode: google.maps.TravelMode.BICYCLING 
+                }} 
+                callback={directionsCallback} 
+              />
+            )}
             {response && <DirectionsRenderer options={{ directions: response }} />}
             
             {showChargers && chargers.map(c => (
