@@ -83,8 +83,7 @@ function App() {
         <Route path="/forum/c/:communityId" element={<ProtectedRoute><CommunityView /></ProtectedRoute>} />
         <Route path="/forum/c/:communityId/t/:threadId" element={<ProtectedRoute><ThreadView /></ProtectedRoute>} />
         
-        {/* Legacy /about redirect or handling */}
-        <Route path="/about" element={<Navigate to="/" replace />} />
+        <Route path="/about" element={<About />} />
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" />} />
