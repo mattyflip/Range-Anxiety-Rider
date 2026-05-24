@@ -1,58 +1,78 @@
-import React, { useState, useEffect } from 'react'
-import { auth } from '../firebase'
+import React, { useState } from 'react'
 import NavBar from '../components/NavBar'
 import AuthModal from '../components/AuthModal'
 import SEO from '../components/SEO'
 
 const About: React.FC = () => {
-  const [user, setUser] = useState<any>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
-
-  useEffect(() => {
-    const unsub = auth.onAuthStateChanged(async u => {
-      setUser(u);
-    });
-    return () => unsub();
-  }, []);
 
   return (
     <div className="container" style={{ minHeight: '100vh', background: '#121212', color: 'white' }}>
       <SEO 
-        title="About" 
-        description="Learn more about Range Anxiety Rider, the professional fleet and rental management platform for electric bikes."
-        url="https://range-anxiety-rider.vercel.app/about"
+        title="Welcome" 
+        description="Range Anxiety Rider — The professional fleet and rental management platform for electric bikes."
+        url="https://range-anxiety-rider.vercel.app/"
       />
       <NavBar 
-        user={user} 
+        user={null} 
         onShowInstall={() => {}} 
         onShowAuth={() => setShowAuthModal(true)} 
       />
 
       <main style={{ padding: '4rem 1.5rem', maxWidth: '800px', margin: '0 auto', textAlign: 'center' }}>
         <header style={{ marginBottom: '2rem' }}>
-          <h1 style={{ fontSize: 'clamp(2rem, 8vw, 3.5rem)', fontWeight: 900, color: '#ff6600', margin: 0, lineHeight: '1.1', textTransform: 'uppercase' }}>Range Anxiety Rider</h1>
+          <h1 style={{ fontSize: 'clamp(2rem, 8vw, 4.5rem)', fontWeight: 900, color: '#ff6600', margin: 0, lineHeight: '1.1', textTransform: 'uppercase', letterSpacing: '-2px' }}>Range Anxiety</h1>
+          <div style={{ color: 'white', fontSize: '1.2rem', fontWeight: 'bold', marginTop: '0.5rem' }}>RIDER PLATFORM</div>
         </header>
 
         <section style={{ marginBottom: '5rem' }}>
-          <p style={{ fontSize: '1.2rem', color: '#888', maxWidth: '600px', margin: '0 auto 1.5rem auto', lineHeight: '1.6' }}>
+          <p style={{ fontSize: '1.4rem', color: '#ccc', maxWidth: '600px', margin: '0 auto 2.5rem auto', lineHeight: '1.4' }}>
             The professional fleet and rental management platform optimized for electric bike shops and delivery services.
           </p>
+          
+          <button 
+            onClick={() => setShowAuthModal(true)}
+            style={{ 
+              padding: '1.2rem 3rem', 
+              background: '#ff6600', 
+              color: 'white', 
+              border: 'none', 
+              borderRadius: '50px', 
+              fontWeight: '900', 
+              fontSize: '1.2rem', 
+              cursor: 'pointer',
+              boxShadow: '0 10px 30px rgba(255,102,0,0.3)',
+              transition: 'transform 0.2s'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+          >
+            GET STARTED
+          </button>
         </section>
 
-        <div style={{ background: '#1a1a1a', padding: '2rem', borderRadius: '24px', border: '1px solid #333', marginBottom: '4rem' }}>
-          <h2 style={{ marginTop: 0, color: '#ff6600' }}>Our Mission</h2>
-          <p style={{ color: '#aaa', lineHeight: 1.6 }}>
-            We provide the tools necessary for e-bike shops to manage their rental inventory, track live unit status, and help customers conquer range anxiety with precision data.
-          </p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '2rem', marginBottom: '4rem' }}>
+          <div style={{ background: '#1a1a1a', padding: '2rem', borderRadius: '24px', border: '1px solid #333' }}>
+            <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>🚲</div>
+            <h3 style={{ color: '#ff6600' }}>Fleet Tracking</h3>
+            <p style={{ color: '#888', fontSize: '0.9rem' }}>Real-time oversight of your entire rental inventory on a single dashboard.</p>
+          </div>
+          
+          <div style={{ background: '#1a1a1a', padding: '2rem', borderRadius: '24px', border: '1px solid #333' }}>
+            <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>🗺️</div>
+            <h3 style={{ color: '#ff6600' }}>Precision Range</h3>
+            <p style={{ color: '#888', fontSize: '0.9rem' }}>Give your customers confidence with terrain and weather-aware range estimation.</p>
+          </div>
+
+          <div style={{ background: '#1a1a1a', padding: '2rem', borderRadius: '24px', border: '1px solid #333' }}>
+            <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>🔌</div>
+            <h3 style={{ color: '#ff6600' }}>Charging Map</h3>
+            <p style={{ color: '#888', fontSize: '0.9rem' }}>Integrated charging network access to keep your fleet moving.</p>
+          </div>
         </div>
 
-        <div style={{ textAlign: 'center', marginTop: '6rem', padding: '4rem 0', borderTop: '1px solid #222' }}>
-          <button 
-            onClick={() => window.location.href = '/'}
-            style={{ padding: '1rem 2rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold', fontSize: '1.1rem', cursor: 'pointer', minWidth: '200px' }}
-          >
-            Go to Map
-          </button>
+        <div style={{ color: '#444', fontSize: '0.8rem', marginTop: '4rem' }}>
+          &copy; {new Date().getFullYear()} Range Anxiety Rider. All rights reserved.
         </div>
       </main>
 

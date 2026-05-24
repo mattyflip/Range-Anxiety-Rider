@@ -66,7 +66,7 @@ const NavBar: React.FC<NavBarProps> = ({ user, onShowInstall, onShowAuth }) => {
       height: '4.5rem'
     }}>
       <div className="logo-container" style={{ display: 'flex', alignItems: 'center' }}>
-        <Link to="/" style={{ display: 'flex', alignItems: 'center' }}>
+        <Link to={user ? "/map" : "/"} style={{ display: 'flex', alignItems: 'center' }}>
           <img src="/app-icon.png" alt="Logo" style={{ height: '2.5rem', width: 'auto' }} />
         </Link>
       </div>
@@ -82,9 +82,9 @@ const NavBar: React.FC<NavBarProps> = ({ user, onShowInstall, onShowAuth }) => {
             paddingBottom: '8px'
           }}
         >
-          <Link to="/" style={{ color: '#ff6600', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Fleet Map</Link>
-          <Link to="/?chargers=true" style={{ color: '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Chargers</Link>
-          <Link to="/about" style={{ color: '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>About</Link>
+          <Link to="/map" style={{ color: '#ff6600', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Fleet Map</Link>
+          <Link to="/map?chargers=true" style={{ color: '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Chargers</Link>
+          <Link to="/" style={{ color: '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>About</Link>
           {user && <Link to="/settings" style={{ color: '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Settings</Link>}
           
           {isSuperAdmin && (

@@ -153,7 +153,7 @@ const UniversalSearch: React.FC = () => {
                         e.stopPropagation(); 
                         localStorage.setItem('ebike_load_route', JSON.stringify(p.tripData)); 
                         window.dispatchEvent(new Event('ebike-route-loaded'));
-                        navigate('/'); 
+                        navigate('/map'); 
                         setShowResults(false); 
                         setSearchQuery(''); 
                       }}

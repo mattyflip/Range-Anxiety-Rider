@@ -46,7 +46,7 @@ const Profile: React.FC = () => {
     if (!post.tripData) return;
     localStorage.setItem('ebike_load_route', JSON.stringify(post.tripData));
     window.dispatchEvent(new Event('ebike-route-loaded'));
-    navigate('/');
+    navigate('/map');
   };
 
   const promptForModerationReason = (action: string) => {
@@ -237,7 +237,7 @@ const Profile: React.FC = () => {
     };
     localStorage.setItem('ebike_load_route', JSON.stringify(tripData));
     window.dispatchEvent(new Event('ebike-route-loaded'));
-    navigate('/');
+    navigate('/map');
   };
 
   const toggleFollow = async () => {
