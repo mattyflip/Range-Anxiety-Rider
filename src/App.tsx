@@ -5,7 +5,7 @@ import { onAuthStateChanged, type User } from 'firebase/auth'
 import MapHome from './pages/MapHome'
 import FleetDashboard from './pages/FleetDashboard'
 import Profile from './pages/Profile'
-import Settings from './pages/Settings'
+import ShopProfile from './pages/ShopProfile'
 import Feed from './pages/Feed'
 import ForumHub from './pages/ForumHub'
 import CommunityView from './pages/CommunityView'
@@ -78,7 +78,7 @@ function App() {
         <Route path="/feed" element={<ProtectedRoute><Feed /></ProtectedRoute>} />
         <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
         <Route path="/profile/:username" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-        <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+        <Route path="/shop-profile" element={<ProtectedRoute><ShopProfile /></ProtectedRoute>} />
         <Route path="/forum" element={<ProtectedRoute><ForumHub /></ProtectedRoute>} />
         <Route path="/forum/c/:communityId" element={<ProtectedRoute><CommunityView /></ProtectedRoute>} />
         <Route path="/forum/c/:communityId/t/:threadId" element={<ProtectedRoute><ThreadView /></ProtectedRoute>} />

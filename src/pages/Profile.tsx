@@ -87,7 +87,7 @@ const Profile: React.FC = () => {
 
   useEffect(() => {
     if (username === 'me') {
-      navigate('/settings');
+      navigate('/shop-profile');
     }
   }, [username, navigate]);
 

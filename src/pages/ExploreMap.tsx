@@ -169,7 +169,7 @@ const ExploreMap: React.FC = () => {
         createdAt: serverTimestamp()
       });
       alert("Ride saved successfully!");
-      navigate('/settings');
+      navigate('/shop-profile');
     } catch (e) {
       console.error("Save failed", e);
       alert("Failed to save ride.");
@@ -192,7 +192,7 @@ const ExploreMap: React.FC = () => {
             Conquer your range anxiety and document your adventures.
           </p>
           <button 
-            onClick={() => navigate('/settings')}
+            onClick={() => navigate('/shop-profile')}
             style={{ padding: '1rem 2rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold', fontSize: '1.1rem', cursor: 'pointer' }}
           >
             Upgrade to Pro
