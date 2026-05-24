@@ -34,8 +34,23 @@ const Settings: React.FC = () => {
             setUsername(data.username || '');
             setBio(data.bio || '');
           } else {
-            console.warn("User document does not exist in Firestore.");
-            setUserData({});
+            console.warn("User document does not exist in Firestore. Creating fallback profile...");
+            // AUTO-CREATE FALLBACK PROFILE
+            const fallbackProfile = {
+              email: u.email || '',
+              username: u.email?.split('@')[0] || 'rider_' + u.uid.substring(0, 5),
+              usernameLowercase: (u.email?.split('@')[0] || 'rider_' + u.uid.substring(0, 5)).toLowerCase(),
+              uid: u.uid,
+              isPro: false,
+              createdAt: new Date().toISOString(),
+              role: 'rider'
+            };
+            setDoc(userDocRef, fallbackProfile).then(() => {
+              console.log("Fallback profile created successfully.");
+              setUserData(fallbackProfile);
+            }).catch(err => {
+              console.error("Failed to create fallback profile:", err);
+            });
           }
           setLoading(false);
         }, (err) => {
