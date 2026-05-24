@@ -140,6 +140,7 @@ const ShopProfile: React.FC = () => {
   const handleSaveBike = async () => {
     if (!newBikeName.trim() || !user || !userData?.orgId) return;
     const bikeId = editingBikeId || Date.now().toString();
+    const batteryLevel = parseInt(newBikeBatteryPercent) || 100;
     try {
       await setDoc(doc(db, `organizations/${userData.orgId}/bikes`, bikeId), {
         unitId: newBikeName,
@@ -152,13 +153,26 @@ const ShopProfile: React.FC = () => {
           targetSpeedMph: parseFloat(newBikeTargetSpeed),
           controllerAmps: newBikeControllerAmps ? parseFloat(newBikeControllerAmps) : null,
           cycleCount: parseInt(newBikeCycleCount) || 0,
-          currentBatteryPercent: parseInt(newBikeBatteryPercent) || 100
+          currentBatteryPercent: batteryLevel
         },
         status: 'available',
         updatedAt: new Date().toISOString()
       }, { merge: true });
+
+      // GLOBAL SYNC
+      const { getDocs, where, collection, query, updateDoc } = await import('firebase/firestore');
+      const liveRef = collection(db, `organizations/${userData.orgId}/live_units`);
+      const q = query(liveRef, where("unitName", "==", newBikeName));
+      const liveSnap = await getDocs(q);
+      const updatePromises = liveSnap.docs.map(liveDoc => 
+        updateDoc(doc(db, `organizations/${userData.orgId}/live_units`, liveDoc.id), {
+          battery: batteryLevel
+        })
+      );
+      await Promise.all(updatePromises);
+      
       resetBikeForm();
-      alert(editingBikeId ? "Bike updated!" : "Bike added to fleet!");
+      alert(editingBikeId ? "Bike updated globally!" : "Bike added to fleet!");
     } catch (e) { console.error(e); }
   };
 
