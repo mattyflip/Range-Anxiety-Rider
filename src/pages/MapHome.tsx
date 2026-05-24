@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { GoogleMap, useJsApiLoader, DirectionsService, DirectionsRenderer, Marker, Autocomplete } from '@react-google-maps/api'
+import { GoogleMap, useJsApiLoader, DirectionsService, DirectionsRenderer } from '@react-google-maps/api'
 import { useLocation } from 'react-router-dom';
 import { auth, db } from '../firebase'
 import { onAuthStateChanged } from 'firebase/auth'
@@ -10,13 +10,14 @@ import NavBar from '../components/NavBar'
 import AuthModal from '../components/AuthModal'
 import WelcomeModal from '../components/WelcomeModal'
 import SEO from '../components/SEO'
+import ModernAutocomplete from '../components/ModernAutocomplete'
+import AdvancedMarker from '../components/AdvancedMarker'
 
 const LIBRARIES: ("places" | "geometry")[] = ["places", "geometry"];
 
 function MapHome() {
   const { isLoaded } = useJsApiLoader({ id: 'google-map-script', googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "", libraries: LIBRARIES });
   const mapRef = useRef<google.maps.Map | null>(null);
-  const autocompleteRefs = useRef<(google.maps.places.Autocomplete | null)[]>([]);
 
   const [stops, setStops] = useState<string[]>(['']);
   const [metrics, setMetrics] = useState<any>(null);
@@ -212,15 +213,6 @@ function MapHome() {
     setIsLoading(false);
   };
 
-  const handlePlaceChanged = (index: number) => {
-    const place = autocompleteRefs.current[index]?.getPlace();
-    if (place?.formatted_address) {
-      const newStops = [...stops];
-      newStops[index] = place.formatted_address;
-      setStops(newStops);
-    }
-  };
-
   if (!isLoaded) return <div style={{ color: 'white', padding: '2rem', textAlign: 'center' }}>Loading Maps...</div>;
 
   return (
@@ -271,23 +263,17 @@ function MapHome() {
 
           <div style={{ marginBottom: '1.5rem' }}>
             <label style={{ color: '#666', fontSize: '0.7rem', textTransform: 'uppercase' }}>Itinerary</label>
-            {stops.map((stop, i) => (
+            {stops.map((_stop, i) => (
               <div key={i} style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-                <Autocomplete 
-                  onLoad={ref => (autocompleteRefs.current[i] = ref)}
-                  onPlaceChanged={() => handlePlaceChanged(i)}
-                >
-                  <input 
-                    placeholder={i === 0 ? "First stop..." : "Next stop..."}
-                    value={stop} 
-                    onChange={e => {
-                      const newStops = [...stops];
-                      newStops[i] = e.target.value;
-                      setStops(newStops);
-                    }}
-                    style={{ width: '100%', background: '#111', border: '1px solid #333', color: 'white', padding: '0.6rem', borderRadius: '8px', fontSize: '0.8rem' }} 
-                  />
-                </Autocomplete>
+                <ModernAutocomplete 
+                  placeholder={i === 0 ? "First stop..." : "Next stop..."}
+                  onPlaceSelected={(address) => {
+                    const newStops = [...stops];
+                    newStops[i] = address;
+                    setStops(newStops);
+                  }}
+                  style={{ flex: 1 }}
+                />
                 {stops.length > 1 && (
                   <button onClick={() => setStops(stops.filter((_, idx) => idx !== i))} style={{ background: '#222', border: '1px solid #333', color: '#ff4444', borderRadius: '8px', padding: '0 0.8rem', cursor: 'pointer' }}>×</button>
                 )}
@@ -351,7 +337,13 @@ function MapHome() {
           </div>
         </aside>
         <main style={{ flex: 1 }}>
-          <GoogleMap mapContainerStyle={{ width: '100%', height: '100%' }} center={currentLocation || {lat: 40.71, lng: -74.00}} zoom={13} onLoad={m => {mapRef.current = m}}>
+          <GoogleMap 
+            mapContainerStyle={{ width: '100%', height: '100%' }} 
+            center={currentLocation || {lat: 40.71, lng: -74.00}} 
+            zoom={13} 
+            onLoad={m => {mapRef.current = m}}
+            options={{ mapId: import.meta.env.VITE_GOOGLE_MAP_ID || 'DEMO_MAP_ID' }}
+          >
             {stops[stops.length - 1] && isLoading && (
               <DirectionsService 
                 options={{ 
@@ -366,7 +358,7 @@ function MapHome() {
             )}
             {response && <DirectionsRenderer options={{ directions: response, routeIndex: selectedRouteIndex }} />}
             {showChargers && chargers.map(c => (
-              <Marker key={c.id} position={c.position} icon={{ path: google.maps.SymbolPath.CIRCLE, fillColor: c.is110v ? '#34a853' : '#ff6600', fillOpacity: 1, scale: 6, strokeColor: 'white', strokeWeight: 2 }} title={`${c.name} (${c.chargerClass})`} />
+              <AdvancedMarker key={c.id} position={c.position} icon={{ path: google.maps.SymbolPath.CIRCLE, fillColor: c.is110v ? '#34a853' : '#ff6600', fillOpacity: 1, scale: 6, strokeColor: 'white', strokeWeight: 2 }} title={`${c.name} (${c.chargerClass})`} />
             ))}
           </GoogleMap>
         </main>

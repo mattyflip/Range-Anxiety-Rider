@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api'
+import { GoogleMap, useJsApiLoader } from '@react-google-maps/api'
 import { useLocation } from 'react-router-dom';
 import { auth, db } from '../firebase'
 import { onAuthStateChanged } from 'firebase/auth'
@@ -8,6 +8,7 @@ import { doc, getDoc, collection, onSnapshot, query, updateDoc } from 'firebase/
 import NavBar from '../components/NavBar'
 import AuthModal from '../components/AuthModal'
 import SEO from '../components/SEO'
+import AdvancedMarker from '../components/AdvancedMarker'
 
 const LIBRARIES: ("places" | "geometry")[] = ["places", "geometry"];
 
@@ -224,9 +225,15 @@ const FleetDashboard = () => {
             </div>
           </aside>
           <main style={{ flex: 1 }}>
-            <GoogleMap mapContainerStyle={{ width: '100%', height: '100%' }} center={currentLocation || {lat: 40.71, lng: -74.00}} zoom={12} onLoad={m => {mapRef.current = m}}>
+            <GoogleMap 
+              mapContainerStyle={{ width: '100%', height: '100%' }} 
+              center={currentLocation || {lat: 40.71, lng: -74.00}} 
+              zoom={12} 
+              onLoad={m => {mapRef.current = m}}
+              options={{ mapId: import.meta.env.VITE_GOOGLE_MAP_ID || 'DEMO_MAP_ID' }}
+            >
               {displayedBikes.map(b => (
-                <Marker 
+                <AdvancedMarker 
                   key={b.id} 
                   position={b.position} 
                   label={{ text: `${b.unitName}`, color: 'white', fontSize: '11px', fontWeight: 'bold' }} 
@@ -234,7 +241,7 @@ const FleetDashboard = () => {
                 />
               ))}
               {showChargers && chargers.map(c => (
-                <Marker 
+                <AdvancedMarker 
                   key={c.id} 
                   position={c.position} 
                   icon={{ path: google.maps.SymbolPath.CIRCLE, fillColor: c.is110v ? '#34a853' : '#ff6600', fillOpacity: 1, scale: 6, strokeColor: 'white', strokeWeight: 2 }}
