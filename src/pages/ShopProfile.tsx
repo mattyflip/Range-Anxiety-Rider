@@ -63,10 +63,18 @@ const ShopProfile: React.FC = () => {
   }, [userData]);
 
   const handleUpdateShop = async () => {
-    if (!user || !userData?.orgId) return;
+    if (!user) return;
     setIsUpdating(true);
     try {
-      await setDoc(doc(db, "organizations", userData.orgId), {
+      let orgId = userData?.orgId;
+      
+      // If user doesn't have an orgId yet, generate one
+      if (!orgId) {
+        orgId = 'org_' + user.uid.substring(0, 8);
+        await updateDoc(doc(db, "users", user.uid), { orgId });
+      }
+
+      await setDoc(doc(db, "organizations", orgId), {
         name: shopName,
         bio: shopBio,
         address: shopAddress,

@@ -19,6 +19,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
   const [birthday, setBirthday] = useState('');
   const [homeRegion, setHomeRegion] = useState('New Jersey');
   const [city, setCity] = useState('');
+  const [role, setRole] = useState<'rider' | 'fleet'>('rider');
   const [agreedToToS, setAgreedToToS] = useState(false);
   const [showToSPage, setShowToSPage] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -90,6 +91,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
             birthday,
             homeRegion,
             city,
+            role,
             ageAtSignup: age,
             isPro: false, 
             createdAt: serverTimestamp(),
@@ -130,6 +132,34 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
 
         {isRegistering && (
           <>
+            <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+              <label style={{ display: 'block', color: '#ff6600', fontSize: '0.75rem', marginBottom: '0.8rem', fontWeight: 'bold', textTransform: 'uppercase' }}>I am registering as a:</label>
+              <div style={{ display: 'flex', gap: '1rem' }}>
+                <button 
+                  type="button"
+                  onClick={() => setRole('rider')}
+                  style={{ 
+                    flex: 1, padding: '0.8rem', borderRadius: '8px', border: `1px solid ${role === 'rider' ? '#ff6600' : '#333'}`,
+                    background: role === 'rider' ? 'rgba(255,102,0,0.1)' : '#222', color: role === 'rider' ? '#ff6600' : '#888',
+                    fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s'
+                  }}
+                >
+                  🚲 RIDER
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => setRole('fleet')}
+                  style={{ 
+                    flex: 1, padding: '0.8rem', borderRadius: '8px', border: `1px solid ${role === 'fleet' ? '#ff6600' : '#333'}`,
+                    background: role === 'fleet' ? 'rgba(255,102,0,0.1)' : '#222', color: role === 'fleet' ? '#ff6600' : '#888',
+                    fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s'
+                  }}
+                >
+                  🏬 SHOP OWNER
+                </button>
+              </div>
+            </div>
+
             <div className="form-group" style={{ marginBottom: '1rem' }}>
               <label style={{ display: 'block', color: '#888', fontSize: '0.7rem', marginBottom: '0.3rem' }}>Full Name</label>
               <input type="text" value={fullName} onChange={e => setFullName(e.target.value)} style={{ width: '100%', padding: '0.6rem', background: '#222', border: '1px solid #444', borderRadius: '4px', color: 'white' }} />

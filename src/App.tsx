@@ -41,11 +41,20 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 // Redirect authenticated users away from landing page
 const AuthRedirect = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null)
+  const [role, setRole] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    return onAuthStateChanged(auth, (u) => {
+    return onAuthStateChanged(auth, async (u) => {
       setUser(u)
+      if (u) {
+        const { getDoc, doc } = await import('firebase/firestore');
+        const { db } = await import('./firebase');
+        const snap = await getDoc(doc(db, "users", u.uid));
+        if (snap.exists()) {
+          setRole(snap.data().role);
+        }
+      }
       setLoading(false)
     })
   }, [])
@@ -53,6 +62,38 @@ const AuthRedirect = ({ children }: { children: React.ReactNode }) => {
   if (loading) return null
 
   if (user) {
+    return <Navigate to={role === 'fleet' ? "/fleet" : "/map"} replace />
+  }
+
+  return <>{children}</>
+}
+
+// Role-Based Route Component
+const RoleRoute = ({ children, requiredRole }: { children: React.ReactNode, requiredRole: string }) => {
+  const [user, setUser] = useState<User | null>(null)
+  const [role, setRole] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    return onAuthStateChanged(auth, async (u) => {
+      setUser(u)
+      if (u) {
+        const { getDoc, doc } = await import('firebase/firestore');
+        const { db } = await import('./firebase');
+        const snap = await getDoc(doc(db, "users", u.uid));
+        if (snap.exists()) {
+          setRole(snap.data().role);
+        }
+      }
+      setLoading(false)
+    })
+  }, [])
+
+  if (loading) return <div style={{ background: '#121212', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ff6600' }}>Verifying Role...</div>
+
+  if (!user) return <Navigate to="/" replace />
+  
+  if (role !== requiredRole && user.email !== 'mattyfliptv@gmail.com') {
     return <Navigate to="/map" replace />
   }
 
@@ -72,13 +113,13 @@ function App() {
         
         {/* Protected Feature Routes */}
         <Route path="/map" element={<ProtectedRoute><MapHome /></ProtectedRoute>} />
-        <Route path="/fleet" element={<ProtectedRoute><FleetDashboard /></ProtectedRoute>} />
+        <Route path="/fleet" element={<RoleRoute requiredRole="fleet"><FleetDashboard /></RoleRoute>} />
         <Route path="/faq" element={<ProtectedRoute><FAQ /></ProtectedRoute>} />
         <Route path="/explore" element={<ProtectedRoute><ExploreMap /></ProtectedRoute>} />
         <Route path="/feed" element={<ProtectedRoute><Feed /></ProtectedRoute>} />
         <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
         <Route path="/profile/:username" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-        <Route path="/shop-profile" element={<ProtectedRoute><ShopProfile /></ProtectedRoute>} />
+        <Route path="/shop-profile" element={<RoleRoute requiredRole="fleet"><ShopProfile /></RoleRoute>} />
         <Route path="/forum" element={<ProtectedRoute><ForumHub /></ProtectedRoute>} />
         <Route path="/forum/c/:communityId" element={<ProtectedRoute><CommunityView /></ProtectedRoute>} />
         <Route path="/forum/c/:communityId/t/:threadId" element={<ProtectedRoute><ThreadView /></ProtectedRoute>} />

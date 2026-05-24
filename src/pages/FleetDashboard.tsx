@@ -42,9 +42,14 @@ const FleetDashboard = () => {
           const d = snap.data();
           setUserData(d);
           const isAdmin = u.email?.toLowerCase() === 'mattyfliptv@gmail.com';
-          setUserRole(isAdmin ? 'fleet' : (d.role || 'rider'));
-          if (isAdmin && !d.orgId) {
-            await updateDoc(doc(db, "users", u.uid), { orgId: 'rental_shop_test' });
+          const role = isAdmin ? 'fleet' : (d.role || 'rider');
+          setUserRole(role);
+          
+          // Auto-setup org for new fleet users
+          if (role === 'fleet' && !d.orgId) {
+            const newOrgId = 'org_' + u.uid.substring(0, 8);
+            await updateDoc(doc(db, "users", u.uid), { orgId: newOrgId });
+            setUserData({ ...d, orgId: newOrgId });
           }
         }
       } else { navigate('/'); }

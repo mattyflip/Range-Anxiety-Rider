@@ -70,7 +70,7 @@ const NavBar: React.FC<NavBarProps> = ({ user, onShowInstall, onShowAuth }) => {
       height: '4.5rem'
     }}>
       <div className="logo-container" style={{ display: 'flex', alignItems: 'center' }}>
-        <Link to={user ? (isFleetMode ? "/fleet" : "/map") : "/"} style={{ display: 'flex', alignItems: 'center' }}>
+        <Link to={user ? (userData?.role === 'fleet' ? "/fleet" : "/map") : "/"} style={{ display: 'flex', alignItems: 'center' }}>
           <img src="/app-icon.png" alt="Logo" style={{ height: '2.5rem', width: 'auto' }} />
           <span style={{ display: 'none' }}>v1.0.0-final-sync</span>
         </Link>
