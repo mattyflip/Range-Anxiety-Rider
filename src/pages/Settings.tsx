@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { auth, db } from '../firebase'
 import { onAuthStateChanged, updateEmail, deleteUser, signOut } from 'firebase/auth'
-import { doc, updateDoc, deleteDoc, query, collection, onSnapshot, setDoc, getDoc } from 'firebase/firestore'
+import { doc, updateDoc, deleteDoc, query, collection, onSnapshot, setDoc } from 'firebase/firestore'
 import NavBar from '../components/NavBar'
 
 const Settings: React.FC = () => {
