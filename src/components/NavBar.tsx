@@ -54,7 +54,49 @@ const NavBar: React.FC<NavBarProps> = ({ user, onShowInstall, onShowAuth }) => {
     }
   };
 
-  const isFleetMode = userData?.role === 'fleet' || isSuperAdmin;
+  const isFleet = userData?.role === 'fleet';
+
+  const renderNavLinks = () => {
+    if (!user) {
+      return (
+        <>
+          <Link to="/about" style={{ color: '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>About</Link>
+          <button 
+            onClick={onShowAuth}
+            style={{ 
+              background: 'linear-gradient(45deg, #ff6600, #ff9900)', color: 'white', border: 'none', 
+              borderRadius: '20px', padding: '0.3rem 1rem', fontSize: '0.7rem', fontWeight: 'bold', 
+              cursor: 'pointer', whiteSpace: 'nowrap', boxShadow: '0 4px 10px rgba(255,102,0,0.3)'
+            }}
+          >
+            Login
+          </button>
+        </>
+      );
+    }
+
+    if (isFleet) {
+      return (
+        <>
+          <Link to="/fleet" style={{ color: '#ff6600', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Fleet Hub</Link>
+          <Link to="/map" style={{ color: '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Fleet Map</Link>
+          <Link to="/shop-profile" style={{ color: '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Shop Profile</Link>
+          <Link to="/about" style={{ color: '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>About</Link>
+        </>
+      );
+    }
+
+    return (
+      <>
+        <Link to="/map" style={{ color: '#ff6600', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Trip Map</Link>
+        <Link to="/feed" style={{ color: '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Community</Link>
+        <Link to="/explore" style={{ color: '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Explore</Link>
+        <Link to="/faq" style={{ color: '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>FAQ</Link>
+        <Link to="/about" style={{ color: '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>About</Link>
+        <Link to="/shop-profile" style={{ color: '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Settings</Link>
+      </>
+    );
+  };
 
   return (
     <header style={{ 
@@ -70,7 +112,7 @@ const NavBar: React.FC<NavBarProps> = ({ user, onShowInstall, onShowAuth }) => {
       height: '4.5rem'
     }}>
       <div className="logo-container" style={{ display: 'flex', alignItems: 'center' }}>
-        <Link to={user ? (userData?.role === 'fleet' ? "/fleet" : "/map") : "/"} style={{ display: 'flex', alignItems: 'center' }}>
+        <Link to={user ? (isFleet ? "/fleet" : "/map") : "/"} style={{ display: 'flex', alignItems: 'center' }}>
           <img src="/app-icon.png" alt="Logo" style={{ height: '2.5rem', width: 'auto' }} />
           <span style={{ display: 'none' }}>v1.0.0-final-sync</span>
         </Link>
@@ -81,16 +123,13 @@ const NavBar: React.FC<NavBarProps> = ({ user, onShowInstall, onShowAuth }) => {
           className="nav-scroll-hint"
           style={{ 
             display: 'flex', 
-            gap: '1rem', 
+            gap: '1.2rem', 
             alignItems: 'center',
             overflowX: 'auto',
             paddingBottom: '8px'
           }}
         >
-          <Link to="/map" style={{ color: '#ff6600', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Fleet Map</Link>
-          {isFleetMode && <Link to="/fleet" style={{ color: '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Shop Dashboard</Link>}
-          <Link to="/about" style={{ color: '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>About</Link>
-          {user && <Link to="/shop-profile" style={{ color: '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{isFleetMode ? 'Shop Profile' : 'Settings'}</Link>}
+          {renderNavLinks()}
           
           {isSuperAdmin && (
             <button 
@@ -107,7 +146,7 @@ const NavBar: React.FC<NavBarProps> = ({ user, onShowInstall, onShowAuth }) => {
                 whiteSpace: 'nowrap'
               }}
             >
-              Switch: {userData?.role === 'fleet' ? 'Customer View' : 'Manager View'}
+              Switch: {userData?.role === 'fleet' ? 'Rider' : 'Manager'}
             </button>
           )}
           
@@ -155,32 +194,12 @@ const NavBar: React.FC<NavBarProps> = ({ user, onShowInstall, onShowAuth }) => {
                 borderRadius: '20px', 
                 padding: '0.3rem 0.8rem', 
                 fontSize: '0.65rem', 
-                fontWeight: 'bold',
+                fontWeight: 'bold', 
                 cursor: 'pointer',
                 whiteSpace: 'nowrap'
               }}
             >
               Log Out
-            </button>
-          )}
-
-          {!user && (
-            <button 
-              onClick={onShowAuth}
-              style={{ 
-                background: 'linear-gradient(45deg, #ff6600, #ff9900)', 
-                color: 'white', 
-                border: 'none', 
-                borderRadius: '20px', 
-                padding: '0.3rem 1rem', 
-                fontSize: '0.7rem', 
-                fontWeight: 'bold',
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-                boxShadow: '0 4px 10px rgba(255,102,0,0.3)'
-              }}
-            >
-              Login
             </button>
           )}
 
