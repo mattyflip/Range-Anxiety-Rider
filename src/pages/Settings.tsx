@@ -78,6 +78,12 @@ const Settings: React.FC = () => {
   const [newBikeName, setNewBikeName] = useState('');
   const [newBikeVolts, setNewBikeVolts] = useState('48');
   const [newBikeAh, setNewBikeAh] = useState('15');
+  const [newBikeMotorWatts, setNewBikeMotorWatts] = useState('750');
+  const [newBikeTirePSI, setNewBikeTirePSI] = useState('30');
+  const [newBikeWeight, setNewBikeWeight] = useState('65');
+  const [newBikeTargetSpeed, setNewBikeTargetSpeed] = useState('20');
+  const [newBikeControllerAmps, setNewBikeControllerAmps] = useState('');
+  const [newBikeCycleCount, setNewBikeCycleCount] = useState('0');
   const [orgBikes, setOrgBikes] = useState<any[]>([]);
 
   // Org states
@@ -128,7 +134,12 @@ const Settings: React.FC = () => {
         specs: {
           voltage: parseFloat(newBikeVolts),
           capacityAh: parseFloat(newBikeAh),
-          motorWatts: 750
+          motorWatts: parseFloat(newBikeMotorWatts),
+          tirePSI: parseFloat(newBikeTirePSI),
+          bikeWeightLbs: parseFloat(newBikeWeight),
+          targetSpeedMph: parseFloat(newBikeTargetSpeed),
+          controllerAmps: newBikeControllerAmps ? parseFloat(newBikeControllerAmps) : null,
+          cycleCount: parseInt(newBikeCycleCount) || 0
         },
         status: 'available',
         createdAt: new Date().toISOString()
@@ -399,28 +410,62 @@ const Settings: React.FC = () => {
                     onChange={e => setNewBikeName(e.target.value)}
                     style={{ width: '100%', padding: '0.8rem', background: '#111', border: '1px solid #333', borderRadius: '8px', color: 'white' }}
                   />
-                  <div style={{ display: 'flex', gap: '1rem' }}>
-                    <div style={{ flex: 1 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                    <div>
                       <label style={{ display: 'block', color: '#666', fontSize: '0.7rem', marginBottom: '0.3rem' }}>Voltage (V)</label>
                       <input type="number" value={newBikeVolts} onChange={e => setNewBikeVolts(e.target.value)} style={{ width: '100%', padding: '0.8rem', background: '#111', border: '1px solid #333', borderRadius: '8px', color: 'white' }} />
                     </div>
-                    <div style={{ flex: 1 }}>
-                      <label style={{ display: 'block', color: '#666', fontSize: '0.7rem', marginBottom: '0.3rem' }}>Ah</label>
+                    <div>
+                      <label style={{ display: 'block', color: '#666', fontSize: '0.7rem', marginBottom: '0.3rem' }}>Capacity (Ah)</label>
                       <input type="number" value={newBikeAh} onChange={e => setNewBikeAh(e.target.value)} style={{ width: '100%', padding: '0.8rem', background: '#111', border: '1px solid #333', borderRadius: '8px', color: 'white' }} />
                     </div>
+                    <div>
+                      <label style={{ display: 'block', color: '#666', fontSize: '0.7rem', marginBottom: '0.3rem' }}>Motor Watts</label>
+                      <input type="number" value={newBikeMotorWatts} onChange={e => setNewBikeMotorWatts(e.target.value)} style={{ width: '100%', padding: '0.8rem', background: '#111', border: '1px solid #333', borderRadius: '8px', color: 'white' }} />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', color: '#666', fontSize: '0.7rem', marginBottom: '0.3rem' }}>Tire PSI</label>
+                      <input type="number" value={newBikeTirePSI} onChange={e => setNewBikeTirePSI(e.target.value)} style={{ width: '100%', padding: '0.8rem', background: '#111', border: '1px solid #333', borderRadius: '8px', color: 'white' }} />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', color: '#666', fontSize: '0.7rem', marginBottom: '0.3rem' }}>Bike Weight (lbs)</label>
+                      <input type="number" value={newBikeWeight} onChange={e => setNewBikeWeight(e.target.value)} style={{ width: '100%', padding: '0.8rem', background: '#111', border: '1px solid #333', borderRadius: '8px', color: 'white' }} />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', color: '#666', fontSize: '0.7rem', marginBottom: '0.3rem' }}>Top Speed (mph)</label>
+                      <input type="number" value={newBikeTargetSpeed} onChange={e => setNewBikeTargetSpeed(e.target.value)} style={{ width: '100%', padding: '0.8rem', background: '#111', border: '1px solid #333', borderRadius: '8px', color: 'white' }} />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', color: '#666', fontSize: '0.7rem', marginBottom: '0.3rem' }}>Controller Amps (opt)</label>
+                      <input type="number" value={newBikeControllerAmps} onChange={e => setNewBikeControllerAmps(e.target.value)} placeholder="e.g. 25" style={{ width: '100%', padding: '0.8rem', background: '#111', border: '1px solid #333', borderRadius: '8px', color: 'white' }} />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', color: '#666', fontSize: '0.7rem', marginBottom: '0.3rem' }}>Battery Cycles (opt)</label>
+                      <input type="number" value={newBikeCycleCount} onChange={e => setNewBikeCycleCount(e.target.value)} style={{ width: '100%', padding: '0.8rem', background: '#111', border: '1px solid #333', borderRadius: '8px', color: 'white' }} />
+                    </div>
                   </div>
-                  <button onClick={handleAddFleetBike} style={{ padding: '0.8rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold' }}>+ Add to Fleet</button>
+                  <button onClick={handleAddFleetBike} style={{ padding: '0.8rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', marginTop: '1rem' }}>+ Add to Fleet</button>
                 </div>
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
                 {orgBikes.map(b => (
                   <div key={b.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#222', padding: '1rem', borderRadius: '12px', border: '1px solid #333' }}>
-                    <div>
-                      <div style={{ color: 'white', fontWeight: 'bold' }}>{b.unitId}</div>
-                      <div style={{ color: '#888', fontSize: '0.7rem' }}>{b.specs.voltage}V {b.specs.capacityAh}Ah • {b.status}</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                        <div style={{ color: 'white', fontWeight: 'bold' }}>{b.unitId}</div>
+                        <div style={{ color: '#ff6600', fontSize: '0.65rem', fontWeight: 'bold', background: 'rgba(255,102,0,0.1)', padding: '2px 8px', borderRadius: '10px' }}>{b.status}</div>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem', fontSize: '0.65rem', color: '#888' }}>
+                        <div>⚡ {b.specs.voltage}V / {b.specs.capacityAh}Ah</div>
+                        <div>🔌 {b.specs.motorWatts}W</div>
+                        <div>💨 {b.specs.targetSpeedMph}mph</div>
+                        <div>🎈 {b.specs.tirePSI} PSI</div>
+                        <div>⚖️ {b.specs.bikeWeightLbs}lbs</div>
+                        <div>🔄 {b.specs.cycleCount || 0} cycles</div>
+                      </div>
                     </div>
-                    <button onClick={() => handleDeleteFleetBike(b.id)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>🗑️</button>
+                    <button onClick={() => handleDeleteFleetBike(b.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', marginLeft: '1rem', fontSize: '1.2rem' }}>🗑️</button>
                   </div>
                 ))}
               </div>

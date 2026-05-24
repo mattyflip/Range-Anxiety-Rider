@@ -28,6 +28,8 @@ function MapHome() {
   const [showToSPage, setShowToSPage] = useState(false);
   const [isWorking, setIsWorking] = useState(false);
   const [orgData, setOrgData] = useState<any>(null);
+  const [shopBikes, setShopBikes] = useState<any[]>([]);
+  const [selectedBikeId, setSelectedBikeId] = useState<string>('');
   const [chargers, setChargers] = useState<any[]>([]);
   const [showChargers, setShowChargers] = useState(false);
   const location = useLocation();
@@ -54,9 +56,18 @@ function MapHome() {
           if (d.orgId) {
             const oSnap = await getDoc(doc(db, "organizations", d.orgId));
             if (oSnap.exists()) setOrgData(oSnap.data());
+
+            // Fetch Shop Bikes
+            const { query, collection, onSnapshot } = await import('firebase/firestore');
+            const bQuery = query(collection(db, `organizations/${d.orgId}/bikes`));
+            const bUnsub = onSnapshot(bQuery, (snap) => {
+              const bikes = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+              setShopBikes(bikes);
+            });
+            return () => bUnsub();
           }
         }
-      } else { setUserData(null); setOrgData(null); }
+      } else { setUserData(null); setOrgData(null); setShopBikes([]); }
     });
   }, []);
 
@@ -116,7 +127,57 @@ function MapHome() {
   const directionsCallback = (res: any, status: any) => {
     if (status === 'OK' && res) { 
         setResponse(res); 
-        setMetrics({ batteryPercentUsed: 75 });
+        
+        // Physics Engine Calculation
+        const route = res.routes[0].legs[0];
+        const distanceMeters = route.distance.value;
+        const durationSeconds = route.duration.value;
+        const bike = shopBikes.find(b => b.id === selectedBikeId) || shopBikes[0];
+
+        if (bike && bike.specs) {
+          const { voltage, capacityAh, motorWatts, tirePSI, bikeWeightLbs, targetSpeedMph, cycleCount, controllerAmps } = bike.specs;
+          
+          // 1. Constants & Basic Metrics
+          const riderWeightLbs = 180;
+          const totalMassKg = (bikeWeightLbs + riderWeightLbs) * 0.453592;
+          const speedMps = Math.min(distanceMeters / durationSeconds, targetSpeedMph * 0.44704);
+          const gravity = 9.81;
+          
+          // 2. Rolling Resistance (Crr increases as PSI decreases)
+          // Rough approximation: Crr = 0.005 + (50 / PSI) * 0.0001
+          const crr = 0.005 + (50 / (tirePSI || 30)) * 0.0005;
+          const fRoll = crr * totalMassKg * gravity;
+          
+          // 3. Aerodynamic Drag (F_aero = 0.5 * rho * Cd * A * v^2)
+          const rho = 1.225; // Air density kg/m3
+          const cdA = 0.5;   // Drag coefficient * frontal area
+          const fAero = 0.5 * rho * cdA * Math.pow(speedMps, 2);
+          
+          // 4. Total Power (Watts)
+          let powerWatts = (fRoll + fAero) * speedMps;
+          powerWatts = powerWatts / 0.85; // 85% motor/controller efficiency
+          
+          // Power limit based on controller amps (if provided) or motor watts
+          const maxPowerAmps = controllerAmps ? (controllerAmps * voltage) : (motorWatts || 750);
+          powerWatts = Math.min(powerWatts, maxPowerAmps);
+          
+          // 5. Total Energy Consumed (Watt-hours)
+          const energyWh = powerWatts * (durationSeconds / 3600);
+          
+          // 6. Battery Capacity with Degradation
+          // Approximation: 10% loss per 500 cycles
+          const degradationFactor = 1 - ((cycleCount || 0) / 500) * 0.1;
+          const totalWh = voltage * capacityAh * Math.max(0.7, degradationFactor);
+          
+          const percentUsed = Math.min(Math.round((energyWh / totalWh) * 100), 100);
+          setMetrics({ 
+            batteryPercentUsed: 100 - percentUsed,
+            energyWh: energyWh.toFixed(1),
+            estRangeRemaining: ((totalWh - energyWh) / (energyWh / (distanceMeters / 1609.34))).toFixed(1)
+          });
+        } else {
+          setMetrics({ batteryPercentUsed: 75 });
+        }
     }
     setIsLoading(false);
   };
@@ -132,6 +193,19 @@ function MapHome() {
         <aside style={{ width: '300px', padding: '20px', background: '#1a1a1a', borderRight: '1px solid #333', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
           <h2 style={{ color: '#ff6600', fontSize: '1rem', marginBottom: '1.5rem' }}>RENTAL DASHBOARD</h2>
           
+          <div style={{ marginBottom: '1.5rem' }}>
+            <label style={{ color: '#666', fontSize: '0.7rem', textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>Your Rental Unit</label>
+            <select 
+              value={selectedBikeId} 
+              onChange={e => setSelectedBikeId(e.target.value)}
+              style={{ width: '100%', padding: '0.8rem', background: '#111', border: '1px solid #333', color: 'white', borderRadius: '8px', cursor: 'pointer' }}
+            >
+              {shopBikes.length === 0 ? <option>Loading units...</option> : shopBikes.map(b => (
+                <option key={b.id} value={b.id}>{b.unitId} ({b.specs.voltage}V {b.specs.capacityAh}Ah)</option>
+              ))}
+            </select>
+          </div>
+
           <div style={{ marginBottom: '2rem', padding: '1rem', background: isWorking ? 'rgba(52,168,83,0.1)' : 'rgba(255,255,255,0.05)', borderRadius: '12px', border: `1px solid ${isWorking ? '#34a853' : '#444'}` }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontWeight: 'bold', color: 'white' }}>RENTAL STATUS</span>
