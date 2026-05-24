@@ -14,6 +14,7 @@ import About from './pages/About'
 import Notifications from './pages/Notifications'
 import FAQ from './pages/FAQ'
 import ExploreMap from './pages/ExploreMap'
+import Rent from './pages/Rent'
 
 // Protected Route Component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -113,6 +114,7 @@ function App() {
         
         {/* Protected Feature Routes */}
         <Route path="/map" element={<ProtectedRoute><MapHome /></ProtectedRoute>} />
+        <Route path="/rent" element={<ProtectedRoute><Rent /></ProtectedRoute>} />
         <Route path="/fleet" element={<RoleRoute requiredRole="fleet"><FleetDashboard /></RoleRoute>} />
         <Route path="/faq" element={<ProtectedRoute><FAQ /></ProtectedRoute>} />
         <Route path="/explore" element={<ProtectedRoute><ExploreMap /></ProtectedRoute>} />

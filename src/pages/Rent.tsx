@@ -1,0 +1,178 @@
+import React, { useState, useEffect } from 'react'
+import { db, auth } from '../firebase'
+import { collection, query, onSnapshot, doc, updateDoc, setDoc, getDoc } from 'firebase/firestore'
+import { onAuthStateChanged } from 'firebase/auth'
+import NavBar from '../components/NavBar'
+import SEO from '../components/SEO'
+import { useNavigate } from 'react-router-dom'
+
+const Rent: React.FC = () => {
+  const [shops, setShops] = useState<any[]>([]);
+  const [user, setUser] = useState<any>(null);
+  const [userData, setUserData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [selectedShop, setSelectedShop] = useState<any>(null);
+  const [availableBikes, setAvailableBikes] = useState<any[]>([]);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const unsubAuth = onAuthStateChanged(auth, async (u) => {
+      setUser(u);
+      if (u) {
+        const snap = await getDoc(doc(db, "users", u.uid));
+        if (snap.exists()) setUserData(snap.data());
+      }
+    });
+
+    const qShops = query(collection(db, "organizations"));
+    const unsubShops = onSnapshot(qShops, (snap) => {
+      setShops(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      setLoading(false);
+    });
+
+    return () => { unsubAuth(); unsubShops(); };
+  }, []);
+
+  useEffect(() => {
+    if (selectedShop) {
+      const qBikes = query(collection(db, `organizations/${selectedShop.id}/bikes`));
+      const unsubBikes = onSnapshot(qBikes, (snap) => {
+        setAvailableBikes(snap.docs.map(d => ({ id: d.id, ...d.data() } as any)).filter(b => b.status === 'available'));
+      });
+      return () => unsubBikes();
+    }
+  }, [selectedShop]);
+
+  const handleStartRental = async (bike: any) => {
+    if (!user || !userData || !selectedShop) return;
+    
+    if (window.confirm(`Confirm rental for ${bike.unitId}? Your live telemetry will be shared with ${selectedShop.name}.`)) {
+      try {
+        // 1. Update master bike status
+        await updateDoc(doc(db, `organizations/${selectedShop.id}/bikes`, bike.id), {
+          status: 'rented',
+          currentRiderId: user.uid,
+          rentedAt: new Date().toISOString()
+        });
+
+        // 2. Initialize live unit for shop tracking
+        await setDoc(doc(db, `organizations/${selectedShop.id}/live_units`, user.uid), {
+          unitName: bike.unitId,
+          battery: bike.specs.currentBatteryPercent || 100,
+          position: { lat: 0, lng: 0 },
+          lastSeen: Date.now(),
+          status: 'rented'
+        });
+
+        // 3. Update user's active rental
+        await updateDoc(doc(db, "users", user.uid), {
+          activeRental: {
+            shopId: selectedShop.id,
+            bikeId: bike.id,
+            unitId: bike.unitId
+          },
+          orgId: selectedShop.id
+        });
+
+        alert("Rental started! Redirecting to Trip Map...");
+        navigate('/map');
+      } catch (e: any) {
+        console.error(e);
+        alert("Failed to start rental: " + e.message);
+      }
+    }
+  };
+
+  if (loading) return <div style={{ color: 'white', padding: '4rem', textAlign: 'center' }}>Opening Marketplace...</div>;
+
+  return (
+    <div className="container" style={{ minHeight: '100vh', background: '#121212', color: 'white' }}>
+      <SEO title="Rent an E-Bike" />
+      <NavBar user={user} onShowInstall={() => {}} onShowAuth={() => {}} />
+
+      <main style={{ padding: '2rem', maxWidth: '1000px', margin: '0 auto' }}>
+        <header style={{ marginBottom: '3rem', textAlign: 'center' }}>
+          <h1 style={{ fontSize: '2.5rem', fontWeight: 900, color: '#ff6600', textTransform: 'uppercase' }}>Rent a Pro Fleet</h1>
+          <p style={{ color: '#888', maxWidth: '600px', margin: '1rem auto' }}>Discover professional e-bike shops and rent high-performance units optimized for Range Anxiety Rider.</p>
+        </header>
+
+        {!selectedShop ? (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
+            {shops.length === 0 ? (
+              <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '4rem', background: '#1a1a1a', borderRadius: '24px', border: '1px dashed #333' }}>
+                <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🚲</div>
+                <h2 style={{ color: '#666' }}>No shops available in your area yet.</h2>
+              </div>
+            ) : (
+              shops.map(shop => (
+                <div 
+                  key={shop.id} 
+                  onClick={() => setSelectedShop(shop)}
+                  style={{ background: '#1a1a1a', padding: '2rem', borderRadius: '32px', border: '1px solid #333', cursor: 'pointer', transition: 'transform 0.2s' }}
+                  onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-5px)'}
+                  onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+                >
+                  <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>🏬</div>
+                  <h2 style={{ color: '#ff6600', marginTop: 0 }}>{shop.name}</h2>
+                  <p style={{ color: '#888', fontSize: '0.9rem', minHeight: '3em' }}>{shop.bio || 'Professional e-bike rental service.'}</p>
+                  <div style={{ color: '#555', fontSize: '0.8rem', marginTop: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    📍 {shop.address}
+                  </div>
+                  <button style={{ width: '100%', padding: '0.8rem', background: '#333', color: 'white', border: 'none', borderRadius: '12px', marginTop: '1.5rem', fontWeight: 'bold' }}>VIEW FLEET</button>
+                </div>
+              ))
+            )}
+          </div>
+        ) : (
+          <div>
+            <button 
+              onClick={() => setSelectedShop(null)}
+              style={{ background: 'none', border: 'none', color: '#ff6600', cursor: 'pointer', fontWeight: 'bold', marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+            >
+              ← BACK TO SHOPS
+            </button>
+            
+            <div style={{ background: 'linear-gradient(135deg, #1a1a1a 0%, #111 100%)', padding: '2.5rem', borderRadius: '32px', border: '1px solid #ff6600', marginBottom: '3rem' }}>
+               <h2 style={{ fontSize: '2rem', color: 'white', margin: 0 }}>{selectedShop.name}</h2>
+               <p style={{ color: '#888', marginTop: '1rem' }}>{selectedShop.bio}</p>
+            </div>
+
+            <h3 style={{ fontSize: '1.2rem', marginBottom: '1.5rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Available Fleet</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
+               {availableBikes.length === 0 ? (
+                 <div style={{ gridColumn: '1/-1', color: '#444', textAlign: 'center', padding: '2rem' }}>All units are currently rented. Check back soon!</div>
+               ) : (
+                 availableBikes.map(bike => (
+                   <div key={bike.id} style={{ background: '#1a1a1a', padding: '1.5rem', borderRadius: '24px', border: '1px solid #333' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                         <div style={{ fontWeight: 900, fontSize: '1.1rem' }}>{bike.unitId}</div>
+                         <div style={{ background: 'rgba(52,168,83,0.1)', color: '#34a853', padding: '4px 10px', borderRadius: '20px', fontSize: '0.65rem', fontWeight: 'bold' }}>READY</div>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8rem', marginBottom: '1.5rem' }}>
+                         <div style={{ background: '#111', padding: '0.8rem', borderRadius: '12px' }}>
+                            <div style={{ color: '#555', fontSize: '0.6rem', fontWeight: 'bold' }}>BATTERY</div>
+                            <div style={{ fontWeight: 'bold' }}>{bike.specs.currentBatteryPercent}%</div>
+                         </div>
+                         <div style={{ background: '#111', padding: '0.8rem', borderRadius: '12px' }}>
+                            <div style={{ color: '#555', fontSize: '0.6rem', fontWeight: 'bold' }}>MOTOR</div>
+                            <div style={{ fontWeight: 'bold' }}>{bike.specs.motorWatts}W</div>
+                         </div>
+                      </div>
+                      <button 
+                        onClick={() => handleStartRental(bike)}
+                        style={{ width: '100%', padding: '1rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer' }}
+                      >
+                        RENT THIS BIKE
+                      </button>
+                   </div>
+                 ))
+               )}
+            </div>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+};
+
+export default Rent;
