@@ -21,12 +21,21 @@ const Settings: React.FC = () => {
   useEffect(() => {
     const unsubAuth = onAuthStateChanged(auth, (u) => {
       console.log("Auth state changed:", u?.uid);
+      console.log("Firebase Project ID:", db.app.options.projectId);
       if (u) {
         setUser(u);
         setEmail(u.email || '');
         
+        // DIAGNOSTIC: Try to read public document
+        getDoc(doc(db, "system", "status")).then(() => {
+          console.log("DIAGNOSTIC: Public read SUCCESS (Rules are active)");
+        }).catch(err => {
+          console.error("DIAGNOSTIC: Public read FAILED. This usually means rules are NOT deployed or project ID is wrong.", err);
+        });
+
         // Use onSnapshot for real-time user data
         const userDocRef = doc(db, "users", u.uid);
+        console.log("Fetching user profile for UID:", u.uid, "at path: users/" + u.uid);
         const unsubSnap = onSnapshot(userDocRef, (snap) => {
           if (snap.exists()) {
             const data = snap.data();
@@ -277,6 +286,20 @@ const Settings: React.FC = () => {
       />
 
       <main style={{ maxWidth: '600px', margin: '2rem auto', padding: '1rem' }}>
+        {/* Visible Diagnostics for Debugging */}
+        <div style={{ background: '#333', padding: '1rem', borderRadius: '12px', marginBottom: '2rem', fontSize: '0.7rem', color: '#aaa', border: '1px solid #444' }}>
+          <div style={{ fontWeight: 'bold', color: '#ff6600', marginBottom: '0.5rem' }}>CONNECTION DIAGNOSTICS</div>
+          <div>Project: {db.app.options.projectId}</div>
+          <div>UID: {user?.uid || 'Not Auth'}</div>
+          <div>Status: {loading ? '🔄 Loading Data...' : '✅ Connected'}</div>
+          <button 
+            onClick={() => window.location.reload()} 
+            style={{ marginTop: '0.8rem', padding: '0.4rem 1rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '4px', fontSize: '0.6rem', fontWeight: 'bold', cursor: 'pointer' }}
+          >
+            FORCE APP RELOAD
+          </button>
+        </div>
+
         <h1 style={{ color: 'white', marginBottom: '2rem' }}>User Settings</h1>
 
         {error && <div style={{ background: 'rgba(217,48,37,0.1)', color: '#d93025', padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem' }}>{error}</div>}
