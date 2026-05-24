@@ -43,6 +43,8 @@ function MapHome() {
   });
   const [shopBikes, setShopBikes] = useState<any[]>([]);
   const [selectedBikeId, setSelectedBikeId] = useState<string>('');
+  const [chargers, setChargers] = useState<any[]>([]);
+  const [showChargers, setShowChargers] = useState(false);
 
   const [showAuthModal, setShowAuthModal] = useState(false);
 
@@ -187,6 +189,24 @@ function MapHome() {
     } catch (e) { console.error(e); }
   };
 
+  const handleFetchChargers = async () => {
+    if (showChargers) { setShowChargers(false); return; }
+    setIsLoading(true);
+    try {
+      navigator.geolocation.getCurrentPosition(async (pos) => {
+        const res = await fetch(`/api/charging?lat=${pos.coords.latitude}&lng=${pos.coords.longitude}&distance=15`);
+        const data = await res.json();
+        setChargers(data);
+        setShowChargers(true);
+        setIsLoading(false);
+      }, (err) => {
+        console.error(err);
+        setIsLoading(false);
+        alert("Enable location to find chargers.");
+      });
+    } catch (e) { console.error(e); setIsLoading(false); }
+  };
+
   if (loading) return <div style={{ color: 'white', padding: '4rem', textAlign: 'center' }}>Initializing Map Hub...</div>;
 
   return (
@@ -197,6 +217,13 @@ function MapHome() {
       <div className="main-layout" style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <aside style={{ width: '320px', padding: '20px', background: '#1a1a1a', borderRight: '1px solid #333', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
           
+          <button 
+            onClick={handleFetchChargers}
+            style={{ width: '100%', padding: '0.8rem', background: showChargers ? '#ff6600' : '#222', border: '1px solid #333', borderRadius: '12px', color: 'white', fontWeight: 'bold', cursor: 'pointer', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+          >
+            {showChargers ? '🔌 HIDE CHARGERS' : '🔌 FIND CHARGERS'}
+          </button>
+
           {userRole === 'fleet' ? (
             /* MANAGER SIDEBAR */
             <>
@@ -306,6 +333,9 @@ function MapHome() {
               {userRole === 'rider' && currentLocation && (
                 <AdvancedMarker position={currentLocation} title="You" icon={{ url: '/app-icon.png', scaledSize: { width: 32, height: 32 } }} />
               )}
+              {showChargers && chargers.map(c => (
+                <AdvancedMarker key={c.id} position={c.position} icon={{ path: google.maps.SymbolPath.CIRCLE, fillColor: c.is110v ? '#34a853' : '#ff6600', fillOpacity: 1, scale: 6, strokeColor: 'white', strokeWeight: 2 }} title={`${c.name} (${c.chargerClass})`} />
+              ))}
               {stops[stops.length-1] && isLoading && (
                 <DirectionsService options={{ origin: currentLocation || 'current location', destination: stops[stops.length-1], waypoints: stops.slice(0, -1).filter(s => s).map(s => ({ location: s, stopover: true })), travelMode: google.maps.TravelMode.BICYCLING, provideRouteAlternatives: true }} callback={directionsCallback} />
               )}
