@@ -19,7 +19,7 @@ const NavBar: React.FC<NavBarProps> = ({ user, onShowInstall, onShowAuth }) => {
     if (!user) return;
     getDoc(doc(db, "users", user.uid)).then(snap => {
       if (snap.exists()) setUserData(snap.data());
-    });
+    }).catch(e => console.error("NavBar user fetch failed", e));
 
     const q = query(
       collection(db, `users/${user.uid}/notifications`),
@@ -28,6 +28,8 @@ const NavBar: React.FC<NavBarProps> = ({ user, onShowInstall, onShowAuth }) => {
 
     const unsubscribe = onSnapshot(q, (snap) => {
       setUnreadCount(snap.size);
+    }, (err) => {
+      console.error("NavBar notifications listener failed", err);
     });
 
     return () => unsubscribe();

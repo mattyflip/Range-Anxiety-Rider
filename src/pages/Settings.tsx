@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { auth, db } from '../firebase'
 import { onAuthStateChanged, updateEmail, deleteUser, signOut } from 'firebase/auth'
-import { doc, getDoc, updateDoc, deleteDoc, query, collection, onSnapshot, setDoc } from 'firebase/firestore'
+import { doc, updateDoc, deleteDoc, query, collection, onSnapshot, setDoc } from 'firebase/firestore'
 import NavBar from '../components/NavBar'
 
 const Settings: React.FC = () => {
@@ -19,13 +19,15 @@ const Settings: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (u) => {
+    const unsubAuth = onAuthStateChanged(auth, (u) => {
       console.log("Auth state changed:", u?.uid);
       if (u) {
         setUser(u);
         setEmail(u.email || '');
-        try {
-          const snap = await getDoc(doc(db, "users", u.uid));
+        
+        // Use onSnapshot for real-time user data
+        const userDocRef = doc(db, "users", u.uid);
+        const unsubSnap = onSnapshot(userDocRef, (snap) => {
           if (snap.exists()) {
             const data = snap.data();
             setUserData(data);
@@ -33,19 +35,22 @@ const Settings: React.FC = () => {
             setBio(data.bio || '');
           } else {
             console.warn("User document does not exist in Firestore.");
+            setUserData({});
           }
-        } catch (err) {
-          console.error("Error fetching user settings:", err);
-          setError("Failed to load user profile. Please try refreshing.");
-        } finally {
           setLoading(false);
-        }
+        }, (err) => {
+          console.error("Error fetching user settings snap:", err);
+          setError(`Failed to load user profile: ${err.message}. Please try refreshing.`);
+          setLoading(false);
+        });
+
+        return () => unsubSnap();
       } else {
         console.log("No user found, redirecting to home.");
         navigate('/');
       }
     });
-    return () => unsub();
+    return () => unsubAuth();
   }, [navigate]);
 
   const handleUpdateProfile = async () => {

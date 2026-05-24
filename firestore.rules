@@ -19,6 +19,10 @@ service cloud.firestore {
         allow read: if isSignedIn();
         allow write: if isSignedIn() && request.auth.uid == userId;
       }
+      
+      match /notifications/{notificationId} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
     }
 
     match /posts/{postId} {
