@@ -22,20 +22,11 @@ const Settings: React.FC = () => {
     const unsubAuth = onAuthStateChanged(auth, (u) => {
       console.log("Auth state changed:", u?.uid);
       if (u) {
-        window.alert("Connected to Project: " + db.app.options.projectId);
         setUser(u);
         setEmail(u.email || '');
         
-        // DIAGNOSTIC: Try to read public document
-        getDoc(doc(db, "system", "status")).then(() => {
-          console.log("DIAGNOSTIC: Public read SUCCESS (Rules are active)");
-        }).catch((err: any) => {
-          console.error("DIAGNOSTIC: Public read FAILED. This usually means rules are NOT deployed or project ID is wrong.", err);
-        });
-
         // Use onSnapshot for real-time user data
         const userDocRef = doc(db, "users", u.uid);
-        console.log("Fetching user profile for UID:", u.uid, "at path: users/" + u.uid);
         const unsubSnap = onSnapshot(userDocRef, (snap) => {
           if (snap.exists()) {
             const data = snap.data();
