@@ -77,15 +77,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           updatedAt: FieldValue.serverTimestamp(),
         };
 
-        if (tier === 'host') {
-          updateData.isHostTier = true;
+        if (tier === 'shop') {
+          updateData.isShopTier = true;
           const expiresAt = new Date();
           expiresAt.setDate(expiresAt.getDate() + 30);
-          updateData.hostTierExpiresAt = Timestamp.fromDate(expiresAt);
+          updateData.shopTierExpiresAt = Timestamp.fromDate(expiresAt);
         }
 
         await db.collection('users').doc(userId).set(updateData, { merge: true });
-        console.log(`Successfully upgraded user ${userId} to ${tier === 'host' ? 'HOST' : 'PRO'}`);
+        console.log(`Successfully upgraded user ${userId} to ${tier === 'shop' ? 'SHOP' : 'PRO'}`);
       } catch (e: any) {
         console.error('Error updating user pro status in Firestore:', e.message);
         return res.status(500).send(`Database Error: ${e.message}`);

@@ -224,15 +224,15 @@ const Settings: React.FC = () => {
 
   // Subscription states
   const [isPro, setIsPro] = useState(false);
-  const [isHostTier, setIsHostTier] = useState(false);
-  const [hostTierExpiresAt, setHostTierExpiresAt] = useState<Date | null>(null);
+  const [isShopTier, setIsShopTier] = useState(false);
+  const [shopTierExpiresAt, setShopTierExpiresAt] = useState<Date | null>(null);
 
   useEffect(() => {
     if (userData) {
       setIsPro(userData.isPro || false);
-      setIsHostTier(userData.isHostTier || false);
-      if (userData.hostTierExpiresAt?.toDate) {
-        setHostTierExpiresAt(userData.hostTierExpiresAt.toDate());
+      setIsShopTier(userData.isShopTier || false);
+      if (userData.shopTierExpiresAt?.toDate) {
+        setShopTierExpiresAt(userData.shopTierExpiresAt.toDate());
       }
     }
   }, [userData]);
@@ -259,14 +259,14 @@ const Settings: React.FC = () => {
     }
   };
 
-  const checkoutHostTier = async () => {
+  const checkoutShopTier = async () => {
     if (!user) return;
     try {
       const token = await user.getIdToken();
       const res = await fetch('/api/create-checkout-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ userId: user.uid, email: user.email, tier: 'host' })
+        body: JSON.stringify({ userId: user.uid, email: user.email, tier: 'shop' })
       });
       const data = await res.json();
       if (data.url) {
@@ -292,20 +292,6 @@ const Settings: React.FC = () => {
       />
 
       <main style={{ maxWidth: '600px', margin: '2rem auto', padding: '1rem' }}>
-        {/* Visible Diagnostics for Debugging */}
-        <div style={{ background: '#333', padding: '1rem', borderRadius: '12px', marginBottom: '2rem', fontSize: '0.7rem', color: '#aaa', border: '1px solid #444' }}>
-          <div style={{ fontWeight: 'bold', color: '#ff6600', marginBottom: '0.5rem' }}>CONNECTION DIAGNOSTICS</div>
-          <div>Project: {db.app.options.projectId}</div>
-          <div>UID: {user?.uid || 'Not Auth'}</div>
-          <div>Status: {loading ? '🔄 Loading Data...' : '✅ Connected'}</div>
-          <button 
-            onClick={() => window.location.reload()} 
-            style={{ marginTop: '0.8rem', padding: '0.4rem 1rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '4px', fontSize: '0.6rem', fontWeight: 'bold', cursor: 'pointer' }}
-          >
-            FORCE APP RELOAD
-          </button>
-        </div>
-
         <h1 style={{ color: 'white', marginBottom: '2rem' }}>User Settings</h1>
 
         {error && <div style={{ background: 'rgba(217,48,37,0.1)', color: '#d93025', padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem' }}>{error}</div>}
@@ -315,14 +301,14 @@ const Settings: React.FC = () => {
           <h2 style={{ color: '#ff6600', fontSize: '1.2rem', marginBottom: '1rem' }}>Subscription Status</h2>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
-            <div style={{ fontSize: '2.5rem' }}>{isHostTier ? '🏍️' : isPro ? '⭐' : '🚲'}</div>
+            <div style={{ fontSize: '2.5rem' }}>{isShopTier ? '🏬' : isPro ? '⭐' : '🚲'}</div>
             <div>
               <div style={{ color: 'white', fontWeight: 'bold', fontSize: '1.1rem' }}>
-                {isHostTier ? 'HOST TIER' : isPro ? 'PRO ACCOUNT' : 'FREE ACCOUNT'}
+                {isShopTier ? 'SHOP TIER' : isPro ? 'PRO ACCOUNT' : 'FREE ACCOUNT'}
               </div>
               <div style={{ color: '#888', fontSize: '0.8rem' }}>
-                {isHostTier 
-                  ? `Host access active until ${hostTierExpiresAt?.toLocaleDateString()}` 
+                {isShopTier 
+                  ? `Shop access active until ${shopTierExpiresAt?.toLocaleDateString()}` 
                   : isPro 
                     ? 'All features unlocked' 
                     : 'Upgrade to unlock all features'}
@@ -330,7 +316,7 @@ const Settings: React.FC = () => {
             </div>
           </div>
 
-          {!isHostTier && (
+          {!isShopTier && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               {!isPro && (
                 <button
@@ -341,23 +327,24 @@ const Settings: React.FC = () => {
                 </button>
               )}
               <button
-                onClick={checkoutHostTier}
+                onClick={checkoutShopTier}
                 style={{ width: '100%', padding: '1rem', background: '#333', color: '#ff6600', border: '1px solid #ff6600', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer' }}
               >
-                {isPro ? 'Upgrade to HOST — $9.99/mo' : 'Upgrade to HOST — $9.99/mo'}
+                Upgrade to SHOP — $49.99/mo
               </button>
               <p style={{ color: '#666', fontSize: '0.7rem', textAlign: 'center', marginTop: '0.5rem' }}>
-                PRO includes charger search and no ads. HOST includes group ride hosting and live tracking.
+                PRO includes charger search and no ads. SHOP includes professional fleet management, live unit tracking, and shop-specific physics tools.
               </p>
             </div>
           )}
 
-          {isHostTier && (
+          {isShopTier && (
             <div style={{ color: '#34a853', fontSize: '0.9rem', textAlign: 'center', background: 'rgba(52,168,83,0.1)', padding: '1rem', borderRadius: '12px' }}>
-              ✓ You have the highest tier of access. Thank you for supporting Range Anxiety!
+              ✓ You have the professional SHOP tier active. Thank you for using Range Anxiety Rider!
             </div>
           )}
-        </section>        {/* Profile Settings */}
+        </section>
+        {/* Profile Settings */}
         <section className="card" style={{ background: '#1a1a1a', padding: '2rem', borderRadius: '24px', border: '1px solid #333', marginBottom: '2rem' }}>
           <h2 style={{ color: '#ff6600', fontSize: '1.2rem', marginBottom: '1.5rem' }}>Profile Information</h2>
           

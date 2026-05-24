@@ -47,7 +47,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(403).json({ error: 'Forbidden: Cannot checkout for another user' });
   }
 
-  const isHost = tier === 'host';
+  const isShop = tier === 'shop';
 
   try {
     const session = await stripe.checkout.sessions.create({
@@ -57,24 +57,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           price_data: {
             currency: 'usd',
             product_data: {
-              name: isHost ? 'Range Anxiety HOST TIER' : 'Range Anxiety PRO',
-              description: isHost 
-                ? 'Host group rides, see live riders on map, and unlock all PRO features.' 
+              name: isShop ? 'Range Anxiety SHOP TIER' : 'Range Anxiety PRO',
+              description: isShop 
+                ? 'Professional fleet management, live unit tracking, and shop-specific physics tools.' 
                 : 'Unlock all features and remove ads forever.',
             },
-            unit_amount: isHost ? 999 : 499,
-            ...(isHost && { recurring: { interval: 'month' } }),
+            unit_amount: isShop ? 4999 : 499,
+            ...(isShop && { recurring: { interval: 'month' } }),
           },
           quantity: 1,
         },
       ],
-      mode: isHost ? 'subscription' : 'payment',
+      mode: isShop ? 'subscription' : 'payment',
       success_url: `${req.headers.origin}/?payment=success`,
       cancel_url: `${req.headers.origin}/?payment=cancel`,
       customer_email: email || decodedToken.email,
       metadata: {
         userId,
-        tier: isHost ? 'host' : 'pro',
+        tier: isShop ? 'shop' : 'pro',
       },
     });
 
