@@ -20,9 +20,8 @@ const FleetDashboard = () => {
   const [userRole, setUserRole] = useState<'rider' | 'fleet'>('rider');
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [fleetBikes, setFleetBikes] = useState<any[]>([]);
-  const [suggestedRoutes, setSuggestedRoutes] = useState<any[]>([]);
-  const [newRouteStops, setNewRouteStops] = useState<string[]>(['']);
-  const [newRouteName, setNewRouteName] = useState('');
+  const [orgBikes, setOrgBikes] = useState<any[]>([]); 
+  const [selectedBikeIds, setSelectedBikeIds] = useState<string[]>([]);
   const [chargers, setChargers] = useState<any[]>([]);
   const [showChargers, setShowChargers] = useState(false);
   const [currentLocation, setCurrentLocation] = useState<google.maps.LatLngLiteral | null>(null);
@@ -80,7 +79,7 @@ const FleetDashboard = () => {
     }
   };
 
-  // Fleet Manager: Listen to live bike updates & suggested routes
+  // Fleet Manager: Listen to live bike updates and specs
   useEffect(() => {
     if (userRole !== 'fleet' || !userData?.orgId) return;
     
@@ -89,36 +88,13 @@ const FleetDashboard = () => {
       setFleetBikes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
 
-    const qRoutes = query(collection(db, `organizations/${userData.orgId}/suggested_routes`));
-    const unsubRoutes = onSnapshot(qRoutes, (snapshot) => {
-      setSuggestedRoutes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    const qSpecs = query(collection(db, `organizations/${userData.orgId}/bikes`));
+    const unsubSpecs = onSnapshot(qSpecs, (snapshot) => {
+      setOrgBikes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
 
-    return () => { unsubBikes(); unsubRoutes(); };
+    return () => { unsubBikes(); unsubSpecs(); };
   }, [userRole, userData?.orgId]);
-
-  const handleSaveRoute = async () => {
-    if (!newRouteName.trim() || newRouteStops.filter(s => s).length === 0 || !userData?.orgId) return;
-    try {
-      const { addDoc, collection } = await import('firebase/firestore');
-      await addDoc(collection(db, `organizations/${userData.orgId}/suggested_routes`), {
-        name: newRouteName,
-        stops: newRouteStops.filter(s => s),
-        createdAt: new Date().toISOString()
-      });
-      setNewRouteName('');
-      setNewRouteStops(['']);
-      alert("Suggested route saved!");
-    } catch (e) { console.error(e); }
-  };
-
-  const handleDeleteRoute = async (id: string) => {
-    if (!window.confirm("Delete this suggested route?") || !userData?.orgId) return;
-    try {
-      const { deleteDoc, doc } = await import('firebase/firestore');
-      await deleteDoc(doc(db, `organizations/${userData.orgId}/suggested_routes`, id));
-    } catch (e) { console.error(e); }
-  };
 
   useEffect(() => {
     if (navigator.geolocation) {
@@ -127,6 +103,51 @@ const FleetDashboard = () => {
       });
     }
   }, []);
+
+  const toggleBikeSelection = (id: string) => {
+    if (selectedBikeIds.includes(id)) {
+      setSelectedBikeIds(selectedBikeIds.filter(bId => bId !== id));
+    } else {
+      setSelectedBikeIds([...selectedBikeIds, id]);
+    }
+  };
+
+  const selectAllRented = () => {
+    const rentedIds = fleetBikes.filter(b => b.status === 'rented').map(b => b.id);
+    setSelectedBikeIds(rentedIds);
+  };
+
+  const clearSelection = () => setSelectedBikeIds([]);
+
+  // Calculate rough remaining range based on physics specs
+  const calculateRange = (liveBike: any) => {
+    const spec = orgBikes.find(b => b.unitId === liveBike.unitName)?.specs;
+    if (!spec) return '??';
+    
+    // Baseline flat-terrain physics assumption
+    const { voltage, capacityAh, tirePSI, bikeWeightLbs, targetSpeedMph, cycleCount } = spec;
+    const speedMph = targetSpeedMph || 20;
+    const speedMps = speedMph * 0.44704;
+    const totalMassKg = ((bikeWeightLbs || 65) + 180) * 0.453592;
+    const gravity = 9.81;
+    
+    const crr = 0.005 + (50 / (tirePSI || 30)) * 0.0005;
+    const fRoll = crr * totalMassKg * gravity;
+    const fAero = 0.5 * 1.225 * 0.5 * Math.pow(speedMps, 2);
+    
+    const powerWatts = ((fRoll + fAero) * speedMps) / 0.85;
+    const whPerMile = powerWatts / speedMph;
+    
+    const degradationFactor = 1 - ((cycleCount || 0) / 500) * 0.1;
+    const totalCapacityWh = (voltage || 48) * (capacityAh || 15) * Math.max(0.7, degradationFactor);
+    const currentWh = totalCapacityWh * (liveBike.battery / 100);
+    
+    return (currentWh / whPerMile).toFixed(1);
+  };
+
+  const displayedBikes = selectedBikeIds.length > 0 
+    ? fleetBikes.filter(b => selectedBikeIds.includes(b.id)) 
+    : fleetBikes;
 
   if (!isLoaded) return <div style={{ color: 'white', padding: '2rem', textAlign: 'center' }}>Loading Maps...</div>;
 
@@ -139,80 +160,72 @@ const FleetDashboard = () => {
         <div style={{ padding: '1rem 2rem', background: '#111', borderBottom: '1px solid #333', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <h1 style={{ color: '#ff6600', margin: 0, fontSize: '1.2rem' }}>FLEET DASHBOARD</h1>
-            <div style={{ color: '#888', fontSize: '0.7rem' }}>Live oversight • {fleetBikes.length} active units</div>
+            <div style={{ color: '#888', fontSize: '0.7rem' }}>Live oversight • {fleetBikes.filter(b => b.status === 'rented').length} active rentals</div>
           </div>
           <div style={{ display: 'flex', gap: '2rem' }}>
              <button onClick={handleFetchChargers} style={{ background: showChargers ? '#ff6600' : '#222', color: 'white', border: '1px solid #333', padding: '0.4rem 1rem', borderRadius: '8px', fontSize: '0.7rem', fontWeight: 'bold', cursor: 'pointer' }}>🔌 {showChargers ? 'HIDE CHARGERS' : 'SHOW CHARGERS'}</button>
-             <div style={{ textAlign: 'center' }}><div style={{ fontSize: '0.6rem', color: '#666' }}>ACTIVE</div><div style={{ fontWeight: '900', color: 'white' }}>{fleetBikes.filter(b => b.status === 'rented').length}</div></div>
+             <div style={{ textAlign: 'center' }}><div style={{ fontSize: '0.6rem', color: '#666' }}>RENTED</div><div style={{ fontWeight: '900', color: 'white' }}>{fleetBikes.filter(b => b.status === 'rented').length}</div></div>
              <div style={{ textAlign: 'center' }}><div style={{ fontSize: '0.6rem', color: '#666' }}>AVAILABLE</div><div style={{ fontWeight: '900', color: '#34a853' }}>{fleetBikes.filter(b => b.status === 'available').length}</div></div>
           </div>
         </div>
         <div style={{ flex: 1, display: 'flex' }}>
-          <aside style={{ width: '300px', padding: '1.5rem', background: '#111', borderRight: '1px solid #333', overflowY: 'auto' }}>
-            <h2 style={{ fontSize: '0.8rem', color: '#666', textTransform: 'uppercase', marginBottom: '1rem' }}>Unit Status</h2>
-            <div style={{ marginBottom: '2.5rem' }}>
+          <aside style={{ width: '320px', padding: '1.5rem', background: '#111', borderRight: '1px solid #333', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h2 style={{ fontSize: '0.8rem', color: '#666', textTransform: 'uppercase', margin: 0 }}>Rental Status</h2>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button onClick={selectAllRented} style={{ background: 'none', border: '1px solid #444', color: '#888', fontSize: '0.6rem', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer' }}>Select Rented</button>
+                <button onClick={clearSelection} style={{ background: 'none', border: 'none', color: '#ff4444', fontSize: '0.6rem', cursor: 'pointer' }}>Clear</button>
+              </div>
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
               {fleetBikes.length === 0 ? (
                 <div style={{ color: '#444', textAlign: 'center', marginTop: '1rem', fontSize: '0.8rem' }}>No bikes active.</div>
               ) : (
-                fleetBikes.map(b => (
-                  <div key={b.id} style={{ background: '#1a1a1a', padding: '1rem', borderRadius: '12px', marginBottom: '0.8rem', border: '1px solid #222' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div style={{ fontWeight: 'bold', color: 'white' }}>{b.unitName}</div>
-                      <div style={{ fontSize: '0.6rem', padding: '2px 6px', background: b.status === 'rented' ? '#ff6600' : '#34a853', borderRadius: '4px', color: 'white', textTransform: 'uppercase' }}>{b.status}</div>
+                fleetBikes.map(b => {
+                  const isSelected = selectedBikeIds.includes(b.id);
+                  const isRented = b.status === 'rented';
+                  return (
+                    <div 
+                      key={b.id} 
+                      onClick={() => toggleBikeSelection(b.id)}
+                      style={{ 
+                        background: isSelected ? 'rgba(255,102,0,0.1)' : '#1a1a1a', 
+                        padding: '1rem', 
+                        borderRadius: '12px', 
+                        border: `1px solid ${isSelected ? '#ff6600' : '#222'}`,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ fontWeight: 'bold', color: isSelected ? '#ff6600' : 'white' }}>{b.unitName}</div>
+                        <div style={{ fontSize: '0.6rem', padding: '2px 6px', background: isRented ? '#ff6600' : '#34a853', borderRadius: '4px', color: 'white', textTransform: 'uppercase' }}>{b.status}</div>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginTop: '0.8rem' }}>
+                        <div style={{ fontSize: '0.75rem', color: b.battery < 20 ? '#ff3333' : '#34a853' }}>
+                          <span style={{ color: '#666', fontSize: '0.6rem', display: 'block' }}>BATTERY</span>
+                          {b.battery}%
+                        </div>
+                        {isRented && (
+                          <div style={{ fontSize: '0.75rem', color: 'white' }}>
+                            <span style={{ color: '#666', fontSize: '0.6rem', display: 'block' }}>EST. RANGE</span>
+                            {calculateRange(b)} mi
+                          </div>
+                        )}
+                      </div>
+                      <div style={{ fontSize: '0.65rem', color: '#555', marginTop: '0.5rem', textAlign: 'right' }}>
+                        Seen: {new Date(b.lastSeen).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </div>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.5rem' }}>
-                      <div style={{ fontSize: '0.75rem', color: b.battery < 20 ? '#ff3333' : '#34a853' }}>Battery: {b.battery}%</div>
-                      <div style={{ fontSize: '0.7rem', color: '#666' }}>{new Date(b.lastSeen).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
-                    </div>
-                  </div>
-                ))
+                  );
+                })
               )}
-            </div>
-
-            <h2 style={{ fontSize: '0.8rem', color: '#666', textTransform: 'uppercase', marginBottom: '1rem' }}>Suggested Routes</h2>
-            <div style={{ background: '#1a1a1a', padding: '1rem', borderRadius: '16px', border: '1px dashed #333', marginBottom: '1.5rem' }}>
-              <input 
-                placeholder="Route Name (e.g. Mountain Loop)" 
-                value={newRouteName}
-                onChange={e => setNewRouteName(e.target.value)}
-                style={{ width: '100%', background: '#111', border: '1px solid #333', color: 'white', padding: '0.6rem', borderRadius: '8px', fontSize: '0.75rem', marginBottom: '0.8rem' }}
-              />
-              {newRouteStops.map((stop, i) => (
-                <div key={i} style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.5rem' }}>
-                  <input 
-                    placeholder="Stop address..." 
-                    value={stop}
-                    onChange={e => {
-                      const ns = [...newRouteStops];
-                      ns[i] = e.target.value;
-                      setNewRouteStops(ns);
-                    }}
-                    style={{ flex: 1, background: '#111', border: '1px solid #333', color: 'white', padding: '0.5rem', borderRadius: '8px', fontSize: '0.7rem' }}
-                  />
-                  {newRouteStops.length > 1 && (
-                    <button onClick={() => setNewRouteStops(newRouteStops.filter((_, idx) => idx !== i))} style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer' }}>×</button>
-                  )}
-                </div>
-              ))}
-              <button onClick={() => setNewRouteStops([...newRouteStops, ''])} style={{ width: '100%', background: 'none', border: '1px dashed #444', color: '#666', fontSize: '0.6rem', padding: '0.4rem', borderRadius: '8px', cursor: 'pointer', marginBottom: '0.8rem' }}>+ ADD STOP</button>
-              <button onClick={handleSaveRoute} style={{ width: '100%', background: '#ff6600', color: 'white', border: 'none', padding: '0.6rem', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer' }}>SAVE ROUTE</button>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-              {suggestedRoutes.map(r => (
-                <div key={r.id} style={{ background: '#1a1a1a', padding: '0.8rem', borderRadius: '12px', border: '1px solid #222', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <div style={{ color: 'white', fontSize: '0.8rem', fontWeight: 'bold' }}>{r.name}</div>
-                    <div style={{ color: '#666', fontSize: '0.65rem' }}>{r.stops.length} stops</div>
-                  </div>
-                  <button onClick={() => handleDeleteRoute(r.id)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>🗑️</button>
-                </div>
-              ))}
             </div>
           </aside>
           <main style={{ flex: 1 }}>
             <GoogleMap mapContainerStyle={{ width: '100%', height: '100%' }} center={currentLocation || {lat: 40.71, lng: -74.00}} zoom={12} onLoad={m => {mapRef.current = m}}>
-              {fleetBikes.map(b => (
+              {displayedBikes.map(b => (
                 <Marker 
                   key={b.id} 
                   position={b.position} 

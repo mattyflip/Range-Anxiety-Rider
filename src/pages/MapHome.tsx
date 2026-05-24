@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { GoogleMap, useJsApiLoader, DirectionsService, DirectionsRenderer, Marker } from '@react-google-maps/api'
+import { GoogleMap, useJsApiLoader, DirectionsService, DirectionsRenderer, Marker, Autocomplete } from '@react-google-maps/api'
 import { useLocation } from 'react-router-dom';
 import { auth, db } from '../firebase'
 import { onAuthStateChanged } from 'firebase/auth'
@@ -16,12 +16,14 @@ const LIBRARIES: ("places" | "geometry")[] = ["places", "geometry"];
 function MapHome() {
   const { isLoaded } = useJsApiLoader({ id: 'google-map-script', googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "", libraries: LIBRARIES });
   const mapRef = useRef<google.maps.Map | null>(null);
+  const autocompleteRefs = useRef<(google.maps.places.Autocomplete | null)[]>([]);
 
   const [stops, setStops] = useState<string[]>(['']);
   const [metrics, setMetrics] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [response, setResponse] = useState<any>(null);
-  const [suggestedRoutes, setSuggestedRoutes] = useState<any[]>([]);
+  const [selectedRouteIndex, setSelectedRouteIndex] = useState(0);
+  const [routeOptions, setRouteOptions] = useState<any[]>([]);
   const [user, setUser] = useState<User | null>(null);
   const [userData, setUserData] = useState<any>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -59,7 +61,6 @@ function MapHome() {
       }
     };
     window.addEventListener('ebike-route-loaded', handleRouteLoaded);
-    // Also check on mount
     handleRouteLoaded();
     return () => window.removeEventListener('ebike-route-loaded', handleRouteLoaded);
   }, []);
@@ -73,40 +74,27 @@ function MapHome() {
         if (snap.exists()) {
           const d = snap.data();
           setUserData(d);
-          
-          // Fetch Org Data
           if (d.orgId) {
             const oSnap = await getDoc(doc(db, "organizations", d.orgId));
             if (oSnap.exists()) setOrgData(oSnap.data());
 
-            // Fetch Shop Bikes
             const { query, collection, onSnapshot } = await import('firebase/firestore');
             const bQuery = query(collection(db, `organizations/${d.orgId}/bikes`));
             const bUnsub = onSnapshot(bQuery, (snap) => {
               const bikes = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
               setShopBikes(bikes);
+              if (bikes.length > 0 && !selectedBikeId) setSelectedBikeId(bikes[0].id);
             });
-
-            // Fetch Suggested Routes
-            const rQuery = query(collection(db, `organizations/${d.orgId}/suggested_routes`));
-            const rUnsub = onSnapshot(rQuery, (snap) => {
-              setSuggestedRoutes(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-            });
-
-            return () => { bUnsub(); rUnsub(); };
+            return () => bUnsub();
           }
         }
       } else { setUserData(null); setOrgData(null); setShopBikes([]); }
     });
   }, []);
 
-  // Fetch Chargers near current location
+  // Fetch Chargers
   const handleFetchChargers = async () => {
-    if (showChargers) {
-      setShowChargers(false);
-      return;
-    }
-
+    if (showChargers) { setShowChargers(false); return; }
     setIsLoading(true);
     try {
       navigator.geolocation.getCurrentPosition(async (pos) => {
@@ -120,16 +108,12 @@ function MapHome() {
         setIsLoading(false);
         alert("Enable location to find chargers.");
       });
-    } catch (e) {
-      console.error(e);
-      setIsLoading(false);
-    }
+    } catch (e) { console.error(e); setIsLoading(false); }
   };
 
-  // Rental Bike Tracking Simulation (Mock GPS updates from bikes)
+  // GPS Tracking
   useEffect(() => {
     if (!isWorking || !user || !userData?.orgId) return;
-
     const watchId = navigator.geolocation.watchPosition(async (pos) => {
       await setDoc(doc(db, `organizations/${userData.orgId}/live_units`, user.uid), {    
         unitName: userData.username || 'Bike #1',
@@ -139,7 +123,6 @@ function MapHome() {
         status: response ? 'rented' : 'available'
       }, { merge: true });
     }, null, { enableHighAccuracy: true });
-
     return () => navigator.geolocation.clearWatch(watchId);
   }, [isWorking, user, userData?.orgId, response]);
 
@@ -154,91 +137,88 @@ function MapHome() {
   }, []);
 
   const directionsCallback = async (res: any, status: any) => {
-    if (status === 'OK' && res) { 
-        setResponse(res); 
-        
-        // 1. Multi-Stop Metrics Aggregation
-        const totalDistance = res.routes[0].legs.reduce((acc: number, leg: any) => acc + leg.distance.value, 0);
-        const totalDuration = res.routes[0].legs.reduce((acc: number, leg: any) => acc + leg.duration.value, 0);
-        const polyline = res.routes[0].overview_polyline;
-        const startLoc = res.routes[0].legs[0].start_location;
+    if (status === 'OK' && res) {
+      const bike = shopBikes.find(b => b.id === selectedBikeId) || shopBikes[0];
+      if (!bike || !bike.specs) { setResponse(res); setIsLoading(false); return; }
 
-        const bike = shopBikes.find(b => b.id === selectedBikeId) || shopBikes[0];
+      try {
+        const results = await Promise.all(res.routes.map(async (route: any, index: number) => {
+          const totalDistance = route.legs.reduce((acc: number, leg: any) => acc + leg.distance.value, 0);
+          const totalDuration = route.legs.reduce((acc: number, leg: any) => acc + leg.duration.value, 0);
+          const polyline = route.overview_polyline;
+          const startLoc = route.legs[0].start_location;
 
-        if (bike && bike.specs) {
-          // 2. Fetch Environmental Data (Elevation & Wind)
-          try {
-            const [elevRes, weatherRes] = await Promise.all([
-              fetch('/api/elevation', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ encodedPath: polyline })
-              }).then(r => r.json()),
-              fetch(`/api/weather?lat=${startLoc.lat()}&lng=${startLoc.lng()}`).then(r => r.json())
-            ]);
+          const [elevRes, weatherRes] = await Promise.all([
+            fetch('/api/elevation', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ encodedPath: polyline })
+            }).then(r => r.json()),
+            fetch(`/api/weather?lat=${startLoc.lat()}&lng=${startLoc.lng()}`).then(r => r.json())
+          ]);
 
-            const { voltage, capacityAh, motorWatts, tirePSI, bikeWeightLbs, targetSpeedMph, cycleCount, controllerAmps } = bike.specs;
-            
-            // 3. Constants & Physics Core
-            const riderWeightLbs = 180;
-            const totalMassKg = (bikeWeightLbs + riderWeightLbs) * 0.453592;
-            const speedMps = Math.min(totalDistance / totalDuration, (targetSpeedMph || 20) * 0.44704);
-            const gravity = 9.81;
-            
-            // 4. Rolling Resistance
-            const crr = 0.005 + (50 / (tirePSI || 30)) * 0.0005;
-            const fRoll = crr * totalMassKg * gravity;
-            
-            // 5. Environmental Resistance
-            // A. Grade Resistance (simplified over total climb)
-            const slope = (elevRes.gain * 0.3048) / totalDistance; 
-            const fGrade = totalMassKg * gravity * Math.max(0, slope);
+          const { voltage, capacityAh, tirePSI, bikeWeightLbs, targetSpeedMph, cycleCount, motorWatts, controllerAmps } = bike.specs;
+          const speedMph = targetSpeedMph || 20;
+          const speedMps = Math.min(totalDistance / totalDuration, speedMph * 0.44704);
+          const totalMassKg = ((bikeWeightLbs || 65) + 180) * 0.453592;
+          const gravity = 9.81;
+          const crr = 0.005 + (50 / (tirePSI || 30)) * 0.0005;
+          const fRoll = crr * totalMassKg * gravity;
+          const slope = (elevRes.gain * 0.3048) / totalDistance; 
+          const fGrade = totalMassKg * gravity * Math.max(0, slope);
+          
+          const windMps = (weatherRes.wind_speed || 0) * 0.44704;
+          const headwindMps = windMps; 
+          
+          const rho = 1.225;
+          const cdA = 0.5;
+          const effectiveAirSpeedMps = Math.max(0, speedMps + headwindMps);
+          const fAero = 0.5 * rho * cdA * Math.pow(effectiveAirSpeedMps, 2);
+          
+          let powerWatts = (fRoll + fGrade + fAero) * speedMps / 0.85;
+          const maxPowerWatts = controllerAmps ? (controllerAmps * voltage) : (motorWatts || 750);
+          powerWatts = Math.min(powerWatts, maxPowerWatts);
+          
+          const energyWh = powerWatts * (totalDuration / 3600);
+          const degradationFactor = 1 - ((cycleCount || 0) / 500) * 0.1;
+          const totalWh = voltage * capacityAh * Math.max(0.7, degradationFactor);
+          const percentUsed = (energyWh / totalWh) * 100;
 
-            // B. Wind Resistance: Calculate relative headwind/tailwind
-            const endLoc = res.routes[0].legs[res.routes[0].legs.length - 1].end_location;
-            const dy = endLoc.lat() - startLoc.lat();
-            const dx = Math.cos(Math.PI / 180 * startLoc.lat()) * (endLoc.lng() - startLoc.lng());
-            const routeBearing = Math.atan2(dx, dy) * 180 / Math.PI;
-            const windMps = (weatherRes.wind_speed || 0) * 0.44704;
-            const angleDeg = (weatherRes.wind_deg - routeBearing + 360) % 360;
-            const headwindMps = windMps * Math.cos(angleDeg * Math.PI / 180);
-            
-            // 6. Aerodynamic Drag (v_relative^2)
-            const rho = 1.225; // Air density kg/m3
-            const cdA = 0.5;   // Drag coefficient * frontal area
-            const effectiveAirSpeedMps = Math.max(0, speedMps + headwindMps);
-            const fAero = 0.5 * rho * cdA * Math.pow(effectiveAirSpeedMps, 2);
-            
-            // 7. Total Power and Energy
-            let powerWatts = (fRoll + fGrade + fAero) * speedMps;
-            powerWatts = powerWatts / 0.85; // Efficiency factor
-            
-            const maxPowerWatts = controllerAmps ? (controllerAmps * voltage) : (motorWatts || 750);
-            powerWatts = Math.min(powerWatts, maxPowerWatts);
-            
-            const energyWh = powerWatts * (totalDuration / 3600);
-            
-            // 8. Capacity with Degradation
-            const degradationFactor = 1 - ((cycleCount || 0) / 500) * 0.1;
-            const totalWh = voltage * capacityAh * Math.max(0.7, degradationFactor);
-            
-            const percentRemaining = Math.max(0, Math.round(100 - (energyWh / totalWh) * 100));
-            setMetrics({ 
-              batteryPercentUsed: percentRemaining,
-              energyWh: energyWh.toFixed(1),
-              estRangeRemaining: ((totalWh - energyWh) / (energyWh / (totalDistance / 1609.34))).toFixed(1),
-              elevationGain: elevRes.gain?.toFixed(0),
-              windInfo: `${weatherRes.wind_speed}mph ${headwindMps > 0 ? 'Headwind' : 'Tailwind'}`
-            });
-          } catch (e) {
-             console.error("Advanced physics calculation failed:", e);
-             setMetrics({ batteryPercentUsed: 75 });
-          }
-        } else {
-          setMetrics({ batteryPercentUsed: 75 });
-        }
+          return {
+            index,
+            energyWh,
+            batteryPercentRemaining: Math.max(0, Math.round(100 - percentUsed)),
+            distanceMiles: (totalDistance / 1609.34).toFixed(1),
+            durationMin: Math.round(totalDuration / 60),
+            elevationGain: elevRes.gain?.toFixed(0),
+            windInfo: `${weatherRes.wind_speed}mph`
+          };
+        }));
+
+        const sorted = [...results].sort((a, b) => b.batteryPercentRemaining - a.batteryPercentRemaining);
+        const bestIndex = sorted[0].index;
+
+        setRouteOptions(results);
+        setSelectedRouteIndex(bestIndex);
+        setResponse(res);
+        setMetrics(results[bestIndex]);
+
+      } catch (e) {
+        console.error("Smart routing failed", e);
+        setResponse(res);
+        setMetrics({ batteryPercentRemaining: 75 });
+      }
     }
     setIsLoading(false);
+  };
+
+  const handlePlaceChanged = (index: number) => {
+    const place = autocompleteRefs.current[index]?.getPlace();
+    if (place?.formatted_address) {
+      const newStops = [...stops];
+      newStops[index] = place.formatted_address;
+      setStops(newStops);
+    }
   };
 
   if (!isLoaded) return <div style={{ color: 'white', padding: '2rem', textAlign: 'center' }}>Loading Maps...</div>;
@@ -293,16 +273,21 @@ function MapHome() {
             <label style={{ color: '#666', fontSize: '0.7rem', textTransform: 'uppercase' }}>Itinerary</label>
             {stops.map((stop, i) => (
               <div key={i} style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-                <input 
-                  placeholder={i === 0 ? "First stop..." : "Next stop..."}
-                  value={stop} 
-                  onChange={e => {
-                    const newStops = [...stops];
-                    newStops[i] = e.target.value;
-                    setStops(newStops);
-                  }}
-                  style={{ flex: 1, background: '#111', border: '1px solid #333', color: 'white', padding: '0.6rem', borderRadius: '8px', fontSize: '0.8rem' }} 
-                />
+                <Autocomplete 
+                  onLoad={ref => (autocompleteRefs.current[i] = ref)}
+                  onPlaceChanged={() => handlePlaceChanged(i)}
+                >
+                  <input 
+                    placeholder={i === 0 ? "First stop..." : "Next stop..."}
+                    value={stop} 
+                    onChange={e => {
+                      const newStops = [...stops];
+                      newStops[i] = e.target.value;
+                      setStops(newStops);
+                    }}
+                    style={{ width: '100%', background: '#111', border: '1px solid #333', color: 'white', padding: '0.6rem', borderRadius: '8px', fontSize: '0.8rem' }} 
+                  />
+                </Autocomplete>
                 {stops.length > 1 && (
                   <button onClick={() => setStops(stops.filter((_, idx) => idx !== i))} style={{ background: '#222', border: '1px solid #333', color: '#ff4444', borderRadius: '8px', padding: '0 0.8rem', cursor: 'pointer' }}>×</button>
                 )}
@@ -322,17 +307,24 @@ function MapHome() {
             </button>
           </div>
 
-          {suggestedRoutes.length > 0 && (
-            <div style={{ marginBottom: '1.5rem' }}>
-              <label style={{ color: '#666', fontSize: '0.7rem', textTransform: 'uppercase' }}>Shop Recommendations</label>
+          {routeOptions.length > 1 && (
+            <div style={{ marginBottom: '1.5rem', borderTop: '1px solid #333', paddingTop: '1rem' }}>
+              <label style={{ color: '#666', fontSize: '0.7rem', textTransform: 'uppercase' }}>Route Alternatives</label>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
-                {suggestedRoutes.map(r => (
+                {routeOptions.map((opt, i) => (
                   <button 
-                    key={r.id} 
-                    onClick={() => { setStops(r.stops); setIsLoading(true); }}
-                    style={{ textAlign: 'left', padding: '0.6rem', background: '#222', border: '1px solid #333', color: 'white', borderRadius: '8px', fontSize: '0.75rem', cursor: 'pointer' }}
+                    key={i}
+                    onClick={() => { setSelectedRouteIndex(opt.index); setMetrics(opt); }}
+                    style={{ 
+                      textAlign: 'left', padding: '0.8rem', background: selectedRouteIndex === opt.index ? 'rgba(255,102,0,0.1)' : '#222', 
+                      border: `1px solid ${selectedRouteIndex === opt.index ? '#ff6600' : '#333'}`, color: 'white', borderRadius: '12px', fontSize: '0.75rem', cursor: 'pointer' 
+                    }}
                   >
-                    📍 {r.name}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
+                      <span>Option {i+1} {i === routeOptions.sort((a,b)=>b.batteryPercentRemaining - a.batteryPercentRemaining)[0].index && '(Best Range)'}</span>
+                      <span style={{ color: '#34a853' }}>{opt.batteryPercentRemaining}%</span>
+                    </div>
+                    <div style={{ color: '#888', fontSize: '0.65rem' }}>{opt.distanceMiles} mi • {opt.durationMin} min</div>
                   </button>
                 ))}
               </div>
@@ -340,17 +332,16 @@ function MapHome() {
           )}
 
           {metrics && (
-            <div style={{ marginTop: '2rem', borderTop: '1px solid #333', paddingTop: '1rem' }}>
+            <div style={{ marginTop: 'auto', borderTop: '1px solid #333', paddingTop: '1rem', marginBottom: '1rem' }}>
               <div style={{ fontSize: '0.8rem', color: '#888' }}>ESTIMATED BATTERY AT DESTINATION</div>
-              <h2 style={{ color: metrics.batteryPercentUsed < 20 ? '#ff3333' : '#34a853' }}>{metrics.batteryPercentUsed}% Left</h2>
+              <h2 style={{ color: metrics.batteryPercentRemaining < 20 ? '#ff3333' : '#34a853' }}>{metrics.batteryPercentRemaining}% Left</h2>
               <div style={{ fontSize: '0.65rem', color: '#666', marginTop: '0.5rem' }}>
-                <div>⛰️ {metrics.elevationGain}ft Gain</div>
-                <div>💨 {metrics.windInfo}</div>
+                <div>⛰️ {metrics.elevationGain}ft Gain • 💨 {metrics.windInfo}</div>
               </div>
             </div>
           )}
 
-          <div style={{ marginTop: 'auto', paddingTop: '2rem' }}>
+          <div style={{ paddingTop: '1rem' }}>
             <button 
                onClick={() => { setStops([orgData?.address || 'Shop Location']); setIsLoading(true); }}
                style={{ width: '100%', padding: '0.8rem', background: 'transparent', border: '1px solid #ff6600', color: '#ff6600', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
@@ -367,20 +358,15 @@ function MapHome() {
                   origin: currentLocation || 'current location', 
                   destination: stops[stops.length - 1], 
                   waypoints: stops.slice(0, -1).filter(s => s).map(s => ({ location: s, stopover: true })),
-                  travelMode: google.maps.TravelMode.BICYCLING 
+                  travelMode: google.maps.TravelMode.BICYCLING,
+                  provideRouteAlternatives: true
                 }} 
                 callback={directionsCallback} 
               />
             )}
-            {response && <DirectionsRenderer options={{ directions: response }} />}
-            
+            {response && <DirectionsRenderer options={{ directions: response, routeIndex: selectedRouteIndex }} />}
             {showChargers && chargers.map(c => (
-              <Marker 
-                key={c.id} 
-                position={c.position} 
-                icon={{ path: google.maps.SymbolPath.CIRCLE, fillColor: c.is110v ? '#34a853' : '#ff6600', fillOpacity: 1, scale: 6, strokeColor: 'white', strokeWeight: 2 }}
-                title={`${c.name} (${c.chargerClass})`}
-              />
+              <Marker key={c.id} position={c.position} icon={{ path: google.maps.SymbolPath.CIRCLE, fillColor: c.is110v ? '#34a853' : '#ff6600', fillOpacity: 1, scale: 6, strokeColor: 'white', strokeWeight: 2 }} title={`${c.name} (${c.chargerClass})`} />
             ))}
           </GoogleMap>
         </main>
