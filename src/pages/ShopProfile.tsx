@@ -29,6 +29,8 @@ const ShopProfile: React.FC = () => {
   const [newBikeTargetSpeed, setNewBikeTargetSpeed] = useState('20');
   const [newBikeControllerAmps, setNewBikeControllerAmps] = useState('');
   const [newBikeCycleCount, setNewBikeCycleCount] = useState('0');
+  const [newBikeBatteryPercent, setNewBikeBatteryPercent] = useState('100');
+  const [newBikeBatteryVolts, setNewBikeBatteryVolts] = useState('54.6');
   const [orgBikes, setOrgBikes] = useState<any[]>([]);
   const [editingBikeId, setEditingBikeId] = useState<string | null>(null);
 
@@ -106,6 +108,35 @@ const ShopProfile: React.FC = () => {
     } finally { setIsUpdating(false); }
   };
 
+  const getBatteryLimits = (nominalVolts: number) => {
+    if (nominalVolts === 36) return { min: 30, max: 42 };
+    if (nominalVolts === 48) return { min: 40, max: 54.6 };
+    if (nominalVolts === 52) return { min: 42, max: 58.8 };
+    if (nominalVolts === 60) return { min: 48, max: 67.2 };
+    if (nominalVolts === 72) return { min: 60, max: 84 };
+    return { min: nominalVolts * 0.8, max: nominalVolts * 1.15 };
+  };
+
+  const handleVoltsChange = (v: string) => {
+    setNewBikeBatteryVolts(v);
+    const volts = parseFloat(v);
+    if (!isNaN(volts)) {
+      const limits = getBatteryLimits(parseFloat(newBikeVolts));
+      const percent = Math.min(100, Math.max(0, ((volts - limits.min) / (limits.max - limits.min)) * 100));
+      setNewBikeBatteryPercent(Math.round(percent).toString());
+    }
+  };
+
+  const handlePercentChange = (p: string) => {
+    setNewBikeBatteryPercent(p);
+    const percent = parseFloat(p);
+    if (!isNaN(percent)) {
+      const limits = getBatteryLimits(parseFloat(newBikeVolts));
+      const volts = limits.min + (percent / 100) * (limits.max - limits.min);
+      setNewBikeBatteryVolts(volts.toFixed(1));
+    }
+  };
+
   const handleSaveBike = async () => {
     if (!newBikeName.trim() || !user || !userData?.orgId) return;
     const bikeId = editingBikeId || Date.now().toString();
@@ -120,7 +151,8 @@ const ShopProfile: React.FC = () => {
           bikeWeightLbs: parseFloat(newBikeWeight),
           targetSpeedMph: parseFloat(newBikeTargetSpeed),
           controllerAmps: newBikeControllerAmps ? parseFloat(newBikeControllerAmps) : null,
-          cycleCount: parseInt(newBikeCycleCount) || 0
+          cycleCount: parseInt(newBikeCycleCount) || 0,
+          currentBatteryPercent: parseInt(newBikeBatteryPercent) || 100
         },
         status: 'available',
         updatedAt: new Date().toISOString()
@@ -141,6 +173,8 @@ const ShopProfile: React.FC = () => {
     setNewBikeTargetSpeed('20');
     setNewBikeControllerAmps('');
     setNewBikeCycleCount('0');
+    setNewBikeBatteryPercent('100');
+    setNewBikeBatteryVolts('54.6');
   };
 
   const handleEditBike = (bike: any) => {
@@ -154,6 +188,12 @@ const ShopProfile: React.FC = () => {
     setNewBikeTargetSpeed(bike.specs.targetSpeedMph.toString());
     setNewBikeControllerAmps(bike.specs.controllerAmps?.toString() || '');
     setNewBikeCycleCount(bike.specs.cycleCount?.toString() || '0');
+    setNewBikeBatteryPercent(bike.specs.currentBatteryPercent?.toString() || '100');
+    
+    const limits = getBatteryLimits(bike.specs.voltage);
+    const volts = limits.min + ((bike.specs.currentBatteryPercent || 100) / 100) * (limits.max - limits.min);
+    setNewBikeBatteryVolts(volts.toFixed(1));
+
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -250,6 +290,15 @@ const ShopProfile: React.FC = () => {
                       <label style={{ display: 'block', color: '#666', fontSize: '0.7rem', marginBottom: '0.3rem' }}>Cycle Count</label>
                       <input type="number" value={newBikeCycleCount} onChange={e => setNewBikeCycleCount(e.target.value)} style={{ width: '100%', padding: '0.8rem', background: '#111', border: '1px solid #333', borderRadius: '8px', color: 'white' }} />
                     </div>
+                    <div style={{ borderTop: '1px solid #333', gridColumn: 'span 2', margin: '0.5rem 0' }}></div>
+                    <div>
+                      <label style={{ display: 'block', color: '#ff6600', fontSize: '0.7rem', marginBottom: '0.3rem', fontWeight: 'bold' }}>Current Battery %</label>
+                      <input type="number" min="0" max="100" value={newBikeBatteryPercent} onChange={e => handlePercentChange(e.target.value)} style={{ width: '100%', padding: '0.8rem', background: '#111', border: '1px solid #ff6600', borderRadius: '8px', color: 'white', fontWeight: 'bold' }} />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', color: '#ff6600', fontSize: '0.7rem', marginBottom: '0.3rem', fontWeight: 'bold' }}>Current Volts (V)</label>
+                      <input type="number" step="0.1" value={newBikeBatteryVolts} onChange={e => handleVoltsChange(e.target.value)} style={{ width: '100%', padding: '0.8rem', background: '#111', border: '1px solid #ff6600', borderRadius: '8px', color: 'white', fontWeight: 'bold' }} />
+                    </div>
                   </div>
                   <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
                     <button onClick={handleSaveBike} style={{ flex: 1, padding: '1rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer' }}>
@@ -269,6 +318,7 @@ const ShopProfile: React.FC = () => {
                       </div>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.8rem', fontSize: '0.7rem', color: '#aaa' }}>
                         <div>⚡ {b.specs.voltage}V / {b.specs.capacityAh}Ah</div>
+                        <div style={{ color: (b.specs.currentBatteryPercent || 100) < 30 ? '#ff4444' : '#34a853', fontWeight: 'bold' }}>🔋 {b.specs.currentBatteryPercent || 100}% Charged</div>
                         <div>🔌 {b.specs.motorWatts}W</div>
                         <div>💨 {b.specs.targetSpeedMph}mph</div>
                         <div>🎈 {b.specs.tirePSI} PSI</div>
