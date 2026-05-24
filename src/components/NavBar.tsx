@@ -40,7 +40,7 @@ const NavBar: React.FC<NavBarProps> = ({ user, onShowInstall, onShowAuth }) => {
     const newRole = userData?.role === 'fleet' ? 'rider' : 'fleet';
     await updateDoc(doc(db, "users", user.uid), { role: newRole });
     setUserData({ ...userData, role: newRole });
-    window.location.reload(); // Refresh to trigger the dashboard switch
+    navigate(newRole === 'fleet' ? '/fleet' : '/map');
   };
 
   const handleLogout = async () => {
@@ -51,6 +51,8 @@ const NavBar: React.FC<NavBarProps> = ({ user, onShowInstall, onShowAuth }) => {
       console.error("Logout failed", e);
     }
   };
+
+  const isFleetMode = userData?.role === 'fleet' || isSuperAdmin;
 
   return (
     <header style={{ 
@@ -66,7 +68,7 @@ const NavBar: React.FC<NavBarProps> = ({ user, onShowInstall, onShowAuth }) => {
       height: '4.5rem'
     }}>
       <div className="logo-container" style={{ display: 'flex', alignItems: 'center' }}>
-        <Link to={user ? "/map" : "/"} style={{ display: 'flex', alignItems: 'center' }}>
+        <Link to={user ? (isFleetMode ? "/fleet" : "/map") : "/"} style={{ display: 'flex', alignItems: 'center' }}>
           <img src="/app-icon.png" alt="Logo" style={{ height: '2.5rem', width: 'auto' }} />
         </Link>
       </div>
@@ -83,7 +85,8 @@ const NavBar: React.FC<NavBarProps> = ({ user, onShowInstall, onShowAuth }) => {
           }}
         >
           <Link to="/map" style={{ color: '#ff6600', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Fleet Map</Link>
-          <Link to="/map?chargers=true" style={{ color: '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Chargers</Link>
+          {isFleetMode && <Link to="/fleet" style={{ color: '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Shop Dashboard</Link>}
+          <Link to={isFleetMode ? "/fleet?chargers=true" : "/map?chargers=true"} style={{ color: '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Chargers</Link>
           <Link to="/" style={{ color: '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>About</Link>
           {user && <Link to="/settings" style={{ color: '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Settings</Link>}
           

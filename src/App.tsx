@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { auth } from './firebase'
 import { onAuthStateChanged, type User } from 'firebase/auth'
 import MapHome from './pages/MapHome'
+import FleetDashboard from './pages/FleetDashboard'
 import Profile from './pages/Profile'
 import Settings from './pages/Settings'
 import Feed from './pages/Feed'
@@ -71,6 +72,7 @@ function App() {
         
         {/* Protected Feature Routes */}
         <Route path="/map" element={<ProtectedRoute><MapHome /></ProtectedRoute>} />
+        <Route path="/fleet" element={<ProtectedRoute><FleetDashboard /></ProtectedRoute>} />
         <Route path="/faq" element={<ProtectedRoute><FAQ /></ProtectedRoute>} />
         <Route path="/explore" element={<ProtectedRoute><ExploreMap /></ProtectedRoute>} />
         <Route path="/feed" element={<ProtectedRoute><Feed /></ProtectedRoute>} />
