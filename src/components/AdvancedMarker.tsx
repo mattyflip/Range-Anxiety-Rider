@@ -42,11 +42,11 @@ const AdvancedMarker: React.FC<AdvancedMarkerProps> = ({
         const pinElement = new PinElement({
           background: icon.fillColor,
           borderColor: icon.strokeColor || 'white',
-          glyph: typeof label === 'string' ? label : label?.text || '',
+          glyphText: typeof label === 'string' ? label : label?.text || '',
           glyphColor: (typeof label !== 'string' && label?.color) ? label.color : 'white',
           scale: (icon.scale ? icon.scale / 8 : 1) // Scaled down to match PinElement expectations
         });
-        content = pinElement.element;
+        content = pinElement as any;
       } else if (icon && icon.url) {
         // Handle image icons
         const img = document.createElement('img');
