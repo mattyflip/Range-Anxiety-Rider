@@ -4,61 +4,56 @@ interface ModernAutocompleteProps {
   placeholder?: string;
   onPlaceSelected: (address: string) => void;
   value?: string;
-  onChange?: (val: string) => void;
   style?: React.CSSProperties;
-}
-
-declare global {
-  namespace JSX {
-    interface IntrinsicElements {
-      'gmp-place-autocomplete': any;
-    }
-  }
 }
 
 const ModernAutocomplete: React.FC<ModernAutocompleteProps> = ({ 
   placeholder, 
-  onPlaceSelected, 
+  onPlaceSelected,
+  value,
   style 
 }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const autocompleteRef = useRef<any>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
 
   useEffect(() => {
-    const el = document.createElement('gmp-place-autocomplete');
-    if (placeholder) el.setAttribute('placeholder', placeholder);
-    
-    // Styling the internal input is tricky, so we apply base styles to container
-    el.style.width = '100%';
-    
-    const handleSelect = (e: any) => {
-      const place = e.target.value; // In the new element, .value contains the place result
-      if (place && place.formattedAddress) {
-        onPlaceSelected(place.formattedAddress);
+    if (!inputRef.current || !window.google) return;
+
+    autocompleteRef.current = new google.maps.places.Autocomplete(inputRef.current, {
+      fields: ['formatted_address', 'geometry'],
+      types: ['address']
+    });
+
+    autocompleteRef.current.addListener('place_changed', () => {
+      const place = autocompleteRef.current?.getPlace();
+      if (place?.formatted_address) {
+        onPlaceSelected(place.formatted_address);
       }
-    };
-
-    el.addEventListener('gmp-placeselect', handleSelect);
-    
-    if (containerRef.current) {
-      containerRef.current.innerHTML = '';
-      containerRef.current.appendChild(el);
-    }
-
-    autocompleteRef.current = el;
+    });
 
     return () => {
-      el.removeEventListener('gmp-placeselect', handleSelect);
+      if (window.google) {
+        google.maps.event.clearInstanceListeners(autocompleteRef.current!);
+      }
     };
-  }, [onPlaceSelected, placeholder]);
+  }, []);
 
   return (
-    <div 
-      ref={containerRef} 
-      style={{ 
+    <input
+      ref={inputRef}
+      type="text"
+      defaultValue={value}
+      placeholder={placeholder}
+      style={{
         width: '100%',
-        ...style 
-      }} 
+        padding: '0.8rem',
+        background: '#111',
+        border: '1px solid #333',
+        color: 'white',
+        borderRadius: '8px',
+        fontSize: '0.85rem',
+        ...style
+      }}
     />
   );
 };

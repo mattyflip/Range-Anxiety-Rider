@@ -24,7 +24,7 @@ function MapHome() {
   const [loading, setLoading] = useState(true);
 
   // Common Map State
-  const [stops, setStops] = useState<string[]>(['']);
+  const [stops, setStops] = useState<{id: string, addr: string}[]>([{id: '0', addr: ''}]);
   const [isLoading, setIsLoading] = useState(false);
   const [response, setResponse] = useState<any>(null);
   const [selectedRouteIndex, setSelectedRouteIndex] = useState(0);
@@ -155,7 +155,7 @@ function MapHome() {
           fetch('/api/elevation', {
              method: 'POST',
              headers: { 'Content-Type': 'application/json' },
-             body: JSON.stringify({ points: [{ lat, lng }] })
+             body: JSON.stringify({ path: `${lat},${lng}` })
           }).then(r => r.json())
         ]);
 
@@ -248,7 +248,7 @@ function MapHome() {
 
   const handleSaveSuggestedRoute = async () => {
     if (!newRouteName.trim()) { alert("Please enter a route name."); return; }
-    const validStops = stops.filter(s => s);
+    const validStops = stops.filter(s => s.addr).map(s => s.addr);
     if (validStops.length < 2) { alert("Please add at least 2 stops."); return; }
     if (!userData?.orgId) { alert("No organization linked to your account. Please set up your shop profile."); return; }
 
@@ -259,8 +259,9 @@ function MapHome() {
         createdAt: new Date().toISOString()
       });
       setNewRouteName('');
+      setStops([{id: '0', addr: ''}]);
       alert("Route saved to shop profile!");
-    } catch (e) { console.error(e); }
+    } catch (e) { console.error(e); alert("Error saving route."); }
   };
 
   const handleFetchChargers = async () => {
@@ -319,10 +320,20 @@ function MapHome() {
                    onChange={e => setNewRouteName(e.target.value)}
                    style={{ width: '100%', padding: '0.8rem', background: '#111', border: '1px solid #333', color: 'white', borderRadius: '8px', marginTop: '0.5rem', marginBottom: '0.5rem' }} 
                 />
-                {stops.map((_s, i) => (
-                   <ModernAutocomplete key={i} placeholder={`Stop ${i+1}`} onPlaceSelected={(addr) => { const ns = [...stops]; ns[i] = addr; setStops(ns); }} style={{ marginBottom: '0.5rem' }} />
+                {stops.map((s, i) => (
+                   <ModernAutocomplete 
+                    key={s.id} 
+                    placeholder={`Stop ${i+1}`} 
+                    value={s.addr}
+                    onPlaceSelected={(addr) => { 
+                      const ns = [...stops]; 
+                      ns[i] = { ...ns[i], addr }; 
+                      setStops(ns); 
+                    }} 
+                    style={{ marginBottom: '0.5rem' }} 
+                   />
                 ))}
-                <button onClick={() => setStops([...stops, ''])} style={{ width: '100%', background: 'none', border: '1px dashed #444', color: '#666', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer', fontSize: '0.7rem' }}>+ ADD STOP</button>
+                <button onClick={() => setStops([...stops, {id: Date.now().toString(), addr: ''}])} style={{ width: '100%', background: 'none', border: '1px dashed #444', color: '#666', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer', fontSize: '0.7rem' }}>+ ADD STOP</button>
                 <button onClick={handleSaveSuggestedRoute} style={{ width: '100%', background: '#ff6600', color: 'white', border: 'none', padding: '0.8rem', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', marginTop: '1rem' }}>SAVE SUGGESTED ROUTE</button>
               </div>
 
@@ -379,10 +390,20 @@ function MapHome() {
               </select>
 
               <label style={{ color: '#666', fontSize: '0.7rem', textTransform: 'uppercase' }}>Trip Planner</label>
-              {stops.map((_s, i) => (
-                 <ModernAutocomplete key={i} placeholder={i === 0 ? "First Stop" : "Next Stop"} onPlaceSelected={(addr) => { const ns = [...stops]; ns[i] = addr; setStops(ns); }} style={{ marginTop: '0.5rem' }} />
+              {stops.map((s, i) => (
+                 <ModernAutocomplete 
+                  key={s.id} 
+                  placeholder={i === 0 ? "First Stop" : "Next Stop"} 
+                  value={s.addr}
+                  onPlaceSelected={(addr) => { 
+                    const ns = [...stops]; 
+                    ns[i] = { ...ns[i], addr }; 
+                    setStops(ns); 
+                  }} 
+                  style={{ marginTop: '0.5rem' }} 
+                 />
               ))}
-              <button onClick={() => setStops([...stops, ''])} style={{ width: '100%', background: 'none', border: '1px dashed #444', color: '#666', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer', fontSize: '0.7rem', marginTop: '0.5rem' }}>+ ADD STOP</button>
+              <button onClick={() => setStops([...stops, {id: Date.now().toString(), addr: ''}])} style={{ width: '100%', background: 'none', border: '1px dashed #444', color: '#666', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer', fontSize: '0.7rem', marginTop: '0.5rem' }}>+ ADD STOP</button>
               <button onClick={() => setIsLoading(true)} style={{ width: '100%', background: '#333', color: 'white', border: 'none', padding: '0.8rem', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', marginTop: '1rem' }}>GET OPTIMIZED ROUTE</button>
               
               <div style={{ marginTop: '2rem', borderTop: '1px solid #333', paddingTop: '1.5rem' }}>
@@ -404,7 +425,7 @@ function MapHome() {
                 ) : (
                   <button 
                     onClick={handleStartGroupRide}
-                    style={{ width: '100%', padding: '1rem', background: 'linear-gradient(45deg, #ff6600, #ff9900)', border: 'none', borderRadius: '12px', color: 'white', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 15px rgba(255,102,0,0.3)' }}
+                    style={{ width: '100%', padding: '1rem', background: 'linear-gradient(45deg, #ff6600, #ff9900)', border: 'none', borderRadius: '12px', color: 'white', fontWeight: 900, cursor: 'pointer', boxShadow: '0 4px 15px rgba(255,102,0,0.3)' }}
                   >
                     🚀 HOST GROUP RIDE
                   </button>
@@ -451,8 +472,8 @@ function MapHome() {
               {showChargers && chargers.map(c => (
                 <AdvancedMarker key={c.id} position={c.position} icon={{ path: google.maps.SymbolPath.CIRCLE, fillColor: c.is110v ? '#34a853' : '#ff6600', fillOpacity: 1, scale: 6, strokeColor: 'white', strokeWeight: 2 }} title={`${c.name} (${c.chargerClass})`} />
               ))}
-              {stops[stops.length-1] && isLoading && (
-                <DirectionsService options={{ origin: currentLocation || 'current location', destination: stops[stops.length-1], waypoints: stops.slice(0, -1).filter(s => s).map(s => ({ location: s, stopover: true })), travelMode: google.maps.TravelMode.BICYCLING, provideRouteAlternatives: true }} callback={directionsCallback} />
+              {stops[stops.length-1].addr && isLoading && (
+                <DirectionsService options={{ origin: currentLocation || 'current location', destination: stops[stops.length-1].addr, waypoints: stops.slice(0, -1).filter(s => s.addr).map(s => ({ location: s.addr, stopover: true })), travelMode: google.maps.TravelMode.BICYCLING, provideRouteAlternatives: true }} callback={directionsCallback} />
               )}
               {response && <DirectionsRenderer options={{ directions: response, routeIndex: selectedRouteIndex }} />}
             </GoogleMap>
