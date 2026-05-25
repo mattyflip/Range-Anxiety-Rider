@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { auth, db } from '../firebase'
+import { auth, db, storage } from '../firebase'
 import { onAuthStateChanged } from 'firebase/auth'
 import type { User } from 'firebase/auth'
 import { doc, getDoc, collection, onSnapshot, query, updateDoc, setDoc, deleteDoc, getDocs, where } from 'firebase/firestore'
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import NavBar from '../components/NavBar'
 import SEO from '../components/SEO'
 
@@ -13,6 +14,7 @@ const FleetDashboard = () => {
   const [userData, setUserData] = useState<any>(null);
   const [userRole, setUserRole] = useState<'rider' | 'fleet'>('rider');
   const [loading, setLoading] = useState(true);
+  const [isUploading, setIsUploading] = useState(false);
   
   const [fleetBikes, setFleetBikes] = useState<any[]>([]);
   const [liveUnits, setLiveUnits] = useState<any[]>([]);
@@ -114,6 +116,23 @@ const FleetDashboard = () => {
       const syncPromises = liveSnap.docs.map(d => updateDoc(doc(db, `organizations/${userData.orgId}/live_units`, d.id), { battery: percent }));
       await Promise.all(syncPromises);
     } catch (e) { console.error(e); }
+  };
+
+  const handleImageUpload = async (file: File) => {
+    if (!user) return;
+    setIsUploading(true);
+    try {
+      const storageRef = ref(storage, `bikes/${user.uid}/${Date.now()}_${file.name}`);
+      const snapshot = await uploadBytes(storageRef, file);
+      const url = await getDownloadURL(snapshot.ref);
+      setBikeForm({ ...bikeForm, imageUrl: url });
+      alert("Photo uploaded successfully!");
+    } catch (e) {
+      console.error(e);
+      alert("Failed to upload photo.");
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleSaveBikeSpecs = async () => {
@@ -328,7 +347,36 @@ const FleetDashboard = () => {
                    <input type="number" value={bikeForm.tirePSI} onChange={e => setBikeForm({...bikeForm, tirePSI: e.target.value})} style={{ width: '100%', padding: '0.8rem', background: '#111', border: '1px solid #333', borderRadius: '8px', color: 'white' }} />
                  </div>
                  <div style={{ gridColumn: 'span 2' }}>
-                   <label style={{ display: 'block', color: '#666', fontSize: '0.7rem', marginBottom: '0.3rem' }}>Bike Image URL</label>
+                   <label style={{ display: 'block', color: '#666', fontSize: '0.7rem', marginBottom: '0.3rem' }}>Bike Photo</label>
+                   <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', background: '#111', padding: '1rem', borderRadius: '12px', border: '1px dashed #333' }}>
+                      <div style={{ width: '80px', height: '80px', borderRadius: '12px', background: '#222', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #333' }}>
+                        {bikeForm.imageUrl ? (
+                          <img src={bikeForm.imageUrl} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                          <span style={{ fontSize: '2rem' }}>🚲</span>
+                        )}
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <input 
+                          type="file" 
+                          id="bike-photo-upload" 
+                          hidden 
+                          accept="image/*"
+                          onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0])}
+                        />
+                        <button 
+                          onClick={() => document.getElementById('bike-photo-upload')?.click()}
+                          disabled={isUploading}
+                          style={{ background: '#222', border: '1px solid #444', color: 'white', padding: '0.6rem 1rem', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer', width: '100%' }}
+                        >
+                          {isUploading ? 'UPLOADING...' : (bikeForm.imageUrl ? 'CHANGE PHOTO' : 'UPLOAD PHOTO')}
+                        </button>
+                        <div style={{ color: '#444', fontSize: '0.6rem', marginTop: '0.5rem', textAlign: 'center' }}>PNG, JPG up to 5MB</div>
+                      </div>
+                   </div>
+                 </div>
+                 <div style={{ gridColumn: 'span 2' }}>
+                   <label style={{ display: 'block', color: '#666', fontSize: '0.7rem', marginBottom: '0.3rem' }}>Bike Image URL (Optional)</label>
                    <input value={bikeForm.imageUrl} onChange={e => setBikeForm({...bikeForm, imageUrl: e.target.value})} placeholder="https://..." style={{ width: '100%', padding: '0.8rem', background: '#111', border: '1px solid #333', borderRadius: '8px', color: 'white' }} />
                  </div>
               </div>
