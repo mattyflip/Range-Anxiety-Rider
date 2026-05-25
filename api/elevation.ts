@@ -33,27 +33,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Robust check for encoded polyline vs coordinate list
-    // Encoded polylines can contain '|', so we check for 'lat,lng' pattern or 'enc:' prefix
     let finalPath = pathParam;
-    if (!pathParam.startsWith('enc:')) {
-      // If it doesn't look like a coordinate list (lat,lng|lat,lng), it's probably a raw polyline
-      const isCoordList = /^-?\d+\.\d+,-?\d+\.\d+(\|-?\d+\.\d+,-?\d+\.\d+)*$/.test(pathParam);
-      if (!isCoordList) {
-        finalPath = `enc:${pathParam}`;
-      }
+    const isEncoded = !pathParam.includes(',') || pathParam.startsWith('enc:');
+    
+    let params: any = {
+      key: GOOGLE_API_KEY
+    };
+
+    if (isEncoded || pathParam.includes('|')) {
+      // It's a path (encoded or multiple points)
+      params.path = pathParam.startsWith('enc:') ? pathParam : `enc:${pathParam}`;
+      params.samples = 100;
+    } else {
+      // It's likely a single point (lat,lng)
+      params.locations = pathParam;
     }
 
-    console.log('Calling Google Elevation API with path length:', finalPath.length);
+    console.log('Calling Google Elevation API with params:', Object.keys(params));
     
     let response;
     try {
-      response = await axios.get('https://maps.googleapis.com/maps/api/elevation/json', {
-        params: {
-          path: finalPath,
-          samples: 100,
-          key: GOOGLE_API_KEY
-        }
-      });
+      response = await axios.get('https://maps.googleapis.com/maps/api/elevation/json', { params });
     } catch (googleError: any) {
       console.error('Google Elevation API raw error:', googleError.response?.data || googleError.message);
       return res.status(googleError.response?.status || 400).json({ 

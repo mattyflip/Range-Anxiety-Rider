@@ -38,12 +38,19 @@ const ModernAutocomplete: React.FC<ModernAutocompleteProps> = ({
     };
   }, []);
 
+  // Sync internal input value with the 'value' prop
+  useEffect(() => {
+    if (inputRef.current && value !== undefined && inputRef.current.value !== value) {
+      inputRef.current.value = value;
+    }
+  }, [value]);
+
   return (
     <input
       ref={inputRef}
       type="text"
-      defaultValue={value}
       placeholder={placeholder}
+      onChange={(e) => onPlaceSelected(e.target.value)}
       style={{
         width: '100%',
         padding: '0.8rem',

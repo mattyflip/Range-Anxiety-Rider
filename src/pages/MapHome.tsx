@@ -68,7 +68,7 @@ function MapHome() {
     try {
       const rid = `ride_${user.uid.substring(0, 5)}_${Date.now().toString().substring(8)}`;
       await setDoc(doc(db, "group_rides", rid), {
-        hostId: user.uid,
+        creatorId: user.uid,
         hostName: userData.username || user.email,
         active: true,
         createdAt: new Date().toISOString()
