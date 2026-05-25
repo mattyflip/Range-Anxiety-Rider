@@ -50,7 +50,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   let unit_amount = 0;
   let product_name = "";
   let product_description = "";
-  let mode: Stripe.Checkout.SessionCreateParams.Mode = 'payment';
+  let mode: 'payment' | 'subscription' = 'payment';
   let isSubscription = false;
 
   if (tier === 'shop') {

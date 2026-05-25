@@ -3,7 +3,7 @@ import { GoogleMap, useJsApiLoader, DirectionsService, DirectionsRenderer } from
 import { auth, db } from '../firebase'
 import { onAuthStateChanged } from 'firebase/auth'
 import type { User } from 'firebase/auth'
-import { setDoc, collection, onSnapshot, query, addDoc } from 'firebase/firestore'
+import { doc, setDoc, collection, onSnapshot, query, addDoc, DocumentSnapshot } from 'firebase/firestore'
 import NavBar from '../components/NavBar'
 import AuthModal from '../components/AuthModal'
 import SEO from '../components/SEO'
@@ -489,4 +489,4 @@ function MapHome() {
 }
 
 export default MapHome;
-me;
+
