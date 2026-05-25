@@ -282,7 +282,7 @@ function MapHome() {
     } catch (e) { console.error(e); setIsLoading(false); }
   };
 
-  if (loading) return <div style={{ color: 'white', padding: '4rem', textAlign: 'center' }}>Initializing Map Hub...</div>;
+  if (loading || !isLoaded) return <div style={{ color: 'white', padding: '4rem', textAlign: 'center' }}>Initializing Map Hub...</div>;
 
   return (
     <div className="container" style={{ height: '100vh', background: '#121212', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>

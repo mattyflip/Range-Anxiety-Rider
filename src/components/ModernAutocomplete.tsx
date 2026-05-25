@@ -17,7 +17,7 @@ const ModernAutocomplete: React.FC<ModernAutocompleteProps> = ({
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
 
   useEffect(() => {
-    if (!inputRef.current || !window.google) return;
+    if (!inputRef.current || !window.google || !window.google.maps || !window.google.maps.places) return;
 
     autocompleteRef.current = new google.maps.places.Autocomplete(inputRef.current, {
       fields: ['formatted_address', 'geometry'],
