@@ -104,7 +104,7 @@ function MapHome() {
           if (snap.exists()) {
             const d = snap.data();
             setUserData(d);
-            const role = (u.email?.toLowerCase() === 'mattyfliptv@gmail.com') ? 'fleet' : (d.role || 'rider');
+            const role = d.role || ((u.email?.toLowerCase() === 'mattyfliptv@gmail.com') ? 'fleet' : 'rider');
             setUserRole(role);
             
             if (d.orgId) {
@@ -374,13 +374,6 @@ function MapHome() {
               <button onClick={() => setStops([...stops, ''])} style={{ width: '100%', background: 'none', border: '1px dashed #444', color: '#666', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer', fontSize: '0.7rem', marginTop: '0.5rem' }}>+ ADD STOP</button>
               <button onClick={() => setIsLoading(true)} style={{ width: '100%', background: '#333', color: 'white', border: 'none', padding: '0.8rem', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', marginTop: '1rem' }}>GET OPTIMIZED ROUTE</button>
               
-              <button 
-                onClick={() => navigate('/explore')}
-                style={{ width: '100%', background: 'none', border: '1px solid #444', color: '#888', padding: '0.8rem', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', marginTop: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
-              >
-                🧭 ENTER EXPLORE MODE
-              </button>
-              
               <div style={{ marginTop: '2rem', borderTop: '1px solid #333', paddingTop: '1.5rem' }}>
                 <h3 style={{ color: '#ff6600', fontSize: '0.8rem', textTransform: 'uppercase', marginBottom: '1rem' }}>Group Ride</h3>
                 {isGroupRideActive ? (
@@ -478,6 +471,28 @@ function MapHome() {
                   style={{ width: '100%', padding: '1rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', fontSize: '1.1rem' }}
                 >
                   GET PASS NOW
+                </button>
+                <button 
+                  onClick={() => setShowHostPassModal(false)}
+                  style={{ width: '100%', padding: '1rem', background: 'transparent', color: '#666', border: 'none', fontWeight: 'bold', cursor: 'pointer' }}
+                >
+                  NOT NOW
+                </button>
+             </div>
+             
+             <p style={{ fontSize: '0.65rem', color: '#444', marginTop: '1.5rem' }}>
+               *Shop Tier accounts include unlimited group ride hosting for $49.99/mo.
+             </p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default MapHome;
+
+    GET PASS NOW
                 </button>
                 <button 
                   onClick={() => setShowHostPassModal(false)}
