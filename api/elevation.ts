@@ -10,69 +10,55 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).end();
   }
 
-  // Use a dedicated backend key if available to avoid referer restrictions
-  // If not found, fall back to the VITE key (which may have restrictions)
   const GOOGLE_API_KEY = process.env.GOOGLE_MAPS_BACKEND_KEY || process.env.VITE_GOOGLE_MAPS_API_KEY;
 
   try {
     let pathParam = '';
     
-    // Check POST body first (what the current frontend uses)
     if (req.method === 'POST') {
-      const { encodedPath, path } = req.body;
-      pathParam = encodedPath || path;
-    } 
-    // Fallback to GET query params
-    else {
+      const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+      pathParam = body.encodedPath || body.path;
+    } else {
       const url = new URL(req.url || '', `https://${req.headers.host}`);
       pathParam = url.searchParams.get('path') || '';
     }
 
     if (!pathParam) {
+      console.error('Elevation API: Missing path parameter');
       return res.status(400).json({ error: 'Path is required' });
     }
 
-    // Robust check for encoded polyline vs coordinate list
-    let finalPath = pathParam;
-    const isEncoded = !pathParam.includes(',') || pathParam.startsWith('enc:');
+    let params: any = { key: GOOGLE_API_KEY };
+    const isPath = pathParam.includes('|') || (!pathParam.includes(',') && !pathParam.startsWith('enc:')) || pathParam.startsWith('enc:');
     
-    let params: any = {
-      key: GOOGLE_API_KEY
-    };
+    // Improved detection: if it has multiple commas and pipes, it's a coordinate list
+    // if it's just one comma and looks like numbers, it's a single location
+    const isSingleLocation = /^-?\d+\.\d+,-?\d+\.\d+$/.test(pathParam);
 
-    if (isEncoded || pathParam.includes('|')) {
-      // It's a path (encoded or multiple points)
+    if (isSingleLocation) {
+      params.locations = pathParam;
+    } else {
       params.path = pathParam.startsWith('enc:') ? pathParam : `enc:${pathParam}`;
       params.samples = 100;
-    } else {
-      // It's likely a single point (lat,lng)
-      params.locations = pathParam;
     }
 
-    console.log('Calling Google Elevation API with params:', Object.keys(params));
+    console.log(`Calling Elevation API with ${isSingleLocation ? 'locations' : 'path'}`);
     
-    let response;
-    try {
-      response = await axios.get('https://maps.googleapis.com/maps/api/elevation/json', { params });
-    } catch (googleError: any) {
-      console.error('Google Elevation API raw error:', googleError.response?.data || googleError.message);
-      return res.status(googleError.response?.status || 400).json({ 
-        error: 'Google API rejected the request', 
-        details: googleError.response?.data 
-      });
-    }
+    const response = await axios.get('https://maps.googleapis.com/maps/api/elevation/json', { params });
 
     if (response.data.status !== 'OK') {
-      console.error('Google Elevation API returned status:', response.data.status, response.data.error_message);
+      console.error('Google Elevation Error:', response.data.status, response.data.error_message);
       return res.status(400).json({ error: response.data.status, message: response.data.error_message });
     }
 
-    // If the frontend expects the full Google response
-    if (req.method === 'GET') {
-      return res.status(200).json(response.data);
+    if (isSingleLocation) {
+      return res.status(200).json({ 
+        gain: 0, 
+        loss: 0, 
+        results: response.data.results 
+      });
     }
 
-    // Calculate gain AND loss
     const results = response.data.results;
     let gain = 0;
     let loss = 0;
@@ -83,13 +69,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     return res.status(200).json({ 
-      gain: gain * 3.28084, // Return in feet
-      loss: loss * 3.28084, // Return in feet
-      results: response.data.results 
+      gain: gain * 3.28084, 
+      loss: loss * 3.28084, 
+      results 
     });
 
   } catch (error: any) {
     console.error('Elevation API error:', error.message);
-    return res.status(500).json({ error: 'Failed to fetch elevation data', details: error.message });
+    return res.status(500).json({ error: 'Internal Error', details: error.message });
   }
 }

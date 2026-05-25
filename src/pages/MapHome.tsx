@@ -3,7 +3,7 @@ import { GoogleMap, useJsApiLoader, DirectionsService, DirectionsRenderer } from
 import { auth, db } from '../firebase'
 import { onAuthStateChanged } from 'firebase/auth'
 import type { User } from 'firebase/auth'
-import { doc, setDoc, collection, onSnapshot, query, addDoc, DocumentSnapshot } from 'firebase/firestore'
+import { doc, setDoc, collection, onSnapshot, query, addDoc, DocumentSnapshot, getDoc } from 'firebase/firestore'
 import { useNavigate } from 'react-router-dom'
 import NavBar from '../components/NavBar'
 import AuthModal from '../components/AuthModal'
@@ -89,18 +89,27 @@ function MapHome() {
         },
         body: JSON.stringify({ userId: user?.uid, email: user?.email, tier: 'group_ride' }),
       });
-      const { url } = await response.json();
-      if (url) window.location.href = url;
+      const data = await response.json();
+      if (data.url) window.location.href = data.url;
     } catch (e) { console.error(e); }
   };
 
-  // 1. Auth & Data Init
+  // 1. Auth & Data Initialization
   useEffect(() => {
-    return onAuthStateChanged(auth, async (u) => {
+    let unsubUser: (() => void) | null = null;
+    let unsubLive: (() => void) | null = null;
+    let unsubBikes: (() => void) | null = null;
+
+    const unsubAuth = onAuthStateChanged(auth, async (u) => {
       if (u) {
         setUser(u);
+        // Clear previous listeners if any
+        if (unsubUser) unsubUser();
+        if (unsubLive) unsubLive();
+        if (unsubBikes) unsubBikes();
+
         const userDocRef = doc(db, "users", u.uid);
-        onSnapshot(userDocRef, (snap: DocumentSnapshot) => {
+        unsubUser = onSnapshot(userDocRef, (snap: DocumentSnapshot) => {
           if (snap.exists()) {
             const d = snap.data();
             setUserData(d);
@@ -108,26 +117,35 @@ function MapHome() {
             setUserRole(role);
             
             if (d.orgId) {
-              // Manager: Listen to all rented bikes
-              if (role === 'fleet') {
-                 const qLive = query(collection(db, `organizations/${d.orgId}/live_units`));
-                 onSnapshot(qLive, (s) => setLiveUnits(s.docs.map(doc => ({ id: doc.id, ...doc.data() }))));
-              }
-              
-              // Both: Need bike specs for physics
-              const qBikes = query(collection(db, `organizations/${d.orgId}/bikes`));
-              onSnapshot(qBikes, (s) => {
+              // Manager/Renter needs bikes for specs
+              unsubBikes = onSnapshot(query(collection(db, `organizations/${d.orgId}/bikes`)), (s) => {
                  const bikes = s.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                  setShopBikes(bikes);
                  if (bikes.length > 0 && !selectedBikeId) setSelectedBikeId(bikes[0].id);
               });
+
+              // Manager needs live units
+              if (role === 'fleet') {
+                unsubLive = onSnapshot(query(collection(db, `organizations/${d.orgId}/live_units`)), (s) => {
+                  setLiveUnits(s.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+                });
+              }
             }
           }
+          setLoading(false);
         });
+      } else {
+        setLoading(false);
       }
-      setLoading(false);
     });
-  }, [selectedBikeId]);
+
+    return () => {
+      unsubAuth();
+      if (unsubUser) unsubUser();
+      if (unsubLive) unsubLive();
+      if (unsubBikes) unsubBikes();
+    };
+  }, []); // Run once on mount
 
   // Listen to Group Ride Participants
   useEffect(() => {
@@ -150,21 +168,22 @@ function MapHome() {
       setCurrentLocation({ lat, lng });
 
       try {
-        const [wRes, eRes] = await Promise.all([
-          fetch(`/api/weather?lat=${lat}&lng=${lng}`).then(r => r.json()),
-          fetch('/api/elevation', {
-             method: 'POST',
-             headers: { 'Content-Type': 'application/json' },
-             body: JSON.stringify({ path: `${lat},${lng}` })
-          }).then(r => r.json())
-        ]);
-
         const bike = shopBikes.find(b => b.id === selectedBikeId);
+        
+        // Single point elevation call
+        const eRes = await fetch('/api/elevation', {
+           method: 'POST',
+           headers: { 'Content-Type': 'application/json' },
+           body: JSON.stringify({ path: `${lat},${lng}` })
+        }).then(r => r.json());
+
+        const wRes = await fetch(`/api/weather?lat=${lat}&lng=${lng}`).then(r => r.json());
+
         let remainingMiles = 0;
         if (bike) {
           const { voltage, capacityAh, motorWatts } = bike.specs;
           const battery = bike.specs.currentBatteryPercent || 100;
-          const totalWh = voltage * capacityAh * (battery / 100);
+          const totalWh = (voltage || 48) * (capacityAh || 15) * (battery / 100);
           const burnRate = (motorWatts || 750) / 20; 
           remainingMiles = totalWh / burnRate;
         }
@@ -225,7 +244,7 @@ function MapHome() {
 
           const { voltage, capacityAh, motorWatts } = bike.specs;
           const energyWh = (motorWatts || 750) * (totalDuration / 3600);
-          const totalWh = voltage * capacityAh;
+          const totalWh = (voltage || 48) * (capacityAh || 15);
           
           return {
             index,
