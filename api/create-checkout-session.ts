@@ -47,8 +47,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(403).json({ error: 'Forbidden: Cannot checkout for another user' });
   }
 
-  const isShop = tier === 'shop';
+  let unit_amount = 0;
+  let product_name = "";
+  let product_description = "";
+  let mode: Stripe.Checkout.Session.Mode = 'payment';
+  let isSubscription = false;
 
+  if (tier === 'shop') {
+    unit_amount = 4999;
+    product_name = 'Range Anxiety SHOP TIER';
+    product_description = 'Professional fleet management, live unit tracking, and shop-specific physics tools.';
+    mode = 'subscription';
+    isSubscription = true;
+  } else if (tier === 'group_ride') {
+    unit_amount = 999;
+    product_name = 'Group Ride Host Pass';
+    product_description = 'Host a group ride and see all participants live on the map for 24 hours.';
+    mode = 'payment';
+  } else {
+    return res.status(400).json({ error: 'Invalid tier selected' });
+  }
   try {
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
@@ -57,24 +75,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           price_data: {
             currency: 'usd',
             product_data: {
-              name: isShop ? 'Range Anxiety SHOP TIER' : 'Range Anxiety PRO',
-              description: isShop 
-                ? 'Professional fleet management, live unit tracking, and shop-specific physics tools.' 
-                : 'Unlock all features and remove ads forever.',
+              name: product_name,
+              description: product_description,
             },
-            unit_amount: isShop ? 4999 : 499,
-            ...(isShop && { recurring: { interval: 'month' } }),
+            unit_amount: unit_amount,
+            ...(isSubscription && { recurring: { interval: 'month' } }),
           },
           quantity: 1,
         },
       ],
-      mode: isShop ? 'subscription' : 'payment',
+      mode: mode,
       success_url: `${req.headers.origin}/?payment=success`,
       cancel_url: `${req.headers.origin}/?payment=cancel`,
       customer_email: email || decodedToken.email,
       metadata: {
         userId,
-        tier: isShop ? 'shop' : 'pro',
+        tier: tier || 'free',
       },
     });
 

@@ -73,23 +73,64 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (userId) {
       try {
         const updateData: any = {
-          isPro: true,
           updatedAt: FieldValue.serverTimestamp(),
         };
 
         if (tier === 'shop') {
           updateData.isShopTier = true;
+          // Shop tier is monthly, but we set an initial expiry for 31 days 
+          // to be safe before the next invoice.payment_succeeded
           const expiresAt = new Date();
-          expiresAt.setDate(expiresAt.getDate() + 30);
+          expiresAt.setDate(expiresAt.getDate() + 31);
           updateData.shopTierExpiresAt = Timestamp.fromDate(expiresAt);
+        } else if (tier === 'group_ride') {
+          updateData.canHostGroupRide = true;
+          const expiresAt = new Date();
+          expiresAt.setHours(expiresAt.getHours() + 24);
+          updateData.groupRideExpiresAt = Timestamp.fromDate(expiresAt);
+        } else {
+          console.log(`Unhandled tier: ${tier}`);
         }
 
         await db.collection('users').doc(userId).set(updateData, { merge: true });
-        console.log(`Successfully upgraded user ${userId} to ${tier === 'shop' ? 'SHOP' : 'PRO'}`);
+        console.log(`Successfully upgraded user ${userId} to ${tier}`);
       } catch (e: any) {
-        console.error('Error updating user pro status in Firestore:', e.message);
+        console.error('Error updating user status in Firestore:', e.message);
         return res.status(500).send(`Database Error: ${e.message}`);
       }
+    }
+  }
+
+  // Handle subscription renewals for SHOP TIER
+  if (event.type === 'invoice.payment_succeeded') {
+    const invoice = event.data.object as Stripe.Invoice;
+    const subscriptionId = invoice.subscription as string;
+    
+    // Fetch subscription to get metadata
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+    const userId = subscription.metadata?.userId;
+
+    if (userId) {
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 31);
+      await db.collection('users').doc(userId).update({
+        shopTierExpiresAt: Timestamp.fromDate(expiresAt),
+        isShopTier: true
+      });
+    }
+  }
+
+  // Handle cancellation/failure
+  if (event.type === 'customer.subscription.deleted' || event.type === 'invoice.payment_failed') {
+    const obj = event.data.object as any;
+    const subscriptionId = obj.subscription || obj.id;
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+    const userId = subscription.metadata?.userId;
+
+    if (userId) {
+      await db.collection('users').doc(userId).update({
+        isShopTier: false
+      });
     }
   }
 

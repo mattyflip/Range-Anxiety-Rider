@@ -48,42 +48,98 @@ function MapHome() {
 
   const [showAuthModal, setShowAuthModal] = useState(false);
 
+  // Group Ride State
+  const [isGroupRideActive, setIsGroupRideActive] = useState(false);
+  const [groupRideId, setGroupRideId] = useState<string | null>(null);
+  const [participants, setParticipants] = useState<any[]>([]);
+  const [showHostPassModal, setShowHostPassModal] = useState(false);
+
+  const canHost = userRole === 'fleet' || (userData?.canHostGroupRide && new Date(userData.groupRideExpiresAt?.seconds * 1000) > new Date());
+
+  const handleStartGroupRide = async () => {
+    if (!user || !userData) return;
+    if (!canHost) {
+      setShowHostPassModal(true);
+      return;
+    }
+
+    try {
+      const rid = `ride_${user.uid.substring(0, 5)}_${Date.now().toString().substring(8)}`;
+      await setDoc(doc(db, "group_rides", rid), {
+        hostId: user.uid,
+        hostName: userData.username || user.email,
+        active: true,
+        createdAt: new Date().toISOString()
+      });
+      setGroupRideId(rid);
+      setIsGroupRideActive(true);
+      alert(`Group Ride Started! ID: ${rid}. Share this with your friends.`);
+    } catch (e) { console.error(e); }
+  };
+
+  const handlePurchaseHostPass = async () => {
+    try {
+      const response = await fetch('/api/create-checkout-session', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${await user?.getIdToken()}`
+        },
+        body: JSON.stringify({ userId: user?.uid, email: user?.email, tier: 'group_ride' }),
+      });
+      const { url } = await response.json();
+      if (url) window.location.href = url;
+    } catch (e) { console.error(e); }
+  };
+
   // 1. Auth & Data Init
   useEffect(() => {
     return onAuthStateChanged(auth, async (u) => {
       if (u) {
         setUser(u);
-        const snap = await getDoc(doc(db, "users", u.uid));
-        if (snap.exists()) {
-          const d = snap.data();
-          setUserData(d);
-          const role = (u.email?.toLowerCase() === 'mattyfliptv@gmail.com') ? 'fleet' : (d.role || 'rider');
-          setUserRole(role);
-          
-          if (d.orgId) {
-            // Manager: Listen to all rented bikes
-            if (role === 'fleet') {
-               const qLive = query(collection(db, `organizations/${d.orgId}/live_units`));
-               onSnapshot(qLive, (s) => setLiveUnits(s.docs.map(doc => ({ id: doc.id, ...doc.data() }))));
-            }
+        const userDocRef = doc(db, "users", u.uid);
+        onSnapshot(userDocRef, (snap) => {
+          if (snap.exists()) {
+            const d = snap.data();
+            setUserData(d);
+            const role = (u.email?.toLowerCase() === 'mattyfliptv@gmail.com') ? 'fleet' : (d.role || 'rider');
+            setUserRole(role);
             
-            // Both: Need bike specs for physics
-            const qBikes = query(collection(db, `organizations/${d.orgId}/bikes`));
-            onSnapshot(qBikes, (s) => {
-               const bikes = s.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-               setShopBikes(bikes);
-               if (bikes.length > 0 && !selectedBikeId) setSelectedBikeId(bikes[0].id);
-            });
+            if (d.orgId) {
+              // Manager: Listen to all rented bikes
+              if (role === 'fleet') {
+                 const qLive = query(collection(db, `organizations/${d.orgId}/live_units`));
+                 onSnapshot(qLive, (s) => setLiveUnits(s.docs.map(doc => ({ id: doc.id, ...doc.data() }))));
+              }
+              
+              // Both: Need bike specs for physics
+              const qBikes = query(collection(db, `organizations/${d.orgId}/bikes`));
+              onSnapshot(qBikes, (s) => {
+                 const bikes = s.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                 setShopBikes(bikes);
+                 if (bikes.length > 0 && !selectedBikeId) setSelectedBikeId(bikes[0].id);
+              });
+            }
           }
-        }
+        });
       }
       setLoading(false);
     });
   }, [selectedBikeId]);
 
+  // Listen to Group Ride Participants
+  useEffect(() => {
+    if (!groupRideId || !isGroupRideActive) return;
+    const q = query(collection(db, `group_rides/${groupRideId}/participants`));
+    const unsub = onSnapshot(q, (snap) => {
+      setParticipants(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+    return () => unsub();
+  }, [groupRideId, isGroupRideActive]);
+
   // 2. Rider Telemetry & Tracking
   useEffect(() => {
-    if (!user || userRole !== 'rider' || !userData?.orgId) return;
+    if (!user || userRole !== 'rider') return;
 
     const watchId = navigator.geolocation.watchPosition(async (pos) => {
       const lat = pos.coords.latitude;
@@ -119,20 +175,32 @@ function MapHome() {
           batteryPercent: bike?.specs?.currentBatteryPercent || 100
         });
 
-        await setDoc(doc(db, `organizations/${userData.orgId}/live_units`, user.uid), {
-          unitName: userData.username || 'Rider',
-          position: { lat, lng },
-          battery: bike?.specs?.currentBatteryPercent || 100,
-          lastSeen: Date.now(),
-          status: 'rented'
-        }, { merge: true });
+        // Sync to Shop Org if rented
+        if (userData?.orgId) {
+          await setDoc(doc(db, `organizations/${userData.orgId}/live_units`, user.uid), {
+            unitName: userData.username || 'Rider',
+            position: { lat, lng },
+            battery: bike?.specs?.currentBatteryPercent || 100,
+            lastSeen: Date.now(),
+            status: 'rented'
+          }, { merge: true });
+        }
+
+        // Sync to Group Ride if active
+        if (isGroupRideActive && groupRideId) {
+          await setDoc(doc(db, `group_rides/${groupRideId}/participants`, user.uid), {
+            name: userData.username || 'Rider',
+            position: { lat, lng },
+            lastSeen: Date.now()
+          }, { merge: true });
+        }
 
       } catch (e) { console.error("Telemetry sync failed", e); }
 
     }, null, { enableHighAccuracy: true });
 
     return () => navigator.geolocation.clearWatch(watchId);
-  }, [user, userRole, userData, selectedBikeId, shopBikes]);
+  }, [user, userRole, userData, selectedBikeId, shopBikes, isGroupRideActive, groupRideId]);
 
   const directionsCallback = async (res: any, status: any) => {
     if (status === 'OK' && res) {
@@ -304,6 +372,40 @@ function MapHome() {
               <button onClick={() => setStops([...stops, ''])} style={{ width: '100%', background: 'none', border: '1px dashed #444', color: '#666', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer', fontSize: '0.7rem', marginTop: '0.5rem' }}>+ ADD STOP</button>
               <button onClick={() => setIsLoading(true)} style={{ width: '100%', background: '#333', color: 'white', border: 'none', padding: '0.8rem', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', marginTop: '1rem' }}>GET OPTIMIZED ROUTE</button>
               
+              <div style={{ marginTop: '2rem', borderTop: '1px solid #333', paddingTop: '1.5rem' }}>
+                <h3 style={{ color: '#ff6600', fontSize: '0.8rem', textTransform: 'uppercase', marginBottom: '1rem' }}>Group Ride</h3>
+                {isGroupRideActive ? (
+                  <div style={{ background: '#222', padding: '1rem', borderRadius: '12px', border: '1px solid #ff6600' }}>
+                     <div style={{ fontSize: '0.7rem', color: '#888' }}>ACTIVE RIDE ID</div>
+                     <div style={{ fontSize: '1.2rem', fontWeight: 900, color: 'white' }}>{groupRideId}</div>
+                     <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        {participants.map(p => (
+                          <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem' }}>
+                            <span>👤 {p.name}</span>
+                            <span style={{ color: '#34a853' }}>LIVE</span>
+                          </div>
+                        ))}
+                     </div>
+                     <button onClick={() => setIsGroupRideActive(false)} style={{ width: '100%', background: '#ff4444', color: 'white', border: 'none', padding: '0.5rem', borderRadius: '8px', marginTop: '1rem', fontWeight: 'bold', cursor: 'pointer' }}>END SESSION</button>
+                  </div>
+                ) : (
+                  <button 
+                    onClick={handleStartGroupRide}
+                    style={{ width: '100%', padding: '1rem', background: 'linear-gradient(45deg, #ff6600, #ff9900)', border: 'none', borderRadius: '12px', color: 'white', fontWeight: 900, cursor: 'pointer', boxShadow: '0 4px 15px rgba(255,102,0,0.3)' }}
+                  >
+                    🚀 HOST GROUP RIDE
+                  </button>
+                )}
+                
+                {userData?.canHostGroupRide && new Date(userData.groupRideExpiresAt?.seconds * 1000) > new Date() && (
+                  <div style={{ marginTop: '1rem', textAlign: 'center' }}>
+                     <span style={{ fontSize: '0.6rem', color: '#ff6600', fontWeight: 'bold' }}>
+                       HOST PASS ACTIVE: {Math.max(0, Math.floor((new Date(userData.groupRideExpiresAt.seconds * 1000).getTime() - new Date().getTime()) / 3600000))}h REMAINING
+                     </span>
+                  </div>
+                )}
+              </div>
+
               {routeOptions.length > 1 && (
                 <div style={{ marginTop: '1.5rem' }}>
                   <label style={{ color: '#666', fontSize: '0.7rem', textTransform: 'uppercase' }}>Alternatives</label>
@@ -346,6 +448,42 @@ function MapHome() {
       </div>
 
       {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
+
+      {showHostPassModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.95)', zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+          <div style={{ background: '#1a1a1a', padding: '2.5rem', borderRadius: '32px', border: '1px solid #ff6600', maxWidth: '450px', width: '100%', textAlign: 'center' }}>
+             <div style={{ fontSize: '4rem', marginBottom: '1.5rem' }}>🛰️</div>
+             <h2 style={{ color: 'white', margin: 0, fontSize: '1.8rem' }}>Host Group Ride</h2>
+             <p style={{ color: '#888', marginTop: '1rem', lineHeight: '1.6' }}>
+               Unlock live participant tracking for all riders in your group. See everyone's location and battery status real-time on one map.
+             </p>
+             
+             <div style={{ background: '#111', padding: '1.5rem', borderRadius: '20px', margin: '2rem 0', border: '1px solid #333' }}>
+                <div style={{ color: '#ff6600', fontWeight: 900, fontSize: '2rem' }}>$9.99</div>
+                <div style={{ color: '#666', fontSize: '0.8rem', fontWeight: 'bold' }}>24-HOUR HOST PASS</div>
+             </div>
+
+             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <button 
+                  onClick={handlePurchaseHostPass}
+                  style={{ width: '100%', padding: '1rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', fontSize: '1.1rem' }}
+                >
+                  GET PASS NOW
+                </button>
+                <button 
+                  onClick={() => setShowHostPassModal(false)}
+                  style={{ width: '100%', padding: '1rem', background: 'transparent', color: '#666', border: 'none', fontWeight: 'bold', cursor: 'pointer' }}
+                >
+                  NOT NOW
+                </button>
+             </div>
+             
+             <p style={{ fontSize: '0.65rem', color: '#444', marginTop: '1.5rem' }}>
+               *Shop Tier accounts include unlimited group ride hosting for $49.99/mo.
+             </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

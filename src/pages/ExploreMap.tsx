@@ -151,17 +151,17 @@ const ExploreMap: React.FC = () => {
 
   if (loading) return <div style={{ minHeight: '100vh', background: '#121212' }} />;
 
-  const isPro = userData?.isPro === true;
+  const canExplore = userData?.isShopTier || (userData?.canHostGroupRide && new Date(userData.groupRideExpiresAt?.seconds * 1000) > new Date());
 
-  if (!isPro) {
+  if (!canExplore) {
     return (
       <div className="container" style={{ minHeight: '100vh', background: '#121212', color: 'white' }}>
         <NavBar user={user} onShowInstall={() => setShowInstallTutorial(true)} onShowAuth={() => setShowAuthModal(true)} />
         <main style={{ padding: '4rem 2rem', textAlign: 'center' }}>
           <h1 style={{ fontSize: '2.5rem', color: '#ff6600' }}>Explore Mode</h1>
-          <div style={{ fontSize: '4rem', margin: '2rem 0' }}>🏆</div>
-          <p style={{ fontSize: '1.2rem', color: '#888', maxWidth: '500px', margin: '0 auto 2rem' }}>Exclusive Pro Feature.</p>
-          <button onClick={() => navigate('/shop-profile')} style={{ padding: '1rem 2rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer' }}>Upgrade</button>
+          <div style={{ fontSize: '4rem', margin: '2rem 0' }}>🧭</div>
+          <p style={{ fontSize: '1.2rem', color: '#888', maxWidth: '500px', margin: '0 auto 2rem' }}>Exclusive professional feature. Upgrade to Shop Tier or grab a Host Pass to unlock live route recording and community sharing.</p>
+          <button onClick={() => navigate('/profile')} style={{ padding: '1rem 2rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer' }}>Upgrade Now</button>
         </main>
         {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
       </div>

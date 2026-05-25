@@ -15,7 +15,7 @@ if (!admin.apps.length) {
 const db = admin.firestore();
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  const baseUrl = 'https://rangeanxiety.app';
+  const baseUrl = 'https://rangeanxietyrider.com';
   const staticPages = [
     '',
     '/how-it-works',

@@ -207,7 +207,7 @@ const CommunityView: React.FC = () => {
       <SEO 
         title={communityData?.name ? `c/${communityData.name}` : `c/${communityId}`} 
         description={communityData?.description || `Join the c/${communityId} community on Range Anxiety. Discuss battery life, mods, and routes for your e-bike.`}
-        url={`https://rangeanxiety.app/forum/c/${communityId}`}
+        url={`https://rangeanxietyrider.com/forum/c/${communityId}`}
       />
       <NavBar user={user} onShowInstall={() => setShowInstallTutorial(true)} onShowAuth={() => setShowAuthModal(true)} />
       <main style={{ padding: '2rem 1.5rem', maxWidth: '900px', margin: '0 auto' }}>

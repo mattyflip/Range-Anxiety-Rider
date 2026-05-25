@@ -102,7 +102,7 @@ const ForumHub: React.FC = () => {
       <SEO 
         title="Forum Hub" 
         description="Explore specialized e-bike communities. From Sur-Ron performance to DIY battery builds, join the discussion with thousands of riders."
-        url="https://rangeanxiety.app/forum"
+        url="https://rangeanxietyrider.com/forum"
       />
       <NavBar 
         user={user} 
@@ -184,7 +184,7 @@ const ForumHub: React.FC = () => {
                 </div>
                 
                 <div style={{ marginTop: '4rem' }}>
-                  <AdBanner isPro={userData?.isPro || false} />
+                  <AdBanner />
                 </div>
               </>
             )}

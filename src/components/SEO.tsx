@@ -14,8 +14,8 @@ const SEO: React.FC<SEOProps> = ({
   title, 
   description, 
   keywords, 
-  image = 'https://rangeanxiety.app/og-image.png', 
-  url = 'https://rangeanxiety.app/', 
+  image = 'https://rangeanxietyrider.com/og-image.png', 
+  url = 'https://rangeanxietyrider.com/', 
   type = 'website' 
 }) => {
   const siteTitle = 'Range Anxiety | E-Bike Trip Planner';

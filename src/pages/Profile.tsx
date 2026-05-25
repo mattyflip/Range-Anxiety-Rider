@@ -85,6 +85,32 @@ const Profile: React.FC = () => {
   const [reviewComments, setReviewComments] = useState<{ [reviewId: string]: any[] }>({});
   const [newReviewCommentText, setNewReviewCommentText] = useState('');
 
+  const handleUpgrade = async (tier: string) => {
+    if (!user) {
+      setShowAuthModal(true);
+      return;
+    }
+    try {
+      const response = await fetch('/api/create-checkout-session', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${await user.getIdToken()}`
+        },
+        body: JSON.stringify({ userId: user.uid, email: user.email, tier }),
+      });
+      const data = await response.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        alert("Checkout error: " + data.error);
+      }
+    } catch (e) {
+      console.error("Upgrade failed", e);
+      alert("Failed to initiate checkout.");
+    }
+  };
+
   useEffect(() => {
     if (username === 'me') {
       navigate('/shop-profile');
@@ -294,7 +320,6 @@ const Profile: React.FC = () => {
       };
 
       if (isAdmin) {
-        updateData.isPro = editIsPro;
         updateData.fullName = editFullName;
         updateData.birthday = editBirthday;
       }
@@ -496,13 +521,38 @@ const Profile: React.FC = () => {
                   {isAdmin && <span style={{ color: '#ff4444', fontSize: '0.6rem', border: '1px solid #ff4444', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold', textTransform: 'uppercase' }}>Moderator Mode</span>}
                 </div>
               )}
-              {profileData.isPro && (
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: 'linear-gradient(45deg, #ffd700, #ffae00)', padding: '2px 10px', borderRadius: '20px', marginTop: '0.8rem', boxShadow: '0 0 10px rgba(255, 215, 0, 0.3)' }}>
-                  <span style={{ fontSize: '0.9rem' }}>🏍️</span>
-                  <span style={{ fontSize: '0.65rem', fontWeight: 900, color: 'black', textTransform: 'uppercase', letterSpacing: '0.05em' }}>PRO</span>
-                </div>
-              )}
-              <p style={{ color: '#888', marginTop: '0.5rem' }}>{profileData.bio || 'No bio yet.'}</p>
+        {isOwner && profileData?.role === 'rider' && !profileData?.isShopTier && (
+          <section style={{ marginBottom: '3rem', background: 'linear-gradient(45deg, #1a1a1a, #111)', padding: '2rem', borderRadius: '32px', border: '1px solid #ff6600' }}>
+            <h2 style={{ color: 'white', marginTop: 0 }}>Scale Your Experience</h2>
+            <p style={{ color: '#888', marginBottom: '2rem' }}>Upgrade to the Shop Tier or grab a Host Pass to unlock professional tracking tools.</p>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem' }}>
+               <div style={{ background: '#121212', padding: '1.5rem', borderRadius: '24px', border: '1px solid #333' }}>
+                  <div style={{ color: '#ff6600', fontWeight: 900, fontSize: '1.2rem' }}>SHOP TIER</div>
+                  <p style={{ color: '#666', fontSize: '0.8rem', margin: '1rem 0' }}>Professional fleet management, unlimited bike tracking, and ad-free experience.</p>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'white' }}>$49.99 <span style={{ fontSize: '0.8rem', color: '#444' }}>/ month</span></div>
+                  <button 
+                    onClick={() => handleUpgrade('shop')}
+                    style={{ width: '100%', padding: '0.8rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px', marginTop: '1.5rem', fontWeight: 'bold', cursor: 'pointer' }}
+                  >
+                    UPGRADE SHOP
+                  </button>
+               </div>
+
+               <div style={{ background: '#121212', padding: '1.5rem', borderRadius: '24px', border: '1px solid #333' }}>
+                  <div style={{ color: '#ffcc00', fontWeight: 900, fontSize: '1.2rem' }}>HOST PASS</div>
+                  <p style={{ color: '#666', fontSize: '0.8rem', margin: '1rem 0' }}>24-hour access to host group rides and track participant battery live on map.</p>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'white' }}>$9.99 <span style={{ fontSize: '0.8rem', color: '#444' }}>/ 24h</span></div>
+                  <button 
+                    onClick={() => handleUpgrade('group_ride')}
+                    style={{ width: '100%', padding: '0.8rem', background: '#ffcc00', color: 'black', border: 'none', borderRadius: '12px', marginTop: '1.5rem', fontWeight: 'bold', cursor: 'pointer' }}
+                  >
+                    GET PASS
+                  </button>
+               </div>
+            </div>
+          </section>
+        )}
               <div style={{ display: 'flex', justifyContent: 'center', gap: '2rem', marginTop: '1.5rem' }}>
                 <div><div style={{ color: 'white', fontWeight: 'bold', fontSize: '1.2rem' }}>{followerCount}</div><div style={{ color: '#666', fontSize: '0.7rem', textTransform: 'uppercase' }}>Followers</div></div>
                 <div><div style={{ color: 'white', fontWeight: 'bold', fontSize: '1.2rem' }}>{followingCount}</div><div style={{ color: '#666', fontSize: '0.7rem', textTransform: 'uppercase' }}>Following</div></div>
@@ -816,10 +866,12 @@ const Profile: React.FC = () => {
               </div>
               {isAdmin && (
                 <div className="form-group" style={{ marginBottom: '1rem' }}>
-                  <label style={{ display: 'block', color: '#888', fontSize: '0.7rem', marginBottom: '0.3rem' }}>PRO Status</label>
-                  <select value={editIsPro ? 'true' : 'false'} onChange={e => setEditIsPro(e.target.value === 'true')} style={{ width: '100%', padding: '0.6rem', background: '#222', border: '1px solid #444', borderRadius: '4px', color: 'white' }}>
+                  <label style={{ display: 'block', color: '#888', fontSize: '0.7rem', marginBottom: '0.3rem' }}>Shop Tier Status</label>
+                  <select value={profileData.isShopTier ? 'true' : 'false'} onChange={async (e) => {
+                    await updateDoc(doc(db, "users", profileData.id), { isShopTier: e.target.value === 'true' });
+                  }} style={{ width: '100%', padding: '0.6rem', background: '#222', border: '1px solid #444', borderRadius: '4px', color: 'white' }}>
                     <option value="false">Free User</option>
-                    <option value="true">PRO (Paid)</option>
+                    <option value="true">SHOP TIER (Paid)</option>
                   </select>
                 </div>
               )}

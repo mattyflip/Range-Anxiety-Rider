@@ -260,7 +260,7 @@ const Feed: React.FC = () => {
       <SEO 
         title="Community Feed" 
         description="See the latest routes and trips shared by e-bike riders. Load their routes directly into your map and conquer range anxiety together."
-        url="https://rangeanxiety.app/feed"
+        url="https://rangeanxietyrider.com/feed"
       />
       <NavBar 
         user={user} 

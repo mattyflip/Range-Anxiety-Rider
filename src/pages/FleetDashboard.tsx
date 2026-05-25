@@ -29,7 +29,8 @@ const FleetDashboard = () => {
     bikeWeightLbs: '65',
     targetSpeedMph: '20',
     controllerAmps: '',
-    cycleCount: '0'
+    cycleCount: '0',
+    imageUrl: ''
   });
 
   // Auth & Org Initialization
@@ -121,6 +122,7 @@ const FleetDashboard = () => {
     try {
       await setDoc(doc(db, `organizations/${userData.orgId}/bikes`, bikeId), {
         unitId: bikeForm.unitId,
+        imageUrl: bikeForm.imageUrl || '',
         specs: {
           voltage: parseFloat(bikeForm.voltage),
           capacityAh: parseFloat(bikeForm.capacityAh),
@@ -151,7 +153,8 @@ const FleetDashboard = () => {
       bikeWeightLbs: bike.specs.bikeWeightLbs.toString(),
       targetSpeedMph: bike.specs.targetSpeedMph.toString(),
       controllerAmps: bike.specs.controllerAmps?.toString() || '',
-      cycleCount: bike.specs.cycleCount?.toString() || '0'
+      cycleCount: bike.specs.cycleCount?.toString() || '0',
+      imageUrl: bike.imageUrl || ''
     });
     setShowShowBikeModal(true);
   };
@@ -209,6 +212,13 @@ const FleetDashboard = () => {
                 fleetBikes.sort((a,b) => a.unitId.localeCompare(b.unitId)).map(b => (
                   <div key={b.id} style={{ background: '#1a1a1a', padding: '1.5rem', borderRadius: '20px', border: '1px solid #333', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
+                      <div style={{ width: '60px', height: '60px', borderRadius: '12px', background: '#222', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        {b.imageUrl ? (
+                          <img src={b.imageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                          <span style={{ fontSize: '1.5rem' }}>🚲</span>
+                        )}
+                      </div>
                       <div style={{ width: '100px' }}>
                         <div style={{ color: 'white', fontWeight: 900, fontSize: '1.2rem' }}>{b.unitId}</div>
                         <div style={{ fontSize: '0.6rem', color: b.status === 'rented' ? '#ff6600' : '#34a853', fontWeight: 'bold', textTransform: 'uppercase' }}>{b.status}</div>
@@ -316,6 +326,10 @@ const FleetDashboard = () => {
                  <div>
                    <label style={{ display: 'block', color: '#666', fontSize: '0.7rem', marginBottom: '0.3rem' }}>Tire PSI</label>
                    <input type="number" value={bikeForm.tirePSI} onChange={e => setBikeForm({...bikeForm, tirePSI: e.target.value})} style={{ width: '100%', padding: '0.8rem', background: '#111', border: '1px solid #333', borderRadius: '8px', color: 'white' }} />
+                 </div>
+                 <div style={{ gridColumn: 'span 2' }}>
+                   <label style={{ display: 'block', color: '#666', fontSize: '0.7rem', marginBottom: '0.3rem' }}>Bike Image URL</label>
+                   <input value={bikeForm.imageUrl} onChange={e => setBikeForm({...bikeForm, imageUrl: e.target.value})} placeholder="https://..." style={{ width: '100%', padding: '0.8rem', background: '#111', border: '1px solid #333', borderRadius: '8px', color: 'white' }} />
                  </div>
               </div>
               <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>

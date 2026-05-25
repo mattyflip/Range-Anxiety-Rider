@@ -29,7 +29,7 @@ const FAQ: React.FC = () => {
     },
     {
       question: "How do I see my friends on the map?",
-      answer: "You will need to upgrade your account to Pro or Host. PRO tier accounts can join public or private group rides. Host tier accounts can host group rides. Once active, all participants will appear as real-time icons on your map and you can all follow the same planned route."
+      answer: "Hosting a group ride is a professional feature reserved for Shop Owners or Riders with an active Host Pass ($9.99 for 24 hours). Shop Tier accounts ($49.99/mo) include unlimited hosting. Once active, all participants will appear as real-time icons on your map and you can all follow the same planned route."
     },
     {
       question: "What is the difference between PAS (Pedal Assist) and '3 Speed Switch' modes?",
@@ -58,7 +58,7 @@ const FAQ: React.FC = () => {
       <SEO 
         title="FAQ" 
         description="Frequently asked questions about e-bike range estimation, legal requirements, group rides, and the Range Anxiety community."
-        url="https://rangeanxiety.app/faq"
+        url="https://rangeanxietyrider.com/faq"
       />
       <NavBar 
         user={user} 
