@@ -71,7 +71,6 @@ const Profile: React.FC = () => {
   const [editCity, setEditCity] = useState('');
   const [editHomeRegion, setEditHomeRegion] = useState('');
   const [editBirthday, setEditBirthday] = useState('');
-  const [editIsPro, setEditIsPro] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
 
   // Review states

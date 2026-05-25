@@ -103,21 +103,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // Handle subscription renewals for SHOP TIER
   if (event.type === 'invoice.payment_succeeded') {
-    const invoice = event.data.object as Stripe.Invoice;
+    const invoice = event.data.object as any;
     const subscriptionId = invoice.subscription as string;
     
     // Fetch subscription to get metadata
-    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-    const userId = subscription.metadata?.userId;
+    if (subscriptionId) {
+      const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+      const userId = subscription.metadata?.userId;
 
-    if (userId) {
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + 31);
-      await db.collection('users').doc(userId).update({
-        shopTierExpiresAt: Timestamp.fromDate(expiresAt),
-        isShopTier: true
-      });
+      if (userId) {
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + 31);
+        await db.collection('users').doc(userId).update({
+          shopTierExpiresAt: Timestamp.fromDate(expiresAt),
+          isShopTier: true
+        });
+      }
     }
+  }
   }
 
   // Handle cancellation/failure
