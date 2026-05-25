@@ -4,6 +4,7 @@ import { auth, db } from '../firebase'
 import { onAuthStateChanged } from 'firebase/auth'
 import type { User } from 'firebase/auth'
 import { doc, setDoc, collection, onSnapshot, query, addDoc, DocumentSnapshot } from 'firebase/firestore'
+import { useNavigate } from 'react-router-dom'
 import NavBar from '../components/NavBar'
 import AuthModal from '../components/AuthModal'
 import SEO from '../components/SEO'
@@ -17,6 +18,7 @@ function MapHome() {
   const mapRef = useRef<google.maps.Map | null>(null);
 
   const [user, setUser] = useState<User | null>(null);
+  const navigate = useNavigate();
   const [userData, setUserData] = useState<any>(null);
   const [userRole, setUserRole] = useState<'rider' | 'fleet'>('rider');
   const [loading, setLoading] = useState(true);
