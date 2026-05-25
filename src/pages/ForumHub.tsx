@@ -41,8 +41,7 @@ const ForumHub: React.FC = () => {
     const unsub = auth.onAuthStateChanged(async u => {
       setUser(u);
       if (u) {
-        const snap = await getDoc(doc(db, "users", u.uid));
-        if (snap.exists()) setUserData(snap.data());
+        // Logged in
       } else {
         // Prompt for account creation if guest
         setShowAuthModal(true);

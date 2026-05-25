@@ -98,7 +98,7 @@ function MapHome() {
       if (u) {
         setUser(u);
         const userDocRef = doc(db, "users", u.uid);
-        onSnapshot(userDocRef, (snap) => {
+        onSnapshot(userDocRef, (snap: DocumentSnapshot) => {
           if (snap.exists()) {
             const d = snap.data();
             setUserData(d);
@@ -489,3 +489,4 @@ function MapHome() {
 }
 
 export default MapHome;
+me;

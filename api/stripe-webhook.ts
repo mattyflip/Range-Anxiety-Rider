@@ -121,7 +121,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
   }
-  }
 
   // Handle cancellation/failure
   if (event.type === 'customer.subscription.deleted' || event.type === 'invoice.payment_failed') {

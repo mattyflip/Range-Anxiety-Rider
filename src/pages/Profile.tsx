@@ -156,7 +156,7 @@ const Profile: React.FC = () => {
         setEditCity(data.city || '');
         setEditHomeRegion(data.homeRegion || '');
         setEditBirthday(data.birthday || '');
-        setEditIsPro(data.isPro || false);
+
         if (user) {
           getDoc(doc(db, "users", tid, "followers", user.uid)).then(d => setIsFollowing(d.exists()));
         }
@@ -183,7 +183,7 @@ const Profile: React.FC = () => {
             setEditCity(data.city || '');
             setEditHomeRegion(data.homeRegion || '');
             setEditBirthday(data.birthday || '');
-            setEditIsPro(data.isPro || false);
+    
             if (user) {
           getDoc(doc(db, "users", tid, "followers", user.uid)).then(d => setIsFollowing(d.exists()));
         }
@@ -210,7 +210,7 @@ const Profile: React.FC = () => {
                 setEditCity(data.city || '');
                 setEditHomeRegion(data.homeRegion || '');
                 setEditBirthday(data.birthday || '');
-                setEditIsPro(data.isPro || false);
+        
                 if (user) {
           getDoc(doc(db, "users", tid, "followers", user.uid)).then(d => setIsFollowing(d.exists()));
         }
