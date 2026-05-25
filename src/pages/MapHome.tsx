@@ -247,11 +247,15 @@ function MapHome() {
   };
 
   const handleSaveSuggestedRoute = async () => {
-    if (!newRouteName.trim() || stops.filter(s => s).length < 2 || !userData?.orgId) return;
+    if (!newRouteName.trim()) { alert("Please enter a route name."); return; }
+    const validStops = stops.filter(s => s);
+    if (validStops.length < 2) { alert("Please add at least 2 stops."); return; }
+    if (!userData?.orgId) { alert("No organization linked to your account. Please set up your shop profile."); return; }
+
     try {
       await addDoc(collection(db, `organizations/${userData.orgId}/suggested_routes`), {
         name: newRouteName,
-        stops: stops.filter(s => s),
+        stops: validStops,
         createdAt: new Date().toISOString()
       });
       setNewRouteName('');
@@ -289,9 +293,16 @@ function MapHome() {
           
           <button 
             onClick={handleFetchChargers}
-            style={{ width: '100%', padding: '0.8rem', background: showChargers ? '#ff6600' : '#222', border: '1px solid #333', borderRadius: '12px', color: 'white', fontWeight: 'bold', cursor: 'pointer', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+            style={{ width: '100%', padding: '0.8rem', background: showChargers ? '#ff6600' : '#222', border: '1px solid #333', borderRadius: '12px', color: 'white', fontWeight: 'bold', cursor: 'pointer', marginBottom: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
           >
             {showChargers ? '🔌 HIDE CHARGERS' : '🔌 FIND CHARGERS'}
+          </button>
+
+          <button 
+            onClick={() => navigate('/explore')}
+            style={{ width: '100%', background: 'none', border: '1px solid #444', color: '#888', padding: '0.8rem', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+          >
+            🧭 ENTER EXPLORE MODE
           </button>
 
           {userRole === 'fleet' ? (
@@ -393,7 +404,7 @@ function MapHome() {
                 ) : (
                   <button 
                     onClick={handleStartGroupRide}
-                    style={{ width: '100%', padding: '1rem', background: 'linear-gradient(45deg, #ff6600, #ff9900)', border: 'none', borderRadius: '12px', color: 'white', fontWeight: 900, cursor: 'pointer', boxShadow: '0 4px 15px rgba(255,102,0,0.3)' }}
+                    style={{ width: '100%', padding: '1rem', background: 'linear-gradient(45deg, #ff6600, #ff9900)', border: 'none', borderRadius: '12px', color: 'white', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 15px rgba(255,102,0,0.3)' }}
                   >
                     🚀 HOST GROUP RIDE
                   </button>
@@ -491,26 +502,3 @@ function MapHome() {
 }
 
 export default MapHome;
-
-    GET PASS NOW
-                </button>
-                <button 
-                  onClick={() => setShowHostPassModal(false)}
-                  style={{ width: '100%', padding: '1rem', background: 'transparent', color: '#666', border: 'none', fontWeight: 'bold', cursor: 'pointer' }}
-                >
-                  NOT NOW
-                </button>
-             </div>
-             
-             <p style={{ fontSize: '0.65rem', color: '#444', marginTop: '1.5rem' }}>
-               *Shop Tier accounts include unlimited group ride hosting for $49.99/mo.
-             </p>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-export default MapHome;
-
