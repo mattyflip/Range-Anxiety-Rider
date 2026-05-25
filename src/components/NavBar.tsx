@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { db, auth } from '../firebase'
 import { signOut } from 'firebase/auth'
 import { collection, query, where, onSnapshot, doc, getDoc, updateDoc } from 'firebase/firestore'
@@ -12,6 +12,7 @@ interface NavBarProps {
 
 const NavBar: React.FC<NavBarProps> = ({ user, onShowInstall, onShowAuth }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [unreadCount, setUnreadCount] = useState(0);
   const [userData, setUserData] = useState<any>(null);
 
@@ -78,22 +79,23 @@ const NavBar: React.FC<NavBarProps> = ({ user, onShowInstall, onShowAuth }) => {
     if (isFleet) {
       return (
         <>
-          <Link to=\"/map\" style={{ color: '#ff6600', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Trip Map</Link>
-          <Link to=\"/rent\" style={{ color: '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Rent</Link>
-          <Link to=\"/feed\" style={{ color: '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Community</Link>
+          <Link to="/fleet" style={{ color: location.pathname === '/fleet' ? '#ff6600' : '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Fleet Hub</Link>
+          <Link to="/map" style={{ color: location.pathname === '/map' ? '#ff6600' : '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Fleet Map</Link>
+          <Link to="/shop-profile" style={{ color: location.pathname === '/shop-profile' ? '#ff6600' : '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Shop Profile</Link>
+          <Link to="/about" style={{ color: location.pathname === '/about' ? '#ff6600' : '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>About</Link>
         </>
       );
     }
 
     return (
       <>
-        <Link to=\"/map\" style={{ color: '#ff6600', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Trip Map</Link>
-        <Link to=\"/rent\" style={{ color: '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Rent</Link>
-        <Link to=\"/feed\" style={{ color: '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Community</Link>
-        <Link to="/forum" style={{ color: '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Forum</Link>
-        <Link to="/faq" style={{ color: '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>FAQ</Link>
-        <Link to="/about" style={{ color: '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>About</Link>
-        <Link to={`/profile/${userData?.username || 'me'}`} style={{ color: '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Profile</Link>
+        <Link to="/map" style={{ color: location.pathname === '/map' ? '#ff6600' : '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Trip Map</Link>
+        <Link to="/rent" style={{ color: location.pathname === '/rent' ? '#ff6600' : '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Rent</Link>
+        <Link to="/feed" style={{ color: location.pathname === '/feed' ? '#ff6600' : '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Community</Link>
+        <Link to="/forum" style={{ color: location.pathname.startsWith('/forum') ? '#ff6600' : '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Forum</Link>
+        <Link to="/faq" style={{ color: location.pathname === '/faq' ? '#ff6600' : '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>FAQ</Link>
+        <Link to="/about" style={{ color: location.pathname === '/about' ? '#ff6600' : '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>About</Link>
+        <Link to={`/profile/${userData?.username || 'me'}`} style={{ color: location.pathname.startsWith('/profile') ? '#ff6600' : '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Profile</Link>
       </>
     );
   };
@@ -212,7 +214,7 @@ const NavBar: React.FC<NavBarProps> = ({ user, onShowInstall, onShowAuth }) => {
               borderRadius: '20px', 
               padding: '0.3rem 0.8rem', 
               fontSize: '0.7rem', 
-              fontWeight: 'bold',
+              fontWeight: 'bold', 
               cursor: 'pointer',
               whiteSpace: 'nowrap',
               boxShadow: user ? '0 4px 10px rgba(255,102,0,0.3)' : 'none'
