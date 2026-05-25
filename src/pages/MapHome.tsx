@@ -372,6 +372,13 @@ function MapHome() {
               <button onClick={() => setStops([...stops, ''])} style={{ width: '100%', background: 'none', border: '1px dashed #444', color: '#666', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer', fontSize: '0.7rem', marginTop: '0.5rem' }}>+ ADD STOP</button>
               <button onClick={() => setIsLoading(true)} style={{ width: '100%', background: '#333', color: 'white', border: 'none', padding: '0.8rem', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', marginTop: '1rem' }}>GET OPTIMIZED ROUTE</button>
               
+              <button 
+                onClick={() => navigate('/explore')}
+                style={{ width: '100%', background: 'none', border: '1px solid #444', color: '#888', padding: '0.8rem', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', marginTop: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+              >
+                🧭 ENTER EXPLORE MODE
+              </button>
+              
               <div style={{ marginTop: '2rem', borderTop: '1px solid #333', paddingTop: '1.5rem' }}>
                 <h3 style={{ color: '#ff6600', fontSize: '0.8rem', textTransform: 'uppercase', marginBottom: '1rem' }}>Group Ride</h3>
                 {isGroupRideActive ? (
