@@ -1,6 +1,12 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import axios from 'axios';
 
+// SECURITY FIX #3 (continued): Same origin restriction applied to static-map API.
+const ALLOWED_ORIGINS = [
+  'https://rangeanxietyrider.com',
+  'https://www.rangeanxietyrider.com',
+];
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const { polyline } = req.query;
   
@@ -21,9 +27,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const response = await axios.get(staticMapUrl, { responseType: 'arraybuffer' });
     
-    // Set headers for CORS and image type
+    // Set restricted CORS headers (images can be embedded cross-origin but we
+    // still restrict the explicit Access-Control-Allow-Origin header)
+    const origin = req.headers.origin as string | undefined;
+    if (origin && ALLOWED_ORIGINS.includes(origin)) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Vary', 'Origin');
+    }
     res.setHeader('Content-Type', 'image/png');
-    res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache for 24 hours
     
     return res.send(response.data);

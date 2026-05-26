@@ -1,12 +1,27 @@
 import axios from 'axios';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+// SECURITY FIX #3: Restrict CORS to your domain only.
+// A wildcard '*' lets any website on the internet proxy calls through your
+// server, consuming your Google Maps quota and running up your Vercel bill.
+const ALLOWED_ORIGINS = [
+  'https://rangeanxietyrider.com',
+  'https://www.rangeanxietyrider.com',
+];
+
+function setCorsHeaders(req: VercelRequest, res: VercelResponse): boolean {
+  const origin = req.headers.origin as string | undefined;
+  if (origin && ALLOWED_ORIGINS.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
+  }
   res.setHeader('Access-Control-Allow-Methods', 'POST,GET,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  return req.method === 'OPTIONS';
+}
 
-  if (req.method === 'OPTIONS') {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (setCorsHeaders(req, res)) {
     return res.status(200).end();
   }
 

@@ -3,25 +3,37 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Defensive check for sign-in status
+    // SECURITY FIX #4: Admin is determined by a Firebase Custom Claim, NOT by email address.
+    //
+    // Why: An email string can change, leaks your PII into a public repo, and can be
+    // spoofed client-side. Custom Claims are set server-side via the Admin SDK and are
+    // cryptographically tied to the user's auth token — they cannot be faked by a client.
+    //
+    // To grant admin: run this once from a trusted server/script:
+    //   await admin.auth().setCustomUserClaims(uid, { admin: true });
+    //
+    // To revoke admin:
+    //   await admin.auth().setCustomUserClaims(uid, { admin: false });
     function isSignedIn() { 
       return request.auth != null && request.auth.uid != null; 
     }
     
-    // Defensive check for admin privileges
     function isAdmin() { 
       return isSignedIn() && 
              request.auth.token != null && 
-             request.auth.token.get('email', '').toLowerCase() == 'mattyfliptv@gmail.com'; 
+             request.auth.token.get('admin', false) == true; 
     }
     
-    // Defensive check for document ownership
     function isOwner(userId) { 
       return isSignedIn() && request.auth.uid == userId; 
     }
 
     match /users/{userId} {
-      allow get, list: if isSignedIn();
+      // SECURITY FIX #5: Removed 'list' permission for all signed-in users.
+      // 'list' on the entire /users collection lets anyone enumerate all user documents
+      // (emails, org IDs, subscription status, etc.). Use targeted 'get' lookups instead.
+      allow get: if isSignedIn();
+      allow list: if isAdmin();
       allow create: if isSignedIn();
       allow update: if isOwner(userId) || isAdmin();
       allow delete: if isAdmin();

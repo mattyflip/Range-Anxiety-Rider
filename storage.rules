@@ -13,9 +13,15 @@ service firebase.storage {
       return request.auth != null && request.auth.uid == userId;
     }
 
-    // Helper: Admin check
+    // SECURITY FIX #4 (continued): Admin uses Custom Claim, not email string.
+    // SECURITY FIX #6: Use .get() with a default fallback to prevent a NullPointerException
+    // crash when request.auth.token.email is null (e.g. anonymous auth, unverified accounts).
+    // The old code `request.auth.token.email.toLowerCase()` would throw if email was null,
+    // which could cause Storage rules to behave unpredictably or block all requests.
     function isAdmin() {
-      return request.auth.token.email.toLowerCase() == 'mattyfliptv@gmail.com';
+      return request.auth != null &&
+             request.auth.token != null &&
+             request.auth.token.get('admin', false) == true;
     }
 
     // --- Profile Pictures ---

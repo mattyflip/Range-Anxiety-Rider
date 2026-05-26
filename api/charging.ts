@@ -8,8 +8,19 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
  * Optimized for standard household-style sockets (NEMA 5-15) and J1772.
  */
 
+// SECURITY FIX #3 (continued): Same origin restriction applied to charging API.
+const ALLOWED_ORIGINS = [
+  'https://rangeanxietyrider.com',
+  'https://www.rangeanxietyrider.com',
+];
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  // Set restricted CORS headers
+  const origin = req.headers.origin as string | undefined;
+  if (origin && ALLOWED_ORIGINS.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
+  }
   res.setHeader('Access-Control-Allow-Methods', 'POST,GET,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 

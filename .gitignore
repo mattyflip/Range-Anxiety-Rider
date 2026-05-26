@@ -24,7 +24,9 @@ server/
 *.njsproj
 *.sln
 *.sw?
-   1 .env
-   2 server/
 .vercel
 .env*.local
+
+# TypeScript build artifacts — never commit these
+tsconfig.api.tsbuildinfo
+*.tsbuildinfo
