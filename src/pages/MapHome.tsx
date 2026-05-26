@@ -109,7 +109,7 @@ function MapHome() {
         if (unsubBikes) unsubBikes();
 
         const userDocRef = doc(db, "users", u.uid);
-        unsubUser = onSnapshot(userDocRef, (snap: type DocumentSnapshot) => {
+        unsubUser = onSnapshot(userDocRef, (snap: DocumentSnapshot) => {
           if (snap.exists()) {
             const d = snap.data();
             setUserData(d);
