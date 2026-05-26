@@ -8,12 +8,10 @@ const ALLOWED_ORIGINS = [
 
 function setCorsHeaders(req: VercelRequest, res: VercelResponse): boolean {
   const origin = req.headers.origin as string | undefined;
-  
   if (origin && (ALLOWED_ORIGINS.includes(origin) || origin.includes('localhost') || origin.includes('127.0.0.1'))) {
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Vary', 'Origin');
   }
-  
   res.setHeader('Access-Control-Allow-Methods', 'POST,GET,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   return req.method === 'OPTIONS';
@@ -24,55 +22,54 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).end();
   }
 
-  const GOOGLE_API_KEY = process.env.GOOGLE_MAPS_BACKEND_KEY || process.env.VITE_GOOGLE_MAPS_API_KEY;
+  const apiKey = process.env.GOOGLE_MAPS_BACKEND_KEY || process.env.VITE_GOOGLE_MAPS_API_KEY;
 
   try {
     let pathParam = '';
+    let isEncoded = false;
 
     if (req.method === 'POST') {
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-      pathParam = body.encodedPath || body.path;
-    } else {
-      const url = new URL(req.url || '', 'http://localhost');
-      pathParam = url.searchParams.get('path') || '';
+      if (body.encodedPath) {
+        pathParam = body.encodedPath;
+        isEncoded = true;
+      } else {
+        pathParam = body.path || '';
+      }
     }
 
     if (!pathParam) {
       return res.status(400).json({ error: 'Path is required' });
     }
 
-    let params: any = { key: GOOGLE_API_KEY };
-    const isSingleLocation = /^-?\d+\.\d+,-?\d+\.\d+$/.test(pathParam);
-
-    if (isSingleLocation) {
-      params.locations = pathParam;
+    let queryParams: any = { key: apiKey };
+    
+    if (isEncoded) {
+      queryParams.path = pathParam.startsWith('enc:') ? pathParam : 'enc:' + pathParam;
+      queryParams.samples = 100;
+    } else if (pathParam.includes('|') || pathParam.includes(',')) {
+      queryParams.locations = pathParam;
     } else {
-      params.path = pathParam.startsWith('enc:') ? pathParam : 'enc:' + pathParam;
-      params.samples = 100;
+      queryParams.path = 'enc:' + pathParam;
+      queryParams.samples = 100;
     }
 
-    const response = await axios.get('https://maps.googleapis.com/maps/api/elevation/json', { params });
+    const response = await axios.get('https://maps.googleapis.com/maps/api/elevation/json', { params: queryParams });
 
     if (response.data.status !== 'OK') {
-      console.error('Google Elevation Error:', response.data.status, response.data.error_message);
       return res.status(400).json({ error: response.data.status, message: response.data.error_message });
-    }
-
-    if (isSingleLocation) {
-      return res.status(200).json({
-        gain: 0,
-        loss: 0,
-        results: response.data.results
-      });
     }
 
     const results = response.data.results;
     let gain = 0;
     let loss = 0;
-    for (let i = 1; i < results.length; i++) {
-      const diff = results[i].elevation - results[i-1].elevation;
-      if (diff > 0) gain += diff;
-      else loss += Math.abs(diff);
+    
+    if (results.length > 1) {
+      for (let i = 1; i < results.length; i++) {
+        const diff = results[i].elevation - results[i-1].elevation;
+        if (diff > 0) gain += diff;
+        else loss += Math.abs(diff);
+      }
     }
 
     return res.status(200).json({
@@ -82,7 +79,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
   } catch (error: any) {
-    console.error('Elevation API error:', error.message);
-    return res.status(500).json({ error: 'Internal Error', details: error.message });
+    return res.status(500).json({ error: 'Internal Error' });
   }
 }
