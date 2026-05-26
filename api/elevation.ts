@@ -1,9 +1,6 @@
 import axios from 'axios';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-// SECURITY FIX #3: Restrict CORS to your domain only.
-// A wildcard '*' lets any website on the internet proxy calls through your
-// server, consuming your Google Maps quota and running up your Vercel bill.
 const ALLOWED_ORIGINS = [
   'https://rangeanxietyrider.com',
   'https://www.rangeanxietyrider.com',
@@ -11,10 +8,12 @@ const ALLOWED_ORIGINS = [
 
 function setCorsHeaders(req: VercelRequest, res: VercelResponse): boolean {
   const origin = req.headers.origin as string | undefined;
-  if (origin && ALLOWED_ORIGINS.includes(origin)) {
+  
+  if (origin && (ALLOWED_ORIGINS.includes(origin) || origin.includes('localhost') || origin.includes('127.0.0.1'))) {
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Vary', 'Origin');
   }
+  
   res.setHeader('Access-Control-Allow-Methods', 'POST,GET,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   return req.method === 'OPTIONS';
@@ -29,36 +28,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     let pathParam = '';
-    
+
     if (req.method === 'POST') {
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
       pathParam = body.encodedPath || body.path;
     } else {
-      const url = new URL(req.url || '', `https://${req.headers.host}`);
+      const url = new URL(req.url || '', 'http://localhost');
       pathParam = url.searchParams.get('path') || '';
     }
 
     if (!pathParam) {
-      console.error('Elevation API: Missing path parameter');
       return res.status(400).json({ error: 'Path is required' });
     }
 
     let params: any = { key: GOOGLE_API_KEY };
-    const isPath = pathParam.includes('|') || (!pathParam.includes(',') && !pathParam.startsWith('enc:')) || pathParam.startsWith('enc:');
-    
-    // Improved detection: if it has multiple commas and pipes, it's a coordinate list
-    // if it's just one comma and looks like numbers, it's a single location
     const isSingleLocation = /^-?\d+\.\d+,-?\d+\.\d+$/.test(pathParam);
 
     if (isSingleLocation) {
       params.locations = pathParam;
     } else {
-      params.path = pathParam.startsWith('enc:') ? pathParam : `enc:${pathParam}`;
+      params.path = pathParam.startsWith('enc:') ? pathParam : 'enc:' + pathParam;
       params.samples = 100;
     }
 
-    console.log(`Calling Elevation API with ${isSingleLocation ? 'locations' : 'path'}`);
-    
     const response = await axios.get('https://maps.googleapis.com/maps/api/elevation/json', { params });
 
     if (response.data.status !== 'OK') {
@@ -67,10 +59,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (isSingleLocation) {
-      return res.status(200).json({ 
-        gain: 0, 
-        loss: 0, 
-        results: response.data.results 
+      return res.status(200).json({
+        gain: 0,
+        loss: 0,
+        results: response.data.results
       });
     }
 
@@ -83,10 +75,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       else loss += Math.abs(diff);
     }
 
-    return res.status(200).json({ 
-      gain: gain * 3.28084, 
-      loss: loss * 3.28084, 
-      results 
+    return res.status(200).json({
+      gain: gain * 3.28084,
+      loss: loss * 3.28084,
+      results
     });
 
   } catch (error: any) {
