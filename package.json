@@ -15,7 +15,6 @@
     "@capacitor/cli": "^8.3.4",
     "@capacitor/core": "^8.3.4",
     "@react-google-maps/api": "^2.20.8",
-    "@resend/node": "^0.0.7",
     "@stripe/stripe-js": "^9.5.0",
     "axios": "^1.16.1",
     "cors": "^2.8.6",
