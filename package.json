@@ -16,7 +16,7 @@
     "@capacitor/core": "^8.3.4",
     "@react-google-maps/api": "^2.20.8",
     "@stripe/stripe-js": "^9.5.0",
-    "axios": "^1.16.1",
+    "axios": "^1.16.1",`n    "resend": "^3.5.0",
     "cors": "^2.8.6",
     "firebase": "^12.13.0","firebase-admin": "^13.10.0",
     "html-to-image": "^1.11.13",
