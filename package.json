@@ -15,10 +15,12 @@
     "@capacitor/cli": "^8.3.4",
     "@capacitor/core": "^8.3.4",
     "@react-google-maps/api": "^2.20.8",
+    "@resend/node": "^0.0.7",
     "@stripe/stripe-js": "^9.5.0",
-    "axios": "^1.16.1",`n    "resend": "^3.5.0",
+    "axios": "^1.16.1",
     "cors": "^2.8.6",
-    "firebase": "^12.13.0","firebase-admin": "^13.10.0",
+    "firebase": "^12.13.0",
+    "firebase-admin": "^13.10.0",
     "html-to-image": "^1.11.13",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
@@ -26,6 +28,7 @@
     "react-ga4": "^3.0.1",
     "react-helmet-async": "^3.0.0",
     "react-router-dom": "^7.15.1",
+    "resend": "^3.5.0",
     "stripe": "^22.1.1"
   },
   "devDependencies": {
@@ -47,7 +50,6 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "express": "^5.2.1",
-
     "globals": "^17.6.0",
     "minimatch": "^10.2.5",
     "path-to-regexp": "^8.4.2",
