@@ -24,6 +24,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const apiKey = process.env.GOOGLE_MAPS_BACKEND_KEY || process.env.VITE_GOOGLE_MAPS_API_KEY;
 
+  if (!apiKey) {
+    return res.status(500).json({ error: 'SERVER_CONFIG_ERROR', message: 'Missing API Key' });
+  }
+
   try {
     let pathParam = '';
     let isEncoded = false;
@@ -34,30 +38,38 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         pathParam = body.encodedPath;
         isEncoded = true;
       } else {
-        pathParam = body.path || '';
+        pathParam = body.path || body.locations || '';
       }
+    } else {
+      const url = new URL(req.url || '', 'http://localhost');
+      pathParam = url.searchParams.get('path') || url.searchParams.get('locations') || '';
     }
 
     if (!pathParam) {
-      return res.status(400).json({ error: 'Path is required' });
+      return res.status(422).json({ error: 'VALIDATION_ERROR' });
     }
 
-    let queryParams: any = { key: apiKey };
-    
-    if (isEncoded) {
+    const queryParams: any = { key: apiKey };
+    const isRawCoords = /^[0-9.,|\-\s]+$/.test(pathParam);
+
+    if (isEncoded || !isRawCoords) {
       queryParams.path = pathParam.startsWith('enc:') ? pathParam : 'enc:' + pathParam;
       queryParams.samples = 100;
-    } else if (pathParam.includes('|') || pathParam.includes(',')) {
-      queryParams.locations = pathParam;
     } else {
-      queryParams.path = 'enc:' + pathParam;
-      queryParams.samples = 100;
+      queryParams.locations = pathParam.replace(/\s/g, '');
     }
 
-    const response = await axios.get('https://maps.googleapis.com/maps/api/elevation/json', { params: queryParams });
+    const response = await axios.get('https://maps.googleapis.com/maps/api/elevation/json', { 
+      params: queryParams,
+      timeout: 5000 
+    });
 
     if (response.data.status !== 'OK') {
-      return res.status(400).json({ error: response.data.status, message: response.data.error_message });
+      return res.status(502).json({ 
+        error: 'GOOGLE_API_ERROR', 
+        status: response.data.status, 
+        message: response.data.error_message
+      });
     }
 
     const results = response.data.results;
@@ -79,6 +91,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
   } catch (error: any) {
-    return res.status(500).json({ error: 'Internal Error' });
+    return res.status(500).json({ 
+      error: 'PROXY_ERROR', 
+      message: error.message 
+    });
   }
 }
