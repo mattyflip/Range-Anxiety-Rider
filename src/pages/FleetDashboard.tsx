@@ -21,6 +21,12 @@ const FleetDashboard = () => {
   const [alerts, setAlerts] = useState<any[]>([]);
   const [rentalRequests, setRentalRequests] = useState<any[]>([]);
   
+  // Direct Assignment State
+  const [showDirectAssignModal, setShowDirectAssignModal] = useState(false);
+  const [targetRiderEmail, setTargetRiderEmail] = useState('');
+  const [bikeToAssign, setBikeToAssign] = useState<any>(null);
+  const [isAssigning, setIsAssigning] = useState(false);
+
   // Bike Edit Modal State
   const [showBikeModal, setShowShowBikeModal] = useState(false);
   const [editingBike, setEditingBike] = useState<any>(null);
@@ -145,6 +151,46 @@ const FleetDashboard = () => {
       await updateDoc(doc(db, `organizations/${userData.orgId}/bikes`, bike.id), { status: 'rented' });
       alert(`${bike.unitId} marked as RENTED.`);
     } catch (e) { console.error(e); }
+  };
+
+  const handleDirectRentOut = async () => {
+    if (!userData?.orgId || !bikeToAssign || !targetRiderEmail.trim()) return;
+    setIsAssigning(true);
+    try {
+      // 1. Find user by email
+      const q = query(collection(db, "users"), where("email", "==", targetRiderEmail.trim().toLowerCase()));
+      const snap = await getDocs(q);
+      
+      if (snap.empty) {
+        alert("No user found with that email. Please ensure the rider has created an account.");
+        return;
+      }
+
+      const riderDoc = snap.docs[0];
+      const riderData = riderDoc.data();
+      const riderId = riderDoc.id;
+
+      // 2. Link bike to rider UID
+      await updateDoc(doc(db, `organizations/${userData.orgId}/bikes`, bikeToAssign.id), { 
+        status: 'rented',
+        currentRiderId: riderId 
+      });
+
+      // 3. Initialize Live Unit
+      await setDoc(doc(db, `organizations/${userData.orgId}/live_units`, riderId), {
+        unitName: bikeToAssign.unitId,
+        status: 'rented',
+        lastSeen: Date.now()
+      });
+
+      alert(`Bike ${bikeToAssign.unitId} assigned to ${riderData.username || targetRiderEmail}!`);
+      setShowDirectAssignModal(false);
+      setTargetRiderEmail('');
+      setBikeToAssign(null);
+    } catch (e: any) {
+      console.error(e);
+      alert("Assignment failed: " + e.message);
+    } finally { setIsAssigning(false); }
   };
 
   const handleUpdateBattery = async (bike: any, percent: number) => {
@@ -394,7 +440,7 @@ const FleetDashboard = () => {
                     <div style={{ display: 'flex', gap: '0.8rem' }}>
                       <button onClick={() => openEditModal(b)} style={{ background: '#222', border: '1px solid #333', color: '#888', padding: '0.6rem 1rem', borderRadius: '10px', fontSize: '0.7rem', fontWeight: 'bold', cursor: 'pointer' }}>EDIT SPECS</button>
                       {b.status === 'available' ? (
-                        <button onClick={() => handleRentOut(b)} style={{ background: 'rgba(52,168,83,0.1)', border: '1px solid #34a853', color: '#34a853', padding: '0.6rem 1.5rem', borderRadius: '10px', fontSize: '0.7rem', fontWeight: 'bold', cursor: 'pointer' }}>RENT OUT</button>
+                        <button onClick={() => { setBikeToAssign(b); setShowDirectAssignModal(true); }} style={{ background: 'rgba(52,168,83,0.1)', border: '1px solid #34a853', color: '#34a853', padding: '0.6rem 1.5rem', borderRadius: '10px', fontSize: '0.7rem', fontWeight: 'bold', cursor: 'pointer' }}>RENT OUT</button>
                       ) : (
                         <button onClick={() => handleReturnBike(b)} style={{ background: 'rgba(255,102,0,0.1)', border: '1px solid #ff6600', color: '#ff6600', padding: '0.6rem 1.5rem', borderRadius: '10px', fontSize: '0.7rem', fontWeight: 'bold', cursor: 'pointer' }}>RETURN BIKE</button>
                       )}
@@ -527,6 +573,49 @@ const FleetDashboard = () => {
                  <button onClick={() => setShowShowBikeModal(false)} style={{ padding: '1rem', background: '#333', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer' }}>CANCEL</button>
               </div>
            </div>
+        </div>
+      )}
+      {/* Direct Assignment Modal */}
+      {showDirectAssignModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.95)', zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+          <div style={{ background: '#1a1a1a', width: '100%', maxWidth: '450px', borderRadius: '32px', padding: '2.5rem', border: '1px solid #34a853', textAlign: 'center' }}>
+            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🚲</div>
+            <h2 style={{ color: 'white', margin: 0 }}>Rent Out {bikeToAssign?.unitId}</h2>
+            <p style={{ color: '#888', marginTop: '0.5rem', fontSize: '0.9rem' }}>Enter the rider's email to securely link this bike to their account.</p>
+            
+            <div style={{ marginTop: '2rem', textAlign: 'left' }}>
+              <label style={{ display: 'block', color: '#666', fontSize: '0.7rem', fontWeight: 'bold', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Rider Email Address</label>
+              <input 
+                type="email" 
+                value={targetRiderEmail}
+                onChange={e => setTargetRiderEmail(e.target.value)}
+                placeholder="rider@example.com"
+                style={{ width: '100%', padding: '1rem', background: '#111', border: '1px solid #333', borderRadius: '12px', color: 'white', fontSize: '1rem' }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '2.5rem' }}>
+              <button 
+                onClick={handleDirectRentOut}
+                disabled={isAssigning || !targetRiderEmail.trim()}
+                style={{ width: '100%', padding: '1.2rem', background: '#34a853', color: 'white', border: 'none', borderRadius: '15px', fontWeight: 'bold', fontSize: '1.1rem', cursor: 'pointer', opacity: isAssigning ? 0.6 : 1 }}
+              >
+                {isAssigning ? 'VERIFYING RIDER...' : 'AUTHORIZE RENTAL'}
+              </button>
+              <button 
+                onClick={() => { setShowDirectAssignModal(false); setTargetRiderEmail(''); }}
+                style={{ width: '100%', padding: '1rem', background: 'transparent', color: '#666', border: 'none', fontWeight: 'bold', cursor: 'pointer' }}
+              >
+                CANCEL
+              </button>
+            </div>
+            
+            <div style={{ marginTop: '1.5rem', padding: '1rem', background: '#111', borderRadius: '12px', border: '1px solid #222' }}>
+              <p style={{ fontSize: '0.65rem', color: '#444', margin: 0 }}>
+                *The rider must have an active Range Anxiety account. Ask them to register on their phone if they haven't yet.
+              </p>
+            </div>
+          </div>
         </div>
       )}
     </div>

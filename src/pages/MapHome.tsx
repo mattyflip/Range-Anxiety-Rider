@@ -498,29 +498,36 @@ function MapHome() {
                  </div>
               </div>
 
-              <label style={{ color: '#666', fontSize: '0.7rem', textTransform: 'uppercase' }}>Your Rental</label>
-              <select 
-                value={selectedBikeId} 
-                onChange={e => setSelectedBikeId(e.target.value)}
-                style={{ width: '100%', padding: '0.8rem', background: '#111', border: '1px solid #333', color: 'white', borderRadius: '12px', marginBottom: '1.5rem' }}
-              >
-                {shopBikes.map(b => <option key={b.id} value={b.id}>{b.unitId}</option>)}
-              </select>
+              <div style={{ marginTop: '2rem' }}>
+                <label style={{ color: '#666', fontSize: '0.7rem', textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>Active Rental</label>
+                {selectedBikeId ? (
+                  <div style={{ background: 'rgba(52,168,83,0.1)', padding: '1rem', borderRadius: '12px', border: '1px solid #34a853' }}>
+                    <div style={{ fontWeight: 'bold', color: 'white' }}>{shopBikes.find(b => b.id === selectedBikeId)?.unitId || 'Assigned Bike'}</div>
+                    <div style={{ fontSize: '0.65rem', color: '#34a853', marginTop: '0.2rem' }}>✓ AUTHORIZED BY SHOP</div>
+                  </div>
+                ) : (
+                  <div style={{ background: '#1a1a1a', padding: '1rem', borderRadius: '12px', border: '1px solid #333', color: '#666', fontSize: '0.8rem', textAlign: 'center' }}>
+                    Waiting for Shop Assignment...
+                  </div>
+                )}
+              </div>
 
-              <label style={{ color: '#666', fontSize: '0.7rem', textTransform: 'uppercase' }}>Trip Planner</label>
-              {stops.map((s, i) => (
-                 <ModernAutocomplete 
-                  key={s.id} 
-                  placeholder={i === 0 ? "First Stop" : "Next Stop"} 
-                  value={s.addr}
-                  onPlaceSelected={(addr) => { 
-                    const ns = [...stops]; 
-                    ns[i] = { ...ns[i], addr }; 
-                    setStops(ns); 
-                  }} 
-                  style={{ marginTop: '0.5rem' }} 
-                 />
-              ))}
+              <div style={{ marginTop: '1.5rem' }}>
+                <label style={{ color: '#666', fontSize: '0.7rem', textTransform: 'uppercase' }}>Trip Planner</label>
+                {stops.map((s, i) => (
+                   <ModernAutocomplete 
+                    key={s.id} 
+                    placeholder={i === 0 ? "First Stop" : "Next Stop"} 
+                    value={s.addr}
+                    onPlaceSelected={(addr) => { 
+                      const ns = [...stops]; 
+                      ns[i] = { ...ns[i], addr }; 
+                      setStops(ns); 
+                    }} 
+                    style={{ marginTop: '0.5rem' }} 
+                   />
+                ))}
+              </div>
               <button onClick={() => setStops([...stops, {id: Date.now().toString(), addr: ''}])} style={{ width: '100%', background: 'none', border: '1px dashed #444', color: '#666', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer', fontSize: '0.7rem', marginTop: '0.5rem' }}>+ ADD STOP</button>
               <button onClick={() => setIsLoading(true)} style={{ width: '100%', background: '#333', color: 'white', border: 'none', padding: '0.8rem', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', marginTop: '1rem' }}>GET OPTIMIZED ROUTE</button>
               
