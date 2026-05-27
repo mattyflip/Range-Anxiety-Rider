@@ -77,7 +77,8 @@ const FleetDashboard = () => {
 
     const qAlerts = query(collection(db, `users/${user?.uid}/notifications`), where('type', '==', 'fleet_alert'), where('read', '==', false));
     const unsubAlerts = onSnapshot(qAlerts, (snap) => {
-      setAlerts(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
+      const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+      setAlerts(data.sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
     });
 
     return () => { unsubBikes(); unsubLive(); unsubAlerts(); };
