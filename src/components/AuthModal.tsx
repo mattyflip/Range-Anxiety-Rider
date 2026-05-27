@@ -3,6 +3,7 @@ import { auth, db } from '../firebase'
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth'
 import { doc, setDoc, serverTimestamp, getDocs, collection, query, where } from 'firebase/firestore'
 import TermsOfService from './TermsOfService'
+import PrivacyPolicy from './PrivacyPolicy'
 import { US_STATES, OTHER_REGIONS, calculateAge, getEbikeSafetyInfo } from '../utils/ebikeLaws'
 
 interface AuthModalProps {
@@ -22,6 +23,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
   const [role, setRole] = useState<'rider' | 'fleet'>('rider');
   const [agreedToToS, setAgreedToToS] = useState(false);
   const [showToSPage, setShowToSPage] = useState(false);
+  const [showPrivacyPage, setShowPrivacyPage] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -210,7 +212,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
               style={{ width: 'auto', marginTop: '4px' }}
             />
             <label htmlFor="tos-check" style={{ fontSize: '0.75rem', textTransform: 'none', lineHeight: '1.4', color: '#ccc' }}>
-              I agree to the <button type="button" onClick={() => setShowToSPage(true)} style={{ background: 'none', border: 'none', color: '#ff6600', padding: 0, textDecoration: 'underline', cursor: 'pointer', fontSize: '0.75rem' }}>Terms of Service</button> and to receive marketing updates.
+              I agree to the <button type="button" onClick={() => setShowToSPage(true)} style={{ background: 'none', border: 'none', color: '#ff6600', padding: 0, textDecoration: 'underline', cursor: 'pointer', fontSize: '0.75rem' }}>Terms of Service</button>, <button type="button" onClick={() => setShowPrivacyPage(true)} style={{ background: 'none', border: 'none', color: '#ff6600', padding: 0, textDecoration: 'underline', cursor: 'pointer', fontSize: '0.75rem' }}>Privacy Policy</button>, and to receive marketing updates.
             </label>
           </div>
         )}
@@ -239,6 +241,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
       </div>
 
       {showToSPage && <TermsOfService onClose={() => setShowToSPage(false)} />}
+      {showPrivacyPage && <PrivacyPolicy onClose={() => setShowPrivacyPage(false)} />}
     </div>
   );
 };

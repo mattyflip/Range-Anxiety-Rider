@@ -1,10 +1,15 @@
-import React from 'react'
+import React, { useState } from 'react'
+import TermsOfService from './TermsOfService';
+import PrivacyPolicy from './PrivacyPolicy';
 
 interface WelcomeModalProps {
   onClose: () => void;
 }
 
 const WelcomeModal: React.FC<WelcomeModalProps> = ({ onClose }) => {
+  const [showToS, setShowToS] = useState(false);
+  const [showPrivacy, setShowPrivacy] = useState(false);
+
   return (
     <div 
       style={{ 
@@ -33,7 +38,8 @@ const WelcomeModal: React.FC<WelcomeModalProps> = ({ onClose }) => {
           borderRadius: '30px', 
           border: '1px solid #333',
           boxShadow: '0 20px 50px rgba(0,0,0,0.5)',
-          textAlign: 'center'
+          textAlign: 'center',
+          position: 'relative'
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -85,22 +91,29 @@ const WelcomeModal: React.FC<WelcomeModalProps> = ({ onClose }) => {
           Let's Ride!
         </button>
         
-        <button 
-          onClick={onClose}
-          style={{ 
-            marginTop: '1rem', 
-            background: 'none', 
-            border: 'none', 
-            color: '#666', 
-            cursor: 'pointer',
-            fontSize: '0.9rem'
-          }}
-        >
-          Dismiss
-        </button>
+        <p style={{ marginTop: '1.5rem', fontSize: '0.8rem', color: '#666' }}>
+          By clicking Let's Ride!, you agree to our{' '}
+          <span 
+            onClick={() => setShowToS(true)} 
+            style={{ color: '#ff6600', cursor: 'pointer', textDecoration: 'underline' }}
+          >
+            Terms of Service
+          </span>{' '}
+          and{' '}
+          <span 
+            onClick={() => setShowPrivacy(true)} 
+            style={{ color: '#ff6600', cursor: 'pointer', textDecoration: 'underline' }}
+          >
+            Privacy Policy
+          </span>.
+        </p>
+
+        {showToS && <TermsOfService onClose={() => setShowToS(false)} />}
+        {showPrivacy && <PrivacyPolicy onClose={() => setShowPrivacy(false)} />}
       </div>
     </div>
   );
 };
 
 export default WelcomeModal;
+

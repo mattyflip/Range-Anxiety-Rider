@@ -18,6 +18,7 @@ const FleetDashboard = () => {
   
   const [fleetBikes, setFleetBikes] = useState<any[]>([]);
   const [liveUnits, setLiveUnits] = useState<any[]>([]);
+  const [alerts, setAlerts] = useState<any[]>([]);
   
   // Bike Edit Modal State
   const [showBikeModal, setShowShowBikeModal] = useState(false);
@@ -74,8 +75,19 @@ const FleetDashboard = () => {
       setLiveUnits(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
 
-    return () => { unsubBikes(); unsubLive(); };
-  }, [userData?.orgId, userRole]);
+    const qAlerts = query(collection(db, `users/${user?.uid}/notifications`), where('type', '==', 'fleet_alert'), where('read', '==', false));
+    const unsubAlerts = onSnapshot(qAlerts, (snap) => {
+      setAlerts(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
+    });
+
+    return () => { unsubBikes(); unsubLive(); unsubAlerts(); };
+  }, [userData?.orgId, userRole, user?.uid]);
+
+  const handleDismissAlert = async (alertId: string) => {
+    try {
+      await updateDoc(doc(db, `users/${user?.uid}/notifications`, alertId), { read: true });
+    } catch (e) { console.error(e); }
+  };
 
   const handleReturnBike = async (bike: any) => {
     if (!userData?.orgId) return;
@@ -218,6 +230,41 @@ const FleetDashboard = () => {
           ))}
         </div>
 
+        {/* Alerts Section */}
+        {alerts.length > 0 && (
+          <div style={{ marginBottom: '3rem' }}>
+            <h2 style={{ fontSize: '1.2rem', color: '#ff4444', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              ⚠️ ACTIVE SECURITY ALERTS ({alerts.length})
+            </h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+               {alerts.map(alert => (
+                 <div key={alert.id} style={{ background: 'rgba(255,68,68,0.1)', border: '1px solid #ff4444', padding: '1rem 1.5rem', borderRadius: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', animation: 'pulse 2s infinite' }}>
+                    <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
+                       <span style={{ fontSize: '1.5rem' }}>🚨</span>
+                       <div>
+                          <div style={{ fontWeight: 'bold', color: 'white' }}>{alert.content}</div>
+                          <div style={{ fontSize: '0.7rem', color: '#888' }}>Rider: {alert.senderUsername} • {new Date(alert.createdAt?.seconds * 1000).toLocaleTimeString()}</div>
+                       </div>
+                    </div>
+                    <button 
+                      onClick={() => handleDismissAlert(alert.id)}
+                      style={{ background: '#ff4444', color: 'white', border: 'none', padding: '0.5rem 1.2rem', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem' }}
+                    >
+                      ACKNOWLEDGE
+                    </button>
+                 </div>
+               ))}
+            </div>
+            <style>{`
+              @keyframes pulse {
+                0% { box-shadow: 0 0 0 0 rgba(255, 68, 68, 0.4); }
+                70% { box-shadow: 0 0 0 10px rgba(255, 68, 68, 0); }
+                100% { box-shadow: 0 0 0 0 rgba(255, 68, 68, 0); }
+              }
+            `}</style>
+          </div>
+        )}
+
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 350px', gap: '2rem', alignItems: 'start' }}>
           {/* Main Fleet List */}
           <section>
@@ -302,9 +349,25 @@ const FleetDashboard = () => {
                             </div>
                             <div style={{ background: '#1a1a1a', padding: '0.5rem', borderRadius: '8px' }}>
                                <div style={{ color: '#555', fontSize: '0.55rem', fontWeight: 'bold' }}>EST. RANGE</div>
-                               <div style={{ color: 'white', fontWeight: 900 }}>-- mi</div>
+                               <div style={{ color: '#ff6600', fontWeight: 900 }}>{live?.milesRemaining ? `${live.milesRemaining.toFixed(1)} mi` : '--'}</div>
                             </div>
                          </div>
+                         {live && (
+                           <div style={{ marginTop: '0.8rem', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.4rem' }}>
+                              <div style={{ textAlign: 'center' }}>
+                                 <div style={{ color: '#444', fontSize: '0.5rem', fontWeight: 'bold' }}>SPEED</div>
+                                 <div style={{ color: '#888', fontSize: '0.75rem', fontWeight: 'bold' }}>{live.speed?.toFixed(0)} <span style={{fontSize: '0.5rem'}}>MPH</span></div>
+                              </div>
+                              <div style={{ textAlign: 'center' }}>
+                                 <div style={{ color: '#444', fontSize: '0.5rem', fontWeight: 'bold' }}>ELEV</div>
+                                 <div style={{ color: '#888', fontSize: '0.75rem', fontWeight: 'bold' }}>{live.elevationFt?.toFixed(0)} <span style={{fontSize: '0.5rem'}}>FT</span></div>
+                              </div>
+                              <div style={{ textAlign: 'center' }}>
+                                 <div style={{ color: '#444', fontSize: '0.5rem', fontWeight: 'bold' }}>WIND</div>
+                                 <div style={{ color: '#888', fontSize: '0.75rem', fontWeight: 'bold' }}>{live.windMph?.toFixed(0)} <span style={{fontSize: '0.5rem'}}>MPH</span></div>
+                              </div>
+                           </div>
+                         )}
                        </div>
                      )
                    })}

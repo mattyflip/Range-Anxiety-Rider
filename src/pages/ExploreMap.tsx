@@ -5,6 +5,8 @@ import { doc, getDoc, collection, addDoc, serverTimestamp } from 'firebase/fires
 import { useNavigate } from 'react-router-dom';
 import NavBar from '../components/NavBar';
 import AuthModal from '../components/AuthModal';
+import TermsOfService from '../components/TermsOfService';
+import PrivacyPolicy from '../components/PrivacyPolicy';
 import InstallTutorial from '../components/InstallTutorial';
 import SEO from '../components/SEO';
 import AdvancedMarker from '../components/AdvancedMarker';
@@ -18,6 +20,9 @@ const ExploreMap: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showInstallTutorial, setShowInstallTutorial] = useState(false);
+  
+  const [showToS, setShowToS] = useState(false);
+  const [showPrivacy, setShowPrivacy] = useState(false);
 
   // Tracking states
   const [isTracking, setIsTracking] = useState(false);
@@ -211,9 +216,47 @@ const ExploreMap: React.FC = () => {
             </>
           )}
         </div>
+
+        <div style={{
+          position: 'absolute',
+          bottom: '0.5rem',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          backgroundColor: 'rgba(0,0,0,0.85)',
+          color: '#888',
+          fontSize: '0.65rem',
+          padding: '8px 16px',
+          borderRadius: '20px',
+          zIndex: 1000,
+          whiteSpace: 'nowrap',
+          border: '1px solid #333',
+          display: 'flex',
+          gap: '12px',
+          alignItems: 'center',
+          boxShadow: '0 4px 15px rgba(0,0,0,0.5)',
+          backdropFilter: 'blur(5px)'
+        }}>
+          <span>⚡ Estimates only. Actual data varies. Never ride beyond your limits.</span>
+          <div style={{ display: 'flex', gap: '8px', borderLeft: '1px solid #444', paddingLeft: '12px' }}>
+            <span 
+              onClick={() => setShowToS(true)} 
+              style={{ color: '#ff6600', cursor: 'pointer', textDecoration: 'underline' }}
+            >
+              TOS
+            </span>
+            <span 
+              onClick={() => setShowPrivacy(true)} 
+              style={{ color: '#ff6600', cursor: 'pointer', textDecoration: 'underline' }}
+            >
+              Privacy
+            </span>
+          </div>
+        </div>
       </div>
       {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
       {showInstallTutorial && <InstallTutorial onClose={() => setShowInstallTutorial(false)} />}
+      {showToS && <TermsOfService onClose={() => setShowToS(false)} />}
+      {showPrivacy && <PrivacyPolicy onClose={() => setShowPrivacy(false)} />}
     </div>
   );
 };

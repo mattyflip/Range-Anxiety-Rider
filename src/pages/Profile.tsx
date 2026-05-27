@@ -71,6 +71,7 @@ const Profile: React.FC = () => {
   const [editCity, setEditCity] = useState('');
   const [editHomeRegion, setEditHomeRegion] = useState('');
   const [editBirthday, setEditBirthday] = useState('');
+  const [editRiderWeight, setEditRiderWeight] = useState('180');
   const [isSavingProfile, setIsSavingProfile] = useState(false);
 
   // Review states
@@ -156,6 +157,7 @@ const Profile: React.FC = () => {
         setEditCity(data.city || '');
         setEditHomeRegion(data.homeRegion || '');
         setEditBirthday(data.birthday || '');
+        setEditRiderWeight(data.riderWeight?.toString() || '180');
 
         if (user) {
           getDoc(doc(db, "users", tid, "followers", user.uid)).then(d => setIsFollowing(d.exists()));
@@ -183,6 +185,7 @@ const Profile: React.FC = () => {
             setEditCity(data.city || '');
             setEditHomeRegion(data.homeRegion || '');
             setEditBirthday(data.birthday || '');
+        setEditRiderWeight(data.riderWeight?.toString() || '180');
     
             if (user) {
           getDoc(doc(db, "users", tid, "followers", user.uid)).then(d => setIsFollowing(d.exists()));
@@ -210,6 +213,7 @@ const Profile: React.FC = () => {
                 setEditCity(data.city || '');
                 setEditHomeRegion(data.homeRegion || '');
                 setEditBirthday(data.birthday || '');
+        setEditRiderWeight(data.riderWeight?.toString() || '180');
         
                 if (user) {
           getDoc(doc(db, "users", tid, "followers", user.uid)).then(d => setIsFollowing(d.exists()));
@@ -315,7 +319,8 @@ const Profile: React.FC = () => {
         usernameLowercase: normalizedUsername.toLowerCase(),
         bio: editBio,
         city: editCity,
-        homeRegion: editHomeRegion
+        homeRegion: editHomeRegion,
+        riderWeight: parseFloat(editRiderWeight) || 180
       };
 
       if (isAdmin) {
@@ -863,17 +868,10 @@ const Profile: React.FC = () => {
                 <label style={{ display: 'block', color: '#888', fontSize: '0.7rem', marginBottom: '0.3rem' }}>Birthday {!isAdmin && "(Read-Only)"}</label>
                 <input type="date" value={editBirthday} onChange={e => setEditBirthday(e.target.value)} disabled={!isAdmin} style={{ width: '100%', padding: '0.6rem', background: '#222', border: '1px solid #444', borderRadius: '4px', color: isAdmin ? 'white' : '#666' }} />
               </div>
-              {isAdmin && (
-                <div className="form-group" style={{ marginBottom: '1rem' }}>
-                  <label style={{ display: 'block', color: '#888', fontSize: '0.7rem', marginBottom: '0.3rem' }}>Shop Tier Status</label>
-                  <select value={profileData.isShopTier ? 'true' : 'false'} onChange={async (e) => {
-                    await updateDoc(doc(db, "users", profileData.id), { isShopTier: e.target.value === 'true' });
-                  }} style={{ width: '100%', padding: '0.6rem', background: '#222', border: '1px solid #444', borderRadius: '4px', color: 'white' }}>
-                    <option value="false">Free User</option>
-                    <option value="true">SHOP TIER (Paid)</option>
-                  </select>
-                </div>
-              )}
+              <div className="form-group" style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', color: '#888', fontSize: '0.7rem', marginBottom: '0.3rem' }}>Rider Weight (Lbs)</label>
+                <input type="number" value={editRiderWeight} onChange={e => setEditRiderWeight(e.target.value)} style={{ width: '100%', padding: '0.6rem', background: '#222', border: '1px solid #444', borderRadius: '4px', color: 'white' }} />
+              </div>
             </div>
 
             <div style={{ borderTop: '1px solid #333', marginTop: '1rem', paddingTop: '1rem' }}>

@@ -3,10 +3,13 @@ import { GoogleMap, useJsApiLoader, DirectionsService, DirectionsRenderer } from
 import { auth, db } from '../firebase'
 import { onAuthStateChanged } from 'firebase/auth'
 import type { User } from 'firebase/auth'
-import { doc, setDoc, collection, onSnapshot, query, addDoc, type DocumentSnapshot } from 'firebase/firestore'
+import { doc, setDoc, collection, onSnapshot, query, addDoc, getDoc, type DocumentSnapshot } from 'firebase/firestore'
 import { useNavigate } from 'react-router-dom'
 import NavBar from '../components/NavBar'
 import AuthModal from '../components/AuthModal'
+import { createNotification } from '../utils/notifications'
+import TermsOfService from '../components/TermsOfService';
+import PrivacyPolicy from '../components/PrivacyPolicy';
 import SEO from '../components/SEO'
 import ModernAutocomplete from '../components/ModernAutocomplete'
 import AdvancedMarker from '../components/AdvancedMarker'
@@ -22,6 +25,11 @@ function MapHome() {
   const [userData, setUserData] = useState<any>(null);
   const [userRole, setUserRole] = useState<'rider' | 'fleet'>('rider');
   const [loading, setLoading] = useState(true);
+  const [orgOwnerId, setOrgOwnerId] = useState<string | null>(null);
+  const lastAlertTime = useRef<{ [key: string]: number }>({});
+
+  const [showToS, setShowToS] = useState(false);
+  const [showPrivacy, setShowPrivacy] = useState(false);
 
   // Common Map State
   const [stops, setStops] = useState<{id: string, addr: string}[]>([{id: '0', addr: ''}]);
@@ -147,6 +155,14 @@ function MapHome() {
     };
   }, []); // Run once on mount
 
+  useEffect(() => {
+    if (userData?.orgId) {
+      getDoc(doc(db, "organizations", userData.orgId)).then(snap => {
+        if (snap.exists()) setOrgOwnerId(snap.data().ownerId);
+      });
+    }
+  }, [userData?.orgId]);
+
   // Listen to Group Ride Participants
   useEffect(() => {
     if (!groupRideId || !isGroupRideActive) return;
@@ -181,11 +197,24 @@ function MapHome() {
 
         let remainingMiles = 0;
         if (bike) {
-          const { voltage, capacityAh, motorWatts } = bike.specs;
-          const battery = bike.specs.currentBatteryPercent || 100;
-          const totalWh = (voltage || 48) * (capacityAh || 15) * (battery / 100);
-          const burnRate = (motorWatts || 750) / 20; 
-          remainingMiles = totalWh / burnRate;
+          const calcRes = await fetch('/api/calculate-range', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type: 'telemetry',
+              specs: {
+                ...bike.specs,
+                riderWeightLbs: userData?.riderWeight || 180
+              },
+              batteryPercent: bike.specs.currentBatteryPercent || 100,
+              speedMph: speed,
+              headingDeg: pos.coords.heading || 0,
+              windMph: wRes.wind_speed || 0,
+              windDirDeg: wRes.wind_degree || 0
+            })
+          }).then(r => r.json());
+          
+          remainingMiles = calcRes.remainingMiles || 0;
         }
 
         setTelemetry({
@@ -202,9 +231,32 @@ function MapHome() {
             unitName: userData.username || 'Rider',
             position: { lat, lng },
             battery: bike?.specs?.currentBatteryPercent || 100,
+            milesRemaining: remainingMiles,
+            speed: speed,
+            elevationFt: eRes.results?.[0]?.elevation * 3.28084 || 0,
+            windMph: wRes.wind_speed || 0,
             lastSeen: Date.now(),
             status: 'rented'
           }, { merge: true });
+
+          // ALERTS LOGIC
+          if (orgOwnerId) {
+            const now = Date.now();
+            const bikeLabel = bike?.unitId || "Bike";
+            
+            // Speed Alert (> 28 MPH)
+            if (speed > 28 && (!lastAlertTime.current['speed'] || now - lastAlertTime.current['speed'] > 300000)) {
+               createNotification(orgOwnerId, user.uid, userData.username || "Rider", 'fleet_alert', user.uid, `🚨 SPEED ALERT: ${bikeLabel} is traveling at ${speed.toFixed(0)} MPH!`);
+               lastAlertTime.current['speed'] = now;
+            }
+
+            // Battery Alert (< 15%)
+            const bat = bike?.specs?.currentBatteryPercent || 100;
+            if (bat < 15 && (!lastAlertTime.current['battery'] || now - lastAlertTime.current['battery'] > 1800000)) {
+               createNotification(orgOwnerId, user.uid, userData.username || "Rider", 'fleet_alert', user.uid, `🪫 LOW BATTERY: ${bikeLabel} is at ${bat}%!`);
+               lastAlertTime.current['battery'] = now;
+            }
+          }
         }
 
         // Sync to Group Ride if active
@@ -242,13 +294,19 @@ function MapHome() {
             fetch(`/api/weather?lat=${route.legs[0].start_location.lat()}&lng=${route.legs[0].start_location.lng()}`).then(r => r.json())
           ]);
 
-          const { voltage, capacityAh, motorWatts } = bike.specs;
-          const energyWh = (motorWatts || 750) * (totalDuration / 3600);
-          const totalWh = (voltage || 48) * (capacityAh || 15);
+          const calcRes = await fetch('/api/calculate-range', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type: 'route',
+              specs: bike.specs,
+              durationSeconds: totalDuration
+            })
+          }).then(r => r.json());
           
           return {
             index,
-            batteryPercentRemaining: Math.max(0, Math.round(100 - (energyWh / totalWh) * 100)),
+            batteryPercentRemaining: calcRes.batteryPercentRemaining || 0,
             distanceMiles: (totalDistance / 1609.34).toFixed(1),
             durationMin: Math.round(totalDuration / 60),
             elevationGain: elevRes.gain?.toFixed(0),
@@ -473,7 +531,7 @@ function MapHome() {
           )}
         </aside>
 
-        <main style={{ flex: 1 }}>
+        <main style={{ flex: 1, position: 'relative' }}>
           {isLoaded && (
             <GoogleMap 
               mapContainerStyle={{ width: '100%', height: '100%' }} 
@@ -497,10 +555,48 @@ function MapHome() {
               {response && <DirectionsRenderer options={{ directions: response, routeIndex: selectedRouteIndex }} />}
             </GoogleMap>
           )}
+
+          <div style={{
+            position: 'absolute',
+            bottom: '10px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            backgroundColor: 'rgba(0,0,0,0.85)',
+            color: '#888',
+            fontSize: '0.65rem',
+            padding: '8px 16px',
+            borderRadius: '20px',
+            zIndex: 1000,
+            whiteSpace: 'nowrap',
+            border: '1px solid #333',
+            display: 'flex',
+            gap: '12px',
+            alignItems: 'center',
+            boxShadow: '0 4px 15px rgba(0,0,0,0.5)',
+            backdropFilter: 'blur(5px)'
+          }}>
+            <span>⚡ Estimates only. Actual range varies with conditions. Never ride beyond your physical limits.</span>
+            <div style={{ display: 'flex', gap: '8px', borderLeft: '1px solid #444', paddingLeft: '12px' }}>
+              <span 
+                onClick={() => setShowToS(true)} 
+                style={{ color: '#ff6600', cursor: 'pointer', textDecoration: 'underline' }}
+              >
+                TOS
+              </span>
+              <span 
+                onClick={() => setShowPrivacy(true)} 
+                style={{ color: '#ff6600', cursor: 'pointer', textDecoration: 'underline' }}
+              >
+                Privacy
+              </span>
+            </div>
+          </div>
         </main>
       </div>
 
       {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
+      {showToS && <TermsOfService onClose={() => setShowToS(false)} />}
+      {showPrivacy && <PrivacyPolicy onClose={() => setShowPrivacy(false)} />}
 
       {showHostPassModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.95)', zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
