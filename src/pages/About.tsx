@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react'
 import { auth, db } from '../firebase'
 import { onAuthStateChanged } from 'firebase/auth'
-import { doc, getDoc } from 'firebase/firestore'
+import { doc, getDoc, getDocs, collection, addDoc } from 'firebase/firestore'
 import NavBar from '../components/NavBar'
 import AuthModal from '../components/AuthModal'
+import { createNotification } from '../utils/notifications'
 import SEO from '../components/SEO'
 
 const About: React.FC = () => {
   const [user, setUser] = useState<any>(null);
+  const [userData, setUserData] = useState<any>(null);
   const [userRole, setUserRole] = useState<'rider' | 'fleet' | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -18,10 +20,13 @@ const About: React.FC = () => {
       if (u) {
         const snap = await getDoc(doc(db, "users", u.uid));
         if (snap.exists()) {
-          setUserRole(snap.data().role || 'rider');
+          const data = snap.data();
+          setUserData(data);
+          setUserRole(data.role || 'rider');
         }
       } else {
         setUserRole(null);
+        setUserData(null);
       }
       setLoading(false);
     });
