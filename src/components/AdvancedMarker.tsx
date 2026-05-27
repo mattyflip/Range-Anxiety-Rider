@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { createRoot, Root } from 'react-dom/client';
 import { useGoogleMap } from '@react-google-maps/api';
 
 interface AdvancedMarkerProps {
@@ -16,6 +17,7 @@ interface AdvancedMarkerProps {
     scaledSize?: any;
   };
   onClick?: () => void;
+  children?: React.ReactNode;
 }
 
 const AdvancedMarker: React.FC<AdvancedMarkerProps> = ({ 
@@ -23,32 +25,36 @@ const AdvancedMarker: React.FC<AdvancedMarkerProps> = ({
   title, 
   label, 
   icon,
-  onClick 
+  onClick,
+  children
 }) => {
   const map = useGoogleMap();
   const markerRef = useRef<any>(null);
+  const rootRef = useRef<Root | null>(null);
 
   useEffect(() => {
     if (!map) return;
 
-    // Load the library for Advanced Markers
     const initMarker = async () => {
       const { AdvancedMarkerElement, PinElement } = await google.maps.importLibrary("marker") as google.maps.MarkerLibrary;
 
       let content: HTMLElement | undefined = undefined;
 
-      // Handle custom Pin styling if icon (CIRCLE) is provided
-      if (icon && icon.fillColor) {
+      if (children) {
+        const container = document.createElement('div');
+        rootRef.current = createRoot(container);
+        rootRef.current.render(children);
+        content = container;
+      } else if (icon && icon.fillColor) {
         const pinElement = new PinElement({
           background: icon.fillColor,
           borderColor: icon.strokeColor || 'white',
           glyphText: typeof label === 'string' ? label : label?.text || '',
           glyphColor: (typeof label !== 'string' && label?.color) ? label.color : 'white',
-          scale: (icon.scale ? icon.scale / 8 : 1) // Scaled down to match PinElement expectations
+          scale: (icon.scale ? icon.scale / 8 : 1)
         });
         content = pinElement as any;
       } else if (icon && icon.url) {
-        // Handle image icons
         const img = document.createElement('img');
         img.src = icon.url;
         if (icon.scaledSize) {
@@ -78,10 +84,13 @@ const AdvancedMarker: React.FC<AdvancedMarkerProps> = ({
       if (markerRef.current) {
         markerRef.current.map = null;
       }
+      if (rootRef.current) {
+        rootRef.current.unmount();
+      }
     };
-  }, [map, position, title, icon, label, onClick]);
+  }, [map, position, title, icon, label, onClick, children]);
 
-  return null; // This component doesn't render anything in the React DOM
+  return null;
 };
 
 export default AdvancedMarker;
