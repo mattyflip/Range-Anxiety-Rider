@@ -19,6 +19,7 @@ const FleetDashboard = () => {
   const [fleetBikes, setFleetBikes] = useState<any[]>([]);
   const [liveUnits, setLiveUnits] = useState<any[]>([]);
   const [alerts, setAlerts] = useState<any[]>([]);
+  const [rentalRequests, setRentalRequests] = useState<any[]>([]);
   
   // Bike Edit Modal State
   const [showBikeModal, setShowShowBikeModal] = useState(false);
@@ -81,12 +82,40 @@ const FleetDashboard = () => {
       setAlerts(data.sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
     });
 
-    return () => { unsubBikes(); unsubLive(); unsubAlerts(); };
+    const qRequests = query(collection(db, `organizations/${userData.orgId}/rental_requests`), where('status', '==', 'pending'));
+    const unsubRequests = onSnapshot(qRequests, (snap) => {
+      setRentalRequests(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+
+    return () => { unsubBikes(); unsubLive(); unsubAlerts(); unsubRequests(); };
   }, [userData?.orgId, userRole, user?.uid]);
 
   const handleDismissAlert = async (alertId: string) => {
     try {
       await updateDoc(doc(db, `users/${user?.uid}/notifications`, alertId), { read: true });
+    } catch (e) { console.error(e); }
+  };
+
+  const handleAssignRider = async (request: any) => {
+    if (!userData?.orgId) return;
+    try {
+      // 1. Mark request as assigned
+      await updateDoc(doc(db, `organizations/${userData.orgId}/rental_requests`, request.id), { status: 'assigned' });
+
+      // 2. Mark bike as rented and link to rider UID
+      await updateDoc(doc(db, `organizations/${userData.orgId}/bikes`, request.bikeId), { 
+        status: 'rented',
+        currentRiderId: request.riderId 
+      });
+
+      // 3. Initialize Live Unit
+      await setDoc(doc(db, `organizations/${userData.orgId}/live_units`, request.riderId), {
+        unitName: request.unitId,
+        status: 'rented',
+        lastSeen: Date.now()
+      });
+
+      alert(`Bike ${request.unitId} successfully assigned to ${request.riderName}! Live tracking enabled.`);
     } catch (e) { console.error(e); }
   };
 
@@ -263,6 +292,54 @@ const FleetDashboard = () => {
                 100% { box-shadow: 0 0 0 0 rgba(255, 68, 68, 0); }
               }
             `}</style>
+          </div>
+        )}
+
+        </div>
+
+        {/* Appointments Section */}
+        {rentalRequests.length > 0 && (
+          <div style={{ marginBottom: '3rem' }}>
+            <h2 style={{ fontSize: '1.2rem', color: '#34a853', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              🗓️ APPOINTMENTS & BOOKING REQUESTS ({rentalRequests.length})
+            </h2>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '1rem' }}>
+               {rentalRequests.map(req => (
+                 <div key={req.id} style={{ background: '#1a1a1a', padding: '1.5rem', borderRadius: '20px', border: '1px solid #333' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                       <div>
+                          <div style={{ color: 'white', fontWeight: 900, fontSize: '1.1rem' }}>{req.riderName}</div>
+                          <div style={{ color: '#888', fontSize: '0.7rem' }}>Requested: {new Date(req.createdAt).toLocaleString()}</div>
+                       </div>
+                       <div style={{ background: 'rgba(52,168,83,0.1)', color: '#34a853', padding: '4px 10px', borderRadius: '8px', fontSize: '0.65rem', fontWeight: 'bold', height: 'fit-content' }}>PENDING</div>
+                    </div>
+                    
+                    <div style={{ background: '#111', padding: '1rem', borderRadius: '12px', marginBottom: '1.5rem', border: '1px solid #222' }}>
+                       <div style={{ color: '#555', fontSize: '0.6rem', fontWeight: 'bold', marginBottom: '4px' }}>REQUESTED BIKE</div>
+                       <div style={{ color: 'white', fontWeight: 'bold' }}>{req.unitId}</div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '0.8rem' }}>
+                       <button 
+                         onClick={() => handleAssignRider(req)}
+                         style={{ flex: 1, padding: '0.8rem', background: '#34a853', color: 'white', border: 'none', borderRadius: '10px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem' }}
+                       >
+                         ASSIGN RIDER IN-PERSON
+                       </button>
+                       <button 
+                         onClick={async () => {
+                           if(window.confirm("Reject this request?")) {
+                             await updateDoc(doc(db, `organizations/${userData.orgId}/rental_requests`, req.id), { status: 'rejected' });
+                           }
+                         }}
+                         style={{ padding: '0.8rem', background: '#333', color: '#ff4444', border: 'none', borderRadius: '10px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem' }}
+                       >
+                         REJECT
+                       </button>
+                    </div>
+                 </div>
+               ))}
+            </div>
           </div>
         )}
 
