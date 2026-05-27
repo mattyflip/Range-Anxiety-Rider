@@ -5,6 +5,7 @@ import { onAuthStateChanged } from 'firebase/auth'
 import type { User } from 'firebase/auth'
 import { doc, getDoc, collection, onSnapshot, query, updateDoc, setDoc, deleteDoc, getDocs, where } from 'firebase/firestore'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
+import { sendEmail } from '../utils/email'
 import NavBar from '../components/NavBar'
 import SEO from '../components/SEO'
 
@@ -175,6 +176,29 @@ const FleetDashboard = () => {
         lastSeen: Date.now()
       });
 
+      // 4. Send Confirmation Email to Rider
+      try {
+        await sendEmail({
+          to: targetRiderEmail.trim().toLowerCase(),
+          subject: `🚲 Rental Started: ${bikeToAssign.unitId}`,
+          text: `Your rental at ${userData.orgName || 'the shop'} has started! Your assigned bike is ${bikeToAssign.unitId}. View your live range and route planner here: https://rangeanxietyrider.com/map`,
+          html: `
+            <div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 12px;">
+              <h2 style="color: #ff6600;">Let's Ride!</h2>
+              <p>Your rental session for <strong>${bikeToAssign.unitId}</strong> is now active.</p>
+              <div style="background: #f5f5f5; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                <p style="margin: 0;"><strong>Shop:</strong> ${userData.orgName || 'E-Bike King'}</p>
+                <p style="margin: 5px 0 0 0;"><strong>Bike:</strong> ${bikeToAssign.unitId}</p>
+              </div>
+              <a href="https://rangeanxietyrider.com/map" style="display: inline-block; padding: 12px 25px; background: #ff6600; color: white; text-decoration: none; border-radius: 8px; font-weight: bold;">OPEN NAVIGATION MAP</a>
+              <p style="margin-top: 25px; font-size: 0.8rem; color: #888;">*Range estimates are for reference only. Ride safely!</p>
+            </div>
+          `
+        });
+      } catch (emailErr) {
+        console.error("Confirmation email failed (non-critical):", emailErr);
+      }
+
       alert(`Bike ${bikeToAssign.unitId} assigned to ${riderData.username || targetRiderEmail}!`);
       setShowDirectAssignModal(false);
       setTargetRiderEmail('');
@@ -261,6 +285,29 @@ const FleetDashboard = () => {
     setShowShowBikeModal(true);
   };
 
+  const handleTestEmail = async () => {
+    if (!user?.email) return;
+    try {
+      await sendEmail({
+        to: user.email,
+        subject: "📧 Email System Test - Range Anxiety Rider",
+        text: "If you are reading this, your professional email domain (Info@rangeanxietyrider.com) is correctly configured and working through Resend!",
+        html: `
+          <div style="font-family: sans-serif; padding: 20px; background: #f9f9f9;">
+            <h2 style="color: #ff6600;">System Diagnostic: SUCCESS</h2>
+            <p>Your professional email domain is now active.</p>
+            <hr/>
+            <p style="font-size: 0.8rem; color: #666;">Sent from Range Anxiety Rider Platform</p>
+          </div>
+        `
+      });
+      alert("Success! Check your inbox (and spam folder) for the test email.");
+    } catch (e: any) {
+      console.error(e);
+      alert("Email Failed: " + e.message + "\n\nTip: Ensure your RESEND_API_KEY is in Vercel and your domain is verified in Resend.");
+    }
+  };
+
   if (loading) return <div style={{ color: 'white', padding: '4rem', textAlign: 'center' }}>Loading Fleet Data...</div>;
 
   const rentedBikes = fleetBikes.filter(b => b.status === 'rented');
@@ -278,12 +325,20 @@ const FleetDashboard = () => {
             <h1 style={{ margin: 0, fontSize: '2rem', fontWeight: 900, color: '#ff6600', textTransform: 'uppercase' }}>Fleet Hub</h1>
             <div style={{ color: '#888', fontWeight: 'bold' }}>{userData?.orgName || 'Bike Shop'} Management</div>
           </div>
-          <button 
-            onClick={() => { setEditingBike(null); setBikeForm({ unitId: '', voltage: '48', capacityAh: '15', motorWatts: '750', tirePSI: '30', bikeWeightLbs: '65', targetSpeedMph: '20', controllerAmps: '', cycleCount: '0', imageUrl: '' }); setShowShowBikeModal(true); }}
-            style={{ padding: '1rem 2rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer' }}
-          >
-            + REGISTER NEW BIKE
-          </button>
+          <div style={{ display: 'flex', gap: '1rem' }}>
+            <button 
+              onClick={handleTestEmail}
+              style={{ padding: '1rem 1.5rem', background: '#222', color: '#888', border: '1px solid #333', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem' }}
+            >
+              📧 TEST EMAIL SYSTEM
+            </button>
+            <button 
+              onClick={() => { setEditingBike(null); setBikeForm({ unitId: '', voltage: '48', capacityAh: '15', motorWatts: '750', tirePSI: '30', bikeWeightLbs: '65', targetSpeedMph: '20', controllerAmps: '', cycleCount: '0', imageUrl: '' }); setShowShowBikeModal(true); }}
+              style={{ padding: '1rem 2rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer' }}
+            >
+              + REGISTER NEW BIKE
+            </button>
+          </div>
         </header>
 
         {/* KPI Dashboard */}
