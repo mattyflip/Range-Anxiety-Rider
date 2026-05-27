@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 
 interface ModernAutocompleteProps {
   placeholder?: string;
-  onPlaceSelected: (address: string) => void;
+  onPlaceSelected: (address: string, lat?: number, lng?: number) => void;
   value?: string;
   style?: React.CSSProperties;
 }
@@ -27,7 +27,9 @@ const ModernAutocomplete: React.FC<ModernAutocompleteProps> = ({
     autocompleteRef.current.addListener('place_changed', () => {
       const place = autocompleteRef.current?.getPlace();
       if (place?.formatted_address) {
-        onPlaceSelected(place.formatted_address);
+        const lat = place.geometry?.location?.lat();
+        const lng = place.geometry?.location?.lng();
+        onPlaceSelected(place.formatted_address, lat, lng);
       }
     });
 

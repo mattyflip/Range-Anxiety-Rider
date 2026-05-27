@@ -26,6 +26,7 @@ function MapHome() {
   const [userRole, setUserRole] = useState<'rider' | 'fleet'>('rider');
   const [loading, setLoading] = useState(true);
   const [orgOwnerId, setOrgOwnerId] = useState<string | null>(null);
+  const [shopLocation, setShopLocation] = useState<google.maps.LatLngLiteral | null>(null);
   const lastAlertTime = useRef<{ [key: string]: number }>({});
 
   const [showToS, setShowToS] = useState(false);
@@ -158,10 +159,40 @@ function MapHome() {
   useEffect(() => {
     if (userData?.orgId) {
       getDoc(doc(db, "organizations", userData.orgId)).then(snap => {
-        if (snap.exists()) setOrgOwnerId(snap.data().ownerId);
+        if (snap.exists()) {
+          const data = snap.data();
+          setOrgOwnerId(data.ownerId);
+          if (data.location?.lat && data.location?.lng) {
+            setShopLocation({ lat: data.location.lat, lng: data.location.lng });
+          }
+        }
       });
     }
   }, [userData?.orgId]);
+
+  // Auto-focus map for Fleet Owners
+  useEffect(() => {
+    if (userRole === 'fleet' && mapRef.current && (shopLocation || liveUnits.length > 0)) {
+      const bounds = new google.maps.LatLngBounds();
+      let hasPoints = false;
+
+      if (shopLocation) {
+        bounds.extend(shopLocation);
+        hasPoints = true;
+      }
+
+      liveUnits.forEach(unit => {
+        if (unit.position?.lat && unit.position?.lng) {
+          bounds.extend(unit.position);
+          hasPoints = true;
+        }
+      });
+
+      if (hasPoints) {
+        mapRef.current.fitBounds(bounds, { top: 50, right: 50, bottom: 50, left: 350 }); // Account for sidebar
+      }
+    }
+  }, [userRole, shopLocation, liveUnits.length]);
 
   // Listen to Group Ride Participants
   useEffect(() => {
@@ -540,6 +571,13 @@ function MapHome() {
               onLoad={m => { mapRef.current = m; }}
               options={{ mapId: import.meta.env.VITE_GOOGLE_MAP_ID || 'DEMO_MAP_ID', disableDefaultUI: true }}
             >
+              {userRole === 'fleet' && shopLocation && (
+                <AdvancedMarker 
+                  position={shopLocation} 
+                  title={userData?.orgName || "Shop HQ"} 
+                  icon={{ path: google.maps.SymbolPath.BACKWARD_CLOSED_ARROW, fillColor: '#ff6600', fillOpacity: 1, scale: 8, strokeColor: 'white', strokeWeight: 2 }} 
+                />
+              )}
               {userRole === 'fleet' && liveUnits.map(lu => (
                 <AdvancedMarker key={lu.id} position={lu.position} title={lu.unitName} label={{ text: `${lu.battery}%`, color: 'white', fontSize: '10px' }} icon={{ fillColor: lu.battery < 30 ? '#ff4444' : '#34a853', scale: 8 }} />
               ))}

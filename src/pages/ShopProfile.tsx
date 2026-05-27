@@ -3,11 +3,16 @@ import { useNavigate } from 'react-router-dom'
 import { auth, db } from '../firebase'
 import { onAuthStateChanged, deleteUser, signOut } from 'firebase/auth'
 import { doc, updateDoc, deleteDoc, onSnapshot, setDoc, getDoc } from 'firebase/firestore'
+import { useJsApiLoader } from '@react-google-maps/api'
 import NavBar from '../components/NavBar'
+import ModernAutocomplete from '../components/ModernAutocomplete'
 import SEO from '../components/SEO'
+
+const LIBRARIES: ("places" | "geometry")[] = ["places", "geometry"];
 
 const ShopProfile: React.FC = () => {
   const navigate = useNavigate();
+  const { isLoaded } = useJsApiLoader({ id: 'google-map-script', googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "", libraries: LIBRARIES });
   const [user, setUser] = useState<any>(null);
   const [userData, setUserData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -16,6 +21,8 @@ const ShopProfile: React.FC = () => {
   const [shopName, setShopName] = useState('');
   const [shopBio, setShopBio] = useState('');
   const [shopAddress, setShopAddress] = useState('');
+  const [shopLat, setShopLat] = useState<number | null>(null);
+  const [shopLng, setShopLng] = useState<number | null>(null);
   const [shopPhone, setShopPhone] = useState('');
   const [shopEmail, setShopEmail] = useState('');
   
@@ -55,6 +62,8 @@ const ShopProfile: React.FC = () => {
           setShopName(d.name || '');
           setShopBio(d.bio || '');
           setShopAddress(d.address || '');
+          setShopLat(d.location?.lat || null);
+          setShopLng(d.location?.lng || null);
           setShopPhone(d.phone || '');
           setShopEmail(d.email || '');
         }
@@ -68,7 +77,6 @@ const ShopProfile: React.FC = () => {
     try {
       let orgId = userData?.orgId;
       
-      // If user doesn't have an orgId yet, generate one
       if (!orgId) {
         orgId = 'org_' + user.uid.substring(0, 8);
         await updateDoc(doc(db, "users", user.uid), { orgId });
@@ -78,15 +86,19 @@ const ShopProfile: React.FC = () => {
         name: shopName,
         bio: shopBio,
         address: shopAddress,
-        phone: shopPhone,
-        email: shopEmail,
+        location: {
+          lat: shopLat,
+          lng: shopLng,
+          address: shopAddress
+        },
         ownerId: user.uid,
         updatedAt: new Date().toISOString()
       }, { merge: true });
       
       await updateDoc(doc(db, "users", user.uid), {
         orgName: shopName,
-        orgAddress: shopAddress
+        orgAddress: shopAddress,
+        orgLocation: { lat: shopLat, lng: shopLng }
       });
       alert("Shop profile updated!");
     } catch (e: any) {
@@ -124,7 +136,20 @@ const ShopProfile: React.FC = () => {
                 </div>
                 <div className="form-group">
                   <label style={{ display: 'block', color: '#888', fontSize: '0.75rem', marginBottom: '0.5rem', textTransform: 'uppercase' }}>HQ Address</label>
-                  <input type="text" value={shopAddress} onChange={e => setShopAddress(e.target.value)} style={{ width: '100%', padding: '0.9rem', background: '#111', border: '1px solid #333', borderRadius: '12px', color: 'white' }} />
+                  {isLoaded ? (
+                    <ModernAutocomplete 
+                      value={shopAddress} 
+                      onPlaceSelected={(addr, lat, lng) => {
+                        setShopAddress(addr);
+                        if (lat && lng) {
+                          setShopLat(lat);
+                          setShopLng(lng);
+                        }
+                      }} 
+                    />
+                  ) : (
+                    <input type="text" value={shopAddress} onChange={e => setShopAddress(e.target.value)} style={{ width: '100%', padding: '0.9rem', background: '#111', border: '1px solid #333', borderRadius: '12px', color: 'white' }} />
+                  )}
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   <div className="form-group">
