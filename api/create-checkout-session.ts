@@ -29,6 +29,13 @@ const TIER_CONFIG: Record<string, { unit_amount: number; product_name: string; p
     mode: 'subscription',
     isSubscription: true,
   },
+  explore: {
+    unit_amount: 399,
+    product_name: 'Explore Mode Subscription',
+    product_description: 'Unlock live route recording, community sharing, and advanced e-bike physics models.',
+    mode: 'subscription',
+    isSubscription: true,
+  },
   group_ride: {
     unit_amount: 999,
     product_name: 'Group Ride Host Pass',

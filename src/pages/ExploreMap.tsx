@@ -154,9 +154,27 @@ const ExploreMap: React.FC = () => {
     } catch (e) { alert("Failed to save."); }
   };
 
+  const checkoutExploreTier = async () => {
+    if (!user) { setShowAuthModal(true); return; }
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch('/api/create-checkout-session', { 
+        method: 'POST', 
+        headers: { 
+          'Content-Type': 'application/json', 
+          'Authorization': `Bearer ${token}` 
+        }, 
+        body: JSON.stringify({ userId: user.uid, email: user.email, tier: 'explore' }) 
+      });
+      const data = await res.json();
+      if (data.url) window.location.href = data.url;
+      else alert(`Checkout failed: ${data.error || 'Please try again.'}`);
+    } catch (e: any) { alert(`Checkout failed: ${e.message || 'Unknown error'}`); }
+  };
+
   if (loading) return <div style={{ minHeight: '100vh', background: '#121212' }} />;
 
-  const canExplore = userData?.isShopTier || (userData?.canHostGroupRide && new Date(userData.groupRideExpiresAt?.seconds * 1000) > new Date());
+  const canExplore = userData?.isShopTier || userData?.isExploreTier || (userData?.canHostGroupRide && new Date(userData.groupRideExpiresAt?.seconds * 1000) > new Date());
 
   if (!canExplore) {
     return (
@@ -165,8 +183,12 @@ const ExploreMap: React.FC = () => {
         <main style={{ padding: '4rem 2rem', textAlign: 'center' }}>
           <h1 style={{ fontSize: '2.5rem', color: '#ff6600' }}>Explore Mode</h1>
           <div style={{ fontSize: '4rem', margin: '2rem 0' }}>🧭</div>
-          <p style={{ fontSize: '1.2rem', color: '#888', maxWidth: '500px', margin: '0 auto 2rem' }}>Exclusive professional feature. Upgrade to Shop Tier or grab a Host Pass to unlock live route recording and community sharing.</p>
-          <button onClick={() => navigate('/profile')} style={{ padding: '1rem 2rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer' }}>Upgrade Now</button>
+          <p style={{ fontSize: '1.2rem', color: '#888', maxWidth: '500px', margin: '0 auto 2rem' }}>Experience the full potential of Range Anxiety. Unlock live route recording, terrain analysis, and community sharing.</p>
+          <div style={{ background: '#1a1a1a', padding: '2rem', borderRadius: '24px', border: '1px solid #ff6600', display: 'inline-block', minWidth: '300px' }}>
+            <div style={{ fontSize: '2.5rem', fontWeight: 900, marginBottom: '0.5rem' }}>$3.99<span style={{ fontSize: '1rem', color: '#666' }}>/mo</span></div>
+            <p style={{ fontSize: '0.8rem', color: '#888', marginBottom: '2rem' }}>Cancel anytime. Supports independent development.</p>
+            <button onClick={checkoutExploreTier} style={{ width: '100%', padding: '1rem 2rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', fontSize: '1.1rem' }}>Get Explore Mode</button>
+          </div>
         </main>
         {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
       </div>

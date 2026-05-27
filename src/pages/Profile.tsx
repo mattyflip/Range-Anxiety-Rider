@@ -528,12 +528,24 @@ const Profile: React.FC = () => {
         {isOwner && profileData?.role === 'rider' && !profileData?.isShopTier && (
           <section style={{ marginBottom: '3rem', background: 'linear-gradient(45deg, #1a1a1a, #111)', padding: '2rem', borderRadius: '32px', border: '1px solid #ff6600' }}>
             <h2 style={{ color: 'white', marginTop: 0 }}>Scale Your Experience</h2>
-            <p style={{ color: '#888', marginBottom: '2rem' }}>Upgrade to the Shop Tier or grab a Host Pass to unlock professional tracking tools.</p>
-            
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem' }}>
-               <div style={{ background: '#121212', padding: '1.5rem', borderRadius: '24px', border: '1px solid #333' }}>
-                  <div style={{ color: '#ff6600', fontWeight: 900, fontSize: '1.2rem' }}>SHOP TIER</div>
-                  <p style={{ color: '#666', fontSize: '0.8rem', margin: '1rem 0' }}>Professional fleet management, unlimited bike tracking, and ad-free experience.</p>
+            <p style={{ color: '#888', marginBottom: '2rem' }}>Upgrade your account to unlock professional tracking, recording, and community features.</p>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem' }}>
+               <div style={{ background: '#121212', padding: '1.5rem', borderRadius: '24px', border: '1px solid #34a853', display: 'flex', flexDirection: 'column' }}>
+                  <div style={{ color: '#34a853', fontWeight: 900, fontSize: '1.1rem' }}>EXPLORE MODE</div>
+                  <p style={{ color: '#666', fontSize: '0.75rem', margin: '1rem 0', flex: 1 }}>Unlock live route recording, terrain analysis, and community route sharing.</p>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'white' }}>$3.99 <span style={{ fontSize: '0.8rem', color: '#444' }}>/ month</span></div>
+                  <button 
+                    onClick={() => handleUpgrade('explore')}
+                    style={{ width: '100%', padding: '0.8rem', background: '#34a853', color: 'white', border: 'none', borderRadius: '12px', marginTop: '1.5rem', fontWeight: 'bold', cursor: 'pointer' }}
+                  >
+                    ACTIVATE EXPLORE
+                  </button>
+               </div>
+
+               <div style={{ background: '#121212', padding: '1.5rem', borderRadius: '24px', border: '1px solid #ff6600', display: 'flex', flexDirection: 'column' }}>
+                  <div style={{ color: '#ff6600', fontWeight: 900, fontSize: '1.1rem' }}>SHOP TIER</div>
+                  <p style={{ color: '#666', fontSize: '0.75rem', margin: '1rem 0', flex: 1 }}>Professional fleet management, live unit tracking, and ad-free experience.</p>
                   <div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'white' }}>$49.99 <span style={{ fontSize: '0.8rem', color: '#444' }}>/ month</span></div>
                   <button 
                     onClick={() => handleUpgrade('shop')}
@@ -543,9 +555,9 @@ const Profile: React.FC = () => {
                   </button>
                </div>
 
-               <div style={{ background: '#121212', padding: '1.5rem', borderRadius: '24px', border: '1px solid #333' }}>
-                  <div style={{ color: '#ffcc00', fontWeight: 900, fontSize: '1.2rem' }}>HOST PASS</div>
-                  <p style={{ color: '#666', fontSize: '0.8rem', margin: '1rem 0' }}>24-hour access to host group rides and track participant battery live on map.</p>
+               <div style={{ background: '#121212', padding: '1.5rem', borderRadius: '24px', border: '1px solid #333', display: 'flex', flexDirection: 'column' }}>
+                  <div style={{ color: '#ffcc00', fontWeight: 900, fontSize: '1.1rem' }}>HOST PASS</div>
+                  <p style={{ color: '#666', fontSize: '0.75rem', margin: '1rem 0', flex: 1 }}>24-hour access to host group rides and track participant battery live on map.</p>
                   <div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'white' }}>$9.99 <span style={{ fontSize: '0.8rem', color: '#444' }}>/ 24h</span></div>
                   <button 
                     onClick={() => handleUpgrade('group_ride')}
@@ -557,6 +569,7 @@ const Profile: React.FC = () => {
             </div>
           </section>
         )}
+
               <div style={{ display: 'flex', justifyContent: 'center', gap: '2rem', marginTop: '1.5rem' }}>
                 <div><div style={{ color: 'white', fontWeight: 'bold', fontSize: '1.2rem' }}>{followerCount}</div><div style={{ color: '#666', fontSize: '0.7rem', textTransform: 'uppercase' }}>Followers</div></div>
                 <div><div style={{ color: 'white', fontWeight: 'bold', fontSize: '1.2rem' }}>{followingCount}</div><div style={{ color: '#666', fontSize: '0.7rem', textTransform: 'uppercase' }}>Following</div></div>
