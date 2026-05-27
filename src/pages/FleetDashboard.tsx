@@ -145,14 +145,6 @@ const FleetDashboard = () => {
     } catch (e) { console.error(e); }
   };
 
-  const handleRentOut = async (bike: any) => {
-    if (!userData?.orgId) return;
-    try {
-      await updateDoc(doc(db, `organizations/${userData.orgId}/bikes`, bike.id), { status: 'rented' });
-      alert(`${bike.unitId} marked as RENTED.`);
-    } catch (e) { console.error(e); }
-  };
-
   const handleDirectRentOut = async () => {
     if (!userData?.orgId || !bikeToAssign || !targetRiderEmail.trim()) return;
     setIsAssigning(true);
