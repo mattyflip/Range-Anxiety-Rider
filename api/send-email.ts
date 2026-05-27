@@ -39,7 +39,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const data = await resend.emails.send({
-      from: process.env.RESEND_FROM_EMAIL || 'Range Anxiety Rider <onboarding@resend.dev>',
+      from: process.env.RESEND_FROM_EMAIL || 'Range Anxiety Rider <Info@rangeanxietyrider.com>',
       to: [to],
       subject: subject,
       text: text,
