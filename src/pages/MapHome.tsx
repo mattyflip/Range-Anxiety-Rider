@@ -1,13 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { GoogleMap, useJsApiLoader, DirectionsRenderer, InfoWindowF, PolylineF, Autocomplete } from '@react-google-maps/api'
+import { GoogleMap, useJsApiLoader, DirectionsRenderer, InfoWindowF, Autocomplete } from '@react-google-maps/api'
 import axios from 'axios'
 import { toPng } from 'html-to-image'
-import { auth, db, storage } from '../firebase'
+import { auth, db } from '../firebase'
 import { onAuthStateChanged } from 'firebase/auth'
 import type { User } from 'firebase/auth'
-import { doc, getDoc, collection, addDoc, serverTimestamp, updateDoc, deleteDoc, query, where, onSnapshot, setDoc, getDocs, arrayUnion, type DocumentSnapshot } from 'firebase/firestore'
+import { doc, getDoc, collection, updateDoc, query, where, onSnapshot, setDoc, arrayUnion, type DocumentSnapshot } from 'firebase/firestore'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
-import { useNavigate } from 'react-router-dom'
 import TermsOfService from '../components/TermsOfService'
 import PrivacyPolicy from '../components/PrivacyPolicy'
 import InstallTutorial from '../components/InstallTutorial'
@@ -16,7 +15,7 @@ import AuthModal from '../components/AuthModal'
 import WelcomeModal from '../components/WelcomeModal'
 import AdvancedMarker from '../components/AdvancedMarker'
 import { createNotification } from '../utils/notifications'
-import { STATE_COORDINATES, calculateAge, getNearestState, EBIKE_LAWS } from '../utils/ebikeLaws'
+import { STATE_COORDINATES, EBIKE_LAWS } from '../utils/ebikeLaws'
 import SEO from '../components/SEO'
 
 const LIBRARIES: ("places" | "geometry" | "marker")[] = ["places", "geometry", "marker"];
@@ -164,6 +163,7 @@ function MapHome() {
   const [mapSnapshot, setMapSnapshot] = useState<string | null>(null);
   const [settingsDirty, setSettingsDirty] = useState(true);
   const [userLocation, setUserLocation] = useState<google.maps.LatLngLiteral | null>(null);
+  const [loading, setLoading] = useState(true);
 
   // --- FLEET / B2B SPECIFIC STATE ---
   const [liveUnits, setLiveUnits] = useState<any[]>([]);
@@ -282,7 +282,6 @@ function MapHome() {
             setUserRole(role);
             
             if (d.orgId) {
-              // Reactively listen to Org details (Location/HQ)
               unsubOrg = onSnapshot(doc(db, "organizations", d.orgId), (oSnap) => {
                 if (oSnap.exists()) {
                   const oData = oSnap.data();
@@ -293,11 +292,9 @@ function MapHome() {
                 }
               });
 
-              // Manager/Renter needs bikes for specs
               unsubBikes = onSnapshot(query(collection(db, `organizations/${d.orgId}/bikes`)), (s) => {
                  const bikes = s.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
                  setShopBikes(bikes);
-                 
                  if (role === 'rider') {
                    const assigned = bikes.find(b => b.currentRiderId === u.uid && b.status === 'rented');
                    if (assigned) setSelectedBikeId(assigned.id);
@@ -307,7 +304,6 @@ function MapHome() {
                  }
               });
 
-              // Manager needs live units
               if (role === 'fleet') {
                 unsubLive = onSnapshot(query(collection(db, `organizations/${d.orgId}/live_units`)), (s) => {
                   setLiveUnits(s.docs.map(doc => ({ id: doc.id, ...doc.data() })));
@@ -315,10 +311,9 @@ function MapHome() {
               }
             }
           }
-          setIsLoading(false);
+          setLoading(false);
         });
 
-        // Group Ride Resume Logic
         const savedRideId = localStorage.getItem('active_ride_id');
         if (savedRideId && !activeRide) {
           const rideSnap = await getDoc(doc(db, "group_rides", savedRideId));
@@ -336,8 +331,9 @@ function MapHome() {
           try {
             const parsed = JSON.parse(local);
             if (Array.isArray(parsed)) setSavedBikes(parsed);
-          } catch { /* ignore corrupted local storage */ }
+          } catch { }
         }
+        setLoading(false);
       }
     });
 
@@ -350,21 +346,17 @@ function MapHome() {
     };
   }, []);
 
-  // Auto-focus map for Fleet Owners
   useEffect(() => {
     if (userRole === 'fleet' && mapRef.current && (shopLocation || liveUnits.length > 0)) {
       const bounds = new google.maps.LatLngBounds();
       let hasPoints = false;
-
       if (shopLocation) { bounds.extend(shopLocation); hasPoints = true; }
-
       liveUnits.forEach(unit => {
         if (unit.position?.lat && unit.position?.lng) {
           bounds.extend(unit.position);
           hasPoints = true;
         }
       });
-
       if (hasPoints) {
         mapRef.current.fitBounds(bounds, { top: 50, right: 50, bottom: 50, left: 350 });
       }
@@ -430,7 +422,7 @@ function MapHome() {
           setPois([]);
           localStorage.removeItem('ebike_load_route');
         }
-      } catch { /* ignore corrupted local storage */ }
+      } catch { }
     };
     loadRoute();
     const handleEvent = () => loadRoute();
@@ -443,6 +435,13 @@ function MapHome() {
         setTimeout(() => setShowWelcomeModal(true), 0);
     }
   }, [authInitialized, user]);
+
+  useEffect(() => {
+    if (userData?.homeRegion && mapRef.current) {
+      const coords = STATE_COORDINATES[userData.homeRegion];
+      if (coords) { mapRef.current.panTo(coords); mapRef.current.setZoom(8); }
+    }
+  }, [userData?.homeRegion]);
 
   useEffect(() => {
     if (!response || !response.routes[selectedRouteIndex]) return;
@@ -475,16 +474,12 @@ function MapHome() {
     return () => unsub();
   }, [activeRide?.id, user]);
 
-  // Telemetry & Tracking Logic
   useEffect(() => {
     if (!user) return;
-    
     const watchId = navigator.geolocation.watchPosition(async (pos) => {
       const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
       setUserLocation(loc);
       const speed = (pos.coords.speed || 0) * 2.23694;
-
-      // --- B2B FLEET TELEMETRY ---
       if (userData?.orgId && selectedBikeId) {
         try {
           const bike = shopBikes.find(b => b.id === selectedBikeId);
@@ -493,7 +488,6 @@ function MapHome() {
                fetch('/api/elevation', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: `${loc.lat},${loc.lng}` }) }).then(r => r.json()),
                fetch(`/api/weather?lat=${loc.lat}&lng=${loc.lng}`).then(r => r.json())
              ]);
-
              const calcRes = await fetch('/api/calculate-range', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -507,22 +501,12 @@ function MapHome() {
                   windDirDeg: wRes.wind_degree || 0
                 })
              }).then(r => r.json());
-
              await setDoc(doc(db, `organizations/${userData.orgId}/live_units`, user.uid), {
-                unitName: bike.unitId,
-                riderName: userData.username || 'Rider',
-                bikeId: bike.id,
-                position: loc,
-                battery: bike.specs?.currentBatteryPercent || 100,
-                milesRemaining: calcRes.remainingMiles || 0,
-                speed: speed,
-                elevationFt: eRes.results?.[0]?.elevation * 3.28084 || 0,
-                windMph: wRes.wind_speed || 0,
-                lastSeen: Date.now(),
-                status: 'rented'
+                unitName: bike.unitId, riderName: userData.username || 'Rider', bikeId: bike.id, position: loc,
+                battery: bike.specs?.currentBatteryPercent || 100, milesRemaining: calcRes.remainingMiles || 0,
+                speed: speed, elevationFt: eRes.results?.[0]?.elevation * 3.28084 || 0, windMph: wRes.wind_speed || 0,
+                lastSeen: Date.now(), status: 'rented'
              }, { merge: true });
-
-             // Automated Safety Alerts
              if (orgOwnerId) {
                const now = Date.now();
                if (speed > 28 && (!lastAlertTime.current['speed'] || now - lastAlertTime.current['speed'] > 300000)) {
@@ -536,11 +520,8 @@ function MapHome() {
                }
              }
           }
-        } catch (e) { console.error("Fleet sync failed", e); }
+        } catch (e) { }
       }
-      // ----------------------------
-
-      // Group Ride Sync
       if (activeRide) {
         await setDoc(doc(db, `group_rides/${activeRide.id}/participants`, user.uid), {
           userId: user.uid, name: userData?.username || 'Rider', lat: loc.lat, lng: loc.lng, lastUpdatedAt: Date.now()
@@ -550,7 +531,6 @@ function MapHome() {
         }
       }
     }, null, { enableHighAccuracy: true });
-
     return () => navigator.geolocation.clearWatch(watchId);
   }, [user, userData, selectedBikeId, shopBikes, activeRide, orgOwnerId]);
 
@@ -672,12 +652,12 @@ function MapHome() {
         const encodedPath = google.maps.geometry.encoding.encodePath(route.overview_path);
         const elevResp = await axios.post('/api/elevation', { encodedPath, samples: 100 });
         if (elevResp.data?.gain) { gainFeet = elevResp.data.gain * multiplier; }
-      } catch (e) { console.error(e); }
+      } catch (e) { }
       let windSpeed = 0, headwindMph = 0;
       try {
         const res = await axios.get(`/api/weather?lat=${path[0].lat}&lng=${path[0].lng}`);
         windSpeed = res.data.wind_speed; headwindMph = windSpeed * 0.5;
-      } catch (e) { console.error(e); }
+      } catch (e) { }
       const massKg = (Number(specs.bikeWeightLbs) + (Number(userData?.riderWeight) || Number(riderWeightLbs))) * 0.453592;
       const velocityMps = Number(targetSpeedMph) * 0.44704;
       const tempF = Number(ambientTempF) || 70;
@@ -701,27 +681,8 @@ function MapHome() {
       let deathPoint; if (remaining <= 0) deathPoint = path[Math.floor(path.length * 0.8)];
       setMetrics({ distanceMiles: distMiles, durationMin: distMiles / (Number(targetSpeedMph) || 15) * 60, elevationGainFeet: gainFeet, elevationLossFeet: 0, estimatedWh, batteryPercentUsed: Math.max(0, remaining), recommendedSpeedMph: 20, deathPoint, endingVoltage, windConditions: { speed: windSpeed, direction: 0, headwindComponent: headwindMph } });
       setIsLoading(false);
-    } catch (e) { console.error(e); setIsLoading(false); }
+    } catch (e) { setIsLoading(false); }
   };
-
-  useEffect(() => {
-    if (isLoading && !response && trip.origin && trip.destination && isLoaded) {
-      const service = new google.maps.DirectionsService();
-      const wps = trip.waypoints?.filter(w => w.trim()).map(w => ({ location: w, stopover: true } as google.maps.DirectionsWaypoint)) || [];
-      const travelMode = wps.length > 0 ? google.maps.TravelMode.DRIVING : google.maps.TravelMode.BICYCLING;
-      
-      service.route({
-        origin: trip.origin,
-        destination: trip.destination,
-        waypoints: wps.length > 0 ? wps : undefined,
-        travelMode,
-        provideRouteAlternatives: true
-      }, (result, status) => {
-        if (status === 'OK' && result) { setResponse(result); setSelectedRouteIndex(0); calculateMetrics(result, 0); }
-        else { setIsLoading(false); }
-      });
-    }
-  }, [isLoading, response, trip, isLoaded]);
 
   const checkoutExploreTier = async () => {
     if (!user) { setShowAuthModal(true); return; }
@@ -741,15 +702,6 @@ function MapHome() {
   const [mapInstance, setMapInstance] = useState<google.maps.Map | null>(null);
   const onMapLoad = useCallback((map: google.maps.Map) => { mapRef.current = map; setMapInstance(map); }, []);
 
-  const saveCurrentBike = async () => {
-    if (!user) { setShowAuthModal(true); return; }
-    if (!newBikeName) return;
-    const updated = [...savedBikes, { id: Date.now().toString(), name: newBikeName, specs }];
-    setSavedBikes(updated);
-    try { await updateDoc(doc(db, "users", user.uid), { bikes: updated }); } catch (e) { console.error(e); }
-    setNewBikeName(''); alert("Bike saved!");
-  };
-
   const useCurrentLocation = () => {
     if (!navigator.geolocation) { alert("Geolocation is not supported by your browser."); return; }
     navigator.geolocation.getCurrentPosition((pos) => {
@@ -760,6 +712,59 @@ function MapHome() {
         markDirty();
       }, (err) => { alert(`Location failed: ${err.message}.`); }, { enableHighAccuracy: true, timeout: 8000 }
     );
+  };
+
+  const searchPOIs = async (category: string) => {
+    if (!isLoaded || !mapRef.current) return;
+    if (category === 'charging' && !isPro) { alert("PRO required."); return; }
+    const service = new google.maps.places.PlacesService(mapRef.current!);
+    service.textSearch({ location: mapRef.current!.getCenter()!, radius: 5000, query: category }, (results, status) => {
+      if (status === google.maps.places.PlacesServiceStatus.OK && results) {
+        setPois(results.map(p => ({ id: p.place_id!, name: p.name!, address: p.formatted_address!, position: { lat: p.geometry!.location!.lat(), lng: p.geometry!.location!.lng() }, type: category })));
+      }
+    });
+  };
+
+  const saveCurrentBike = async () => {
+    if (!user) { setShowAuthModal(true); return; }
+    if (!newBikeName) return;
+    const updated = [...savedBikes, { id: Date.now().toString(), name: newBikeName, specs }];
+    setSavedBikes(updated);
+    try { await updateDoc(doc(db, "users", user.uid), { bikes: updated }); } catch (e) { }
+    setNewBikeName(''); alert("Bike saved!");
+  };
+
+  const shareToCommunity = async () => {
+    if (!shareCardRef.current || !metrics || !user || !mapSnapshot) return;
+    setIsLoading(true);
+    try {
+      shareCardRef.current.style.opacity = '1';
+      await new Promise(r => setTimeout(r, 1500));
+      const dataUrl = await toPng(shareCardRef.current, { backgroundColor: "#121212", pixelRatio: 2 });
+      shareCardRef.current.style.opacity = '0';
+      const blob = await (await fetch(dataUrl)).blob();
+      const imageRef = ref(storage, `trips/${user.uid}/${Date.now()}.png`);
+      await uploadBytes(imageRef, blob);
+      const url = await getDownloadURL(imageRef);
+      await addDoc(collection(db, "posts"), { 
+        authorId: user.uid, authorUsername: userData?.username || 'Rider', authorProfilePic: userData?.profilePic || '', imageUrl: url, 
+        caption: `Rode ${metrics.distanceMiles.toFixed(1)} miles!`, likes: [], commentsEnabled: true, createdAt: serverTimestamp(),
+        tripData: { origin: trip.origin, destination: trip.destination, waypoints: trip.waypoints, isRoundTrip }
+      });
+      alert("Shared!"); setIsLoading(false); setShowSharePreview(false);
+    } catch (e) { setIsLoading(false); }
+  };
+
+  const downloadShareCard = async () => {
+    if (!shareCardRef.current || !metrics || !mapSnapshot) return;
+    try {
+      setIsLoading(true); shareCardRef.current.style.opacity = '1';
+      await new Promise(r => setTimeout(r, 1500));
+      const dataUrl = await toPng(shareCardRef.current, { backgroundColor: "#121212", pixelRatio: 2 });
+      shareCardRef.current.style.opacity = '0';
+      const link = document.createElement('a'); link.download = `trip.png`; link.href = dataUrl; link.click();
+      setIsLoading(false);
+    } catch (e) { setIsLoading(false); }
   };
 
   const filteredBikes = [...STANDARD_BIKES, ...savedBikes].filter(b => b.name.toLowerCase().includes(bikeSearchQuery.toLowerCase()));
@@ -774,7 +779,6 @@ function MapHome() {
       <div className="main-layout" style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <aside className={`sidebar ${showMobileMenu ? 'mobile-visible' : ''}`} style={{ width: '350px', padding: '20px', background: '#1a1a1a', borderRight: '1px solid #333', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
           
-          {/* RENTAL STATUS SECTION */}
           {userRole === 'rider' && (
             <div style={{ marginBottom: '1.5rem' }}>
               <label style={{ color: '#666', fontSize: '0.65rem', textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>Rental Status</label>
@@ -820,14 +824,18 @@ function MapHome() {
           <section className="form-group">
             <label>Route</label>
             {locations.map((loc, index) => {
-              const show = index < 2 || locations[index - 1].trim() !== '';
-              if (!show) return null;
+              if (index >= 2 && locations[index - 1].trim() === '') return null;
               return (
                 <div key={index} style={{ display: 'flex', gap: '0.4rem', marginTop: index > 0 ? '0.5rem' : '0', alignItems: 'center' }}>
                   <div style={{ flex: 1, display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
                     <Autocomplete onLoad={(auto) => onAutocompleteLoad(index, auto)} onPlaceChanged={() => onPlaceChanged(index)}>
                         <input type="text" placeholder={index === 0 ? "Start" : `Stop ${index}`} value={loc} onChange={e => updateLocation(index, e.target.value)} style={{ flex: 1 }} />
                     </Autocomplete>
+                    {index === 0 && <button onClick={useCurrentLocation} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer' }}>📍</button>}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    <button disabled={index === 0} onClick={() => moveLocation(index, 'up')} style={{ background: '#222', border: 'none', color: '#888', padding: '2px 6px', borderRadius: '4px', fontSize: '0.6rem', cursor: 'pointer' }}>▲</button>
+                    <button disabled={index === locations.length - 1} onClick={() => moveLocation(index, 'down')} style={{ background: '#222', border: 'none', color: '#888', padding: '2px 6px', borderRadius: '4px', fontSize: '0.6rem', cursor: 'pointer' }}>▼</button>
                   </div>
                 </div>
               );
@@ -842,6 +850,8 @@ function MapHome() {
             <section className="form-group"><label>Voltage</label><input type="number" value={specs.voltage} onChange={e => { setSpecs(p => ({ ...p, voltage: parseFloat(e.target.value) || '' })); markDirty(); }} /></section>
             <section className="form-group"><label>Capacity (Ah)</label><input type="number" value={specs.capacityAh} onChange={e => { setSpecs(p => ({ ...p, capacityAh: parseFloat(e.target.value) || '' })); markDirty(); }} /></section>
           </div>
+
+          <section className="form-group"><label>Avg Speed (mph)</label><input type="number" value={targetSpeedMph} onChange={e => { setTargetSpeedMph(parseFloat(e.target.value) || ''); markDirty(); }} /></section>
 
           <section className="form-group">
             <label>Battery Entry</label>
@@ -859,20 +869,22 @@ function MapHome() {
               <div style={{ color: '#ff6600', fontWeight: 800, fontSize: '0.8rem', textTransform: 'uppercase' }}>Estimated Metrics</div>
               <div style={{ fontSize: '1.8rem', fontWeight: 900, color: 'white' }}>Battery Left: {metrics.batteryPercentUsed.toFixed(1)}%</div>
               <div style={{ color: '#888', fontSize: '0.9rem', marginBottom: '1.5rem' }}>Est. End Voltage: {metrics.endingVoltage?.toFixed(1)}V</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '12px', marginBottom: '1.5rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#666' }}>Travel Time:</span><span style={{ fontWeight: 'bold' }}>{Math.floor(metrics.durationMin/60)}h {Math.round(metrics.durationMin%60)}m</span></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#666' }}>Distance:</span><span style={{ fontWeight: 'bold' }}>{metrics.distanceMiles.toFixed(1)} mi</span></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#666' }}>🌬️ Wind:</span><span style={{ color: '#4caf50', fontWeight: 'bold' }}>{metrics.windConditions?.speed.toFixed(1)} mph</span></div>
+              </div>
+              <button onClick={() => { if (isExploreTier) setShowSharePreview(true); else setShowGroupRidePaywall(true); }} style={{ width: '100%', padding: '1rem', background: '#333', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 900, marginBottom: '0.5rem' }}>Share Trip {isExploreTier ? '' : '🔒'}</button>
               <button onClick={startNavigation} style={{ width: '100%', padding: '1.2rem', background: 'linear-gradient(to bottom, #ff8800, #ff6600)', color: 'white', border: 'none', borderRadius: '16px', fontWeight: 900, fontSize: '1.2rem', boxShadow: '0 4px 15px rgba(255,102,0,0.4)' }}>🏁 START TRIP</button>
             </div>
           )}
         </aside>
 
         <main style={{ flex: 1, position: 'relative' }}>
-          {isNavigating && response && (
-            <div style={{ position: 'fixed', top: '5.5rem', left: '50%', transform: 'translateX(-50%)', width: '90%', maxWidth: '500px', zIndex: 10000, background: '#1a1a1a', border: '2px solid #ff6600', borderRadius: '20px', padding: '1.2rem', boxShadow: '0 10px 40px rgba(0,0,0,0.8)', display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ color: 'white', fontWeight: 'bold' }}>{stripHtml(response.routes[selectedRouteIndex].legs[currentLegIndex].steps[currentStepIndex].instructions)}</div>
-                  <button onClick={stopNavigation} style={{ background: '#444', color: 'white', border: 'none', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer' }}>✕</button>
-                </div>
-            </div>
-          )}
+          <div style={{ position: 'absolute', top: '1rem', right: '1rem', zIndex: 10, display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+            <button onClick={() => searchPOIs('charging')} style={{ padding: '0.8rem 1.2rem', background: 'rgba(20,20,20,0.9)', color: 'white', border: '1px solid #333', borderRadius: '12px', fontWeight: 900 }}>⚡ Chargers</button>
+            <button onClick={() => searchPOIs('cafe')} style={{ padding: '0.8rem 1.2rem', background: 'rgba(20,20,20,0.9)', color: 'white', border: '1px solid #333', borderRadius: '12px', fontWeight: 900 }}>☕ Cafes</button>
+          </div>
 
           <GoogleMap 
             mapContainerStyle={{ width: '100%', height: '100%' }} 
@@ -883,7 +895,6 @@ function MapHome() {
           >
             {response && <DirectionsRenderer options={{ directions: response, routeIndex: selectedRouteIndex }} />}
             
-            {/* B2B FLEET RENDERING */}
             {userRole === 'fleet' && shopLocation && (
                 <AdvancedMarker position={shopLocation} title={userData?.orgName || "Shop HQ"}>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -906,34 +917,24 @@ function MapHome() {
                   </AdvancedMarker>
                 );
             })}
-            {/* ----------------- */}
 
-            {rideParticipants.map(p => (
-                <AdvancedMarker key={p.userId} position={{ lat: p.lat, lng: p.lng }}>
-                  <div style={{ background: '#ff6600', width: '12px', height: '12px', borderRadius: '50%', border: '2px solid white' }} />
+            {pois.map(p => (
+                <AdvancedMarker key={p.id} position={p.position} onClick={() => setSelectedPoi(p)}>
+                  <div style={{ background: p.type === 'charging' ? '#34a853' : '#4285F4', padding: '4px', borderRadius: '50%', border: '2px solid white', width: '30px', height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>{p.type === 'charging' ? '⚡' : '📍'}</div>
                 </AdvancedMarker>
             ))}
+
+            {selectedPoi && (
+                <InfoWindowF position={selectedPoi.position} onCloseClick={() => setSelectedPoi(null)}>
+                  <div style={{ color: 'black', padding: '0.4rem' }}>
+                    <div style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{selectedPoi.name}</div>
+                    <div style={{ fontSize: '0.75rem', color: '#444' }}>{selectedPoi.address}</div>
+                  </div>
+                </InfoWindowF>
+            )}
           </GoogleMap>
 
-          <div style={{
-            position: 'absolute',
-            bottom: '10px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            backgroundColor: 'rgba(0,0,0,0.85)',
-            color: '#888',
-            fontSize: '0.65rem',
-            padding: '8px 16px',
-            borderRadius: '20px',
-            zIndex: 1000,
-            whiteSpace: 'nowrap',
-            border: '1px solid #333',
-            display: 'flex',
-            gap: '12px',
-            alignItems: 'center',
-            boxShadow: '0 4px 15px rgba(0,0,0,0.5)',
-            backdropFilter: 'blur(5px)'
-          }}>
+          <div style={{ position: 'absolute', bottom: '10px', left: '50%', transform: 'translateX(-50%)', backgroundColor: 'rgba(0,0,0,0.85)', color: '#888', fontSize: '0.65rem', padding: '8px 16px', borderRadius: '20px', zIndex: 1000, whiteSpace: 'nowrap', border: '1px solid #333', display: 'flex', gap: '12px', alignItems: 'center', boxShadow: '0 4px 15px rgba(0,0,0,0.5)', backdropFilter: 'blur(5px)' }}>
             <span>⚡ Estimates only. Actual range varies with conditions. Never ride beyond your physical limits.</span>
             <div style={{ display: 'flex', gap: '8px', borderLeft: '1px solid #444', paddingLeft: '12px' }}>
               <span onClick={() => setShowToSPage(true)} style={{ color: '#ff6600', cursor: 'pointer', textDecoration: 'underline' }}>TOS</span>
@@ -943,27 +944,38 @@ function MapHome() {
         </main>
       </div>
 
+      {showSharePreview && metrics && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.95)', zIndex: 10000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(10px)', padding: '10px', overflow: 'auto' }}>
+          <div ref={shareCardRef} style={{ width: '400px', background: '#0a0a0a', padding: '2rem', borderRadius: '40px', border: '1px solid #333' }}>
+             <h2 style={{ color: '#ff6600', margin: 0 }}>RANGE ANXIETY</h2>
+             <div style={{ fontSize: '2.5rem', fontWeight: 900, color: 'white', margin: '1rem 0' }}>{metrics.batteryPercentUsed.toFixed(0)}% Left</div>
+             <p style={{ color: '#888' }}>Rode {metrics.distanceMiles.toFixed(1)} miles!</p>
+          </div>
+          <div style={{ marginTop: '1rem', display: 'flex', gap: '1rem' }}>
+            <button onClick={() => setShowSharePreview(false)} style={{ padding: '1rem 2rem', background: '#333', color: 'white', border: 'none', borderRadius: '12px' }}>Cancel</button>
+            <button onClick={downloadShareCard} style={{ padding: '1rem 2rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px' }}>Download</button>
+          </div>
+        </div>
+      )}
+
       {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
       {showToSPage && <TermsOfService onClose={() => setShowToSPage(false)} />}
       {showPrivacyPage && <PrivacyPolicy onClose={() => setShowPrivacyPage(false)} />}
       {showWelcomeModal && <WelcomeModal onClose={() => setShowWelcomeModal(false)} />}
       {showInstallTutorial && <InstallTutorial onClose={() => setShowInstallTutorial(false)} />}
+      
       {showGroupRidePaywall && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.95)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(10px)' }}>
           <div style={{ background: '#1a1a1a', border: '1px solid #ff6600', borderRadius: '24px', padding: '2.5rem', maxWidth: '400px', width: '90%', textAlign: 'center' }}>
             <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🧭</div>
             <h2 style={{ color: '#ff6600', fontSize: '1.4rem', marginBottom: '0.5rem' }}>Unlock Explore Mode</h2>
-            <p style={{ color: '#aaa', fontSize: '0.85rem', lineHeight: '1.5', marginBottom: '1.5rem' }}>Experience the full potential of Range Anxiety. Unlock live route recording, terrain analysis, and community sharing.</p>
+            <p style={{ color: '#aaa', fontSize: '0.85rem', lineHeight: '1.5', marginBottom: '1.5rem' }}>Unlock live route recording, terrain analysis, and community sharing.</p>
             <div style={{ background: '#222', padding: '1rem', borderRadius: '12px', marginBottom: '1.5rem' }}>
               <div style={{ fontSize: '2rem', fontWeight: 900, color: 'white' }}>$3.99</div>
               <div style={{ color: '#888', fontSize: '0.7rem' }}>monthly subscription · cancel anytime</div>
-              <div style={{ color: '#888', fontSize: '0.7rem', marginTop: '0.5rem' }}>• Live Route Recording</div>
-              <div style={{ color: '#888', fontSize: '0.7rem' }}>• Terrain & Wind Analysis</div>
-              <div style={{ color: '#888', fontSize: '0.7rem' }}>• Community Route Sharing</div>
-              <div style={{ color: '#888', fontSize: '0.7rem' }}>• No Ads</div>
             </div>
-            <button onClick={checkoutExploreTier} style={{ width: '100%', padding: '1rem', background: 'linear-gradient(45deg, #ff6600, #ff9900)', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 900, fontSize: '1.1rem', cursor: 'pointer', marginBottom: '0.8rem' }}>Activate Explore Mode</button>
-            <button onClick={() => setShowGroupRidePaywall(false)} style={{ width: '100%', padding: '0.8rem', background: 'none', color: '#888', border: 'none', borderRadius: '12px', cursor: 'pointer', fontSize: '0.8rem' }}>Maybe Later</button>
+            <button onClick={checkoutExploreTier} style={{ width: '100%', padding: '1rem', background: 'linear-gradient(45deg, #ff6600, #ff9900)', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 900, fontSize: '1.1rem', cursor: 'pointer' }}>Activate Explore Mode</button>
+            <button onClick={() => setShowGroupRidePaywall(false)} style={{ width: '100%', padding: '0.8rem', background: 'none', color: '#888', border: 'none', borderRadius: '12px', cursor: 'pointer', fontSize: '0.8rem', marginTop: '1rem' }}>Maybe Later</button>
           </div>
         </div>
       )}
