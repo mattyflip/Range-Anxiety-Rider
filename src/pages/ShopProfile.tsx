@@ -3,9 +3,10 @@ import { useNavigate } from 'react-router-dom'
 import { auth, db } from '../firebase'
 import { onAuthStateChanged, deleteUser, signOut } from 'firebase/auth'
 import { doc, updateDoc, deleteDoc, onSnapshot, setDoc, getDoc } from 'firebase/firestore'
-import { useJsApiLoader } from '@react-google-maps/api'
+import { useJsApiLoader, GoogleMap } from '@react-google-maps/api'
 import NavBar from '../components/NavBar'
 import ModernAutocomplete from '../components/ModernAutocomplete'
+import AdvancedMarker from '../components/AdvancedMarker'
 import SEO from '../components/SEO'
 
 const LIBRARIES: ("places" | "geometry")[] = ["places", "geometry"];
@@ -151,6 +152,42 @@ const ShopProfile: React.FC = () => {
                     <input type="text" value={shopAddress} onChange={e => setShopAddress(e.target.value)} style={{ width: '100%', padding: '0.9rem', background: '#111', border: '1px solid #333', borderRadius: '12px', color: 'white' }} />
                   )}
                 </div>
+
+                {isLoaded && shopLat && shopLng && (
+                  <div style={{ marginBottom: '1.5rem' }}>
+                    <label style={{ display: 'block', color: '#888', fontSize: '0.65rem', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Fine-Tune Location (Click map to move pin)</label>
+                    <div style={{ width: '100%', height: '250px', borderRadius: '15px', overflow: 'hidden', border: '1px solid #333' }}>
+                      <GoogleMap
+                        mapContainerStyle={{ width: '100%', height: '100%' }}
+                        center={{ lat: shopLat, lng: shopLng }}
+                        zoom={17}
+                        onClick={(e) => {
+                          if (e.latLng) {
+                            setShopLat(e.latLng.lat());
+                            setShopLng(e.latLng.lng());
+                          }
+                        }}
+                        options={{
+                          disableDefaultUI: true,
+                          styles: [
+                            { elementType: "geometry", stylers: [{ color: "#242f3e" }] },
+                            { elementType: "labels.text.stroke", stylers: [{ color: "#242f3e" }] },
+                            { elementType: "labels.text.fill", stylers: [{ color: "#746855" }] },
+                          ]
+                        }}
+                      >
+                        <AdvancedMarker 
+                          position={{ lat: shopLat, lng: shopLng }} 
+                          title="Shop HQ"
+                          icon={{ path: google.maps.SymbolPath.BACKWARD_CLOSED_ARROW, fillColor: '#ff6600', fillOpacity: 1, scale: 8, strokeColor: 'white', strokeWeight: 2 }}
+                        />
+                      </GoogleMap>
+                    </div>
+                    <div style={{ color: '#444', fontSize: '0.6rem', marginTop: '0.5rem', textAlign: 'center' }}>
+                      Coordinates: {shopLat.toFixed(6)}, {shopLng.toFixed(6)}
+                    </div>
+                  </div>
+                )}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   <div className="form-group">
                     <label style={{ display: 'block', color: '#888', fontSize: '0.75rem', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Phone Number</label>
