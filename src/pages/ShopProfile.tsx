@@ -168,6 +168,7 @@ const ShopProfile: React.FC = () => {
                           }
                         }}
                         options={{
+                          mapId: import.meta.env.VITE_GOOGLE_MAP_ID || 'DEMO_MAP_ID',
                           disableDefaultUI: true,
                           styles: [
                             { elementType: "geometry", stylers: [{ color: "#242f3e" }] },
