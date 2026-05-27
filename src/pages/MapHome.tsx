@@ -576,7 +576,7 @@ function MapHome() {
           {isLoaded && (
             <GoogleMap 
               mapContainerStyle={{ width: '100%', height: '100%' }} 
-              center={currentLocation || {lat: 40.71, lng: -74.00}} 
+              center={userRole === 'fleet' ? (shopLocation || {lat: 40.71, lng: -74.00}) : (currentLocation || {lat: 40.71, lng: -74.00})} 
               zoom={14}
               onLoad={m => { mapRef.current = m; }}
               options={{ mapId: import.meta.env.VITE_GOOGLE_MAP_ID || 'DEMO_MAP_ID', disableDefaultUI: true }}
@@ -618,7 +618,7 @@ function MapHome() {
                 </AdvancedMarker>
               ))}
 
-              {userRole === 'fleet' && liveUnits.map(lu => {
+              {userRole === 'fleet' && liveUnits.filter(lu => lu.id !== user?.uid).map(lu => {
                 const isLow = lu.battery < 15;
                 const isWarn = lu.battery < 30;
                 const bubbleColor = isLow ? '#ff4444' : (isWarn ? '#ffbb33' : '#34a853');
