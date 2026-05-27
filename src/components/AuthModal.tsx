@@ -69,6 +69,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
         }
 
         const userCredential = await createUserWithEmailAndPassword(auth, authEmail, authPass);
+        const normalizedEmail = authEmail.trim().toLowerCase();
         
         // Now that the user is authenticated, we can securely check if the username is taken
         const usernameQuery = query(collection(db, "users"), where("usernameLowercase", "==", username.toLowerCase().trim()));
@@ -86,7 +87,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
         
         try {
           await setDoc(doc(db, "users", userCredential.user.uid), { 
-            email: authEmail, 
+            email: normalizedEmail, 
             fullName,
             username: finalUsername,
             usernameLowercase: finalUsernameLowercase,
@@ -106,7 +107,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
 
         try {
           await setDoc(doc(db, "marketing_emails", userCredential.user.uid), {
-            email: authEmail,
+            email: normalizedEmail,
             subscribedAt: serverTimestamp(),
             source: "account_creation"
           });
