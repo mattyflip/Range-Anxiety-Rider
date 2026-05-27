@@ -140,9 +140,16 @@ function MapHome() {
 
               // Manager/Renter needs bikes for specs
               unsubBikes = onSnapshot(query(collection(db, `organizations/${d.orgId}/bikes`)), (s) => {
-                 const bikes = s.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                 const bikes = s.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
                  setShopBikes(bikes);
-                 if (bikes.length > 0 && !selectedBikeId) setSelectedBikeId(bikes[0].id);
+                 
+                 if (role === 'rider') {
+                   const assigned = bikes.find(b => b.currentRiderId === u.uid && b.status === 'rented');
+                   if (assigned) setSelectedBikeId(assigned.id);
+                   else setSelectedBikeId('');
+                 } else if (bikes.length > 0 && !selectedBikeId) {
+                   setSelectedBikeId(bikes[0].id);
+                 }
               });
 
               // Manager needs live units
