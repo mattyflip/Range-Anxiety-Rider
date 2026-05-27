@@ -137,16 +137,16 @@ const About: React.FC = () => {
 
   useEffect(() => {
     if (userRole === 'rider') {
-      getDocs(collection(db, "organizations")).then(snap => {
-        setShops(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      getDocs(collection(db, "organizations")).then((snap: any) => {
+        setShops(snap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() })));
       });
     }
   }, [userRole]);
 
   useEffect(() => {
     if (selectedShop) {
-      getDocs(collection(db, `organizations/${selectedShop.id}/bikes`)).then(snap => {
-        setShopBikes(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter(b => b.status === 'available'));
+      getDocs(collection(db, `organizations/${selectedShop.id}/bikes`)).then((snap: any) => {
+        setShopBikes(snap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() })).filter((b: any) => b.status === 'available'));
       });
     }
   }, [selectedShop]);
