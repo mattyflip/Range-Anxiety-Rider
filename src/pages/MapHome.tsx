@@ -264,14 +264,14 @@ function MapHome() {
           batteryPercent: bike?.specs?.currentBatteryPercent || 100
         });
 
-        // Sync to Shop Org if rented
-        if (userData?.orgId) {
+        // Sync to Shop Org ONLY if bike is assigned and rented
+        if (userData?.orgId && bike && bike.status === 'rented' && bike.currentRiderId === user.uid) {
           await setDoc(doc(db, `organizations/${userData.orgId}/live_units`, user.uid), {
-            unitName: bike?.unitId || userData.username || 'Rider',
+            unitName: bike.unitId || userData.username || 'Rider',
             riderName: userData.username || 'Rider',
-            bikeId: selectedBikeId,
+            bikeId: bike.id,
             position: { lat, lng },
-            battery: bike?.specs?.currentBatteryPercent || 100,
+            battery: bike.specs?.currentBatteryPercent || 100,
             milesRemaining: remainingMiles,
             speed: speed,
             elevationFt: eRes.results?.[0]?.elevation * 3.28084 || 0,
@@ -283,7 +283,7 @@ function MapHome() {
           // ALERTS LOGIC
           if (orgOwnerId) {
             const now = Date.now();
-            const bikeLabel = bike?.unitId || "Bike";
+            const bikeLabel = bike.unitId || "Bike";
             
             // Speed Alert (> 28 MPH)
             if (speed > 28 && (!lastAlertTime.current['speed'] || now - lastAlertTime.current['speed'] > 300000)) {
@@ -292,7 +292,7 @@ function MapHome() {
             }
 
             // Battery Alert (< 15%)
-            const bat = bike?.specs?.currentBatteryPercent || 100;
+            const bat = bike.specs?.currentBatteryPercent || 100;
             if (bat < 15 && (!lastAlertTime.current['battery'] || now - lastAlertTime.current['battery'] > 1800000)) {
                createNotification(orgOwnerId, user.uid, userData.username || "Rider", 'fleet_alert', user.uid, `🪫 LOW BATTERY: ${bikeLabel} is at ${bat}%!`);
                lastAlertTime.current['battery'] = now;
