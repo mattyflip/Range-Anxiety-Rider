@@ -579,9 +579,58 @@ function MapHome() {
                   icon={{ path: google.maps.SymbolPath.BACKWARD_CLOSED_ARROW, fillColor: '#ff6600', fillOpacity: 1, scale: 8, strokeColor: 'white', strokeWeight: 2 }} 
                 />
               )}
-              {userRole === 'fleet' && liveUnits.map(lu => (
-                <AdvancedMarker key={lu.id} position={lu.position} title={lu.unitName} label={{ text: `${lu.battery}%`, color: 'white', fontSize: '10px' }} icon={{ fillColor: lu.battery < 30 ? '#ff4444' : '#34a853', scale: 8 }} />
-              ))}
+              {userRole === 'fleet' && liveUnits.map(lu => {
+                const isLow = lu.battery < 15;
+                const isWarn = lu.battery < 30;
+                const bubbleColor = isLow ? '#ff4444' : (isWarn ? '#ffbb33' : '#34a853');
+                
+                return (
+                  <AdvancedMarker 
+                    key={lu.id} 
+                    position={lu.position} 
+                    title={`${lu.unitName}: ${lu.battery}%`}
+                  >
+                    <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                      {/* Data Bubble */}
+                      <div style={{ 
+                        background: bubbleColor, 
+                        color: 'white', 
+                        padding: '4px 10px', 
+                        borderRadius: '12px', 
+                        fontSize: '0.7rem', 
+                        fontWeight: 'bold',
+                        whiteSpace: 'nowrap',
+                        boxShadow: '0 4px 10px rgba(0,0,0,0.5)',
+                        border: '2px solid white',
+                        marginBottom: '4px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        lineHeight: '1.2'
+                      }}>
+                        <div style={{ fontSize: '0.6rem', opacity: 0.9 }}>{lu.unitName}</div>
+                        <div>{lu.battery}%</div>
+                      </div>
+                      
+                      {/* Bike Icon */}
+                      <div style={{ 
+                        background: 'white', 
+                        width: '32px', 
+                        height: '32px', 
+                        borderRadius: '50%', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center',
+                        fontSize: '1.2rem',
+                        boxShadow: '0 4px 10px rgba(0,0,0,0.3)',
+                        border: `2px solid ${bubbleColor}`
+                      }}>
+                        🚲
+                      </div>
+                    </div>
+                  </AdvancedMarker>
+                );
+              })}
               {userRole === 'rider' && currentLocation && (
                 <AdvancedMarker position={currentLocation} title="You" icon={{ url: '/app-icon.png', scaledSize: { width: 32, height: 32 } }} />
               )}
