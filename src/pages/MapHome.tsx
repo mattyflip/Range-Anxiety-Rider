@@ -2,10 +2,10 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { GoogleMap, useJsApiLoader, DirectionsRenderer, InfoWindowF, Autocomplete } from '@react-google-maps/api'
 import axios from 'axios'
 import { toPng } from 'html-to-image'
-import { auth, db } from '../firebase'
+import { auth, db, storage } from '../firebase'
 import { onAuthStateChanged } from 'firebase/auth'
 import type { User } from 'firebase/auth'
-import { doc, getDoc, collection, updateDoc, query, where, onSnapshot, setDoc, arrayUnion, type DocumentSnapshot } from 'firebase/firestore'
+import { doc, getDoc, collection, addDoc, serverTimestamp, updateDoc, query, where, onSnapshot, setDoc, arrayUnion, type DocumentSnapshot } from 'firebase/firestore'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import TermsOfService from '../components/TermsOfService'
 import PrivacyPolicy from '../components/PrivacyPolicy'
@@ -15,7 +15,7 @@ import AuthModal from '../components/AuthModal'
 import WelcomeModal from '../components/WelcomeModal'
 import AdvancedMarker from '../components/AdvancedMarker'
 import { createNotification } from '../utils/notifications'
-import { STATE_COORDINATES, EBIKE_LAWS } from '../utils/ebikeLaws'
+import { STATE_COORDINATES } from '../utils/ebikeLaws'
 import SEO from '../components/SEO'
 
 const LIBRARIES: ("places" | "geometry" | "marker")[] = ["places", "geometry", "marker"];
@@ -101,31 +101,24 @@ interface POI {
 
 const center = { lat: 40.7128, lng: -74.0060 };
 
-function stripHtml(raw: string): string {
-  if (!raw) return '';
-  return raw.replace(/<[^>]+>/g, '');
-}
-
 function MapHome() {
   const { isLoaded } = useJsApiLoader({ id: 'google-map-script', googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "", libraries: LIBRARIES });
   const mapRef = useRef<google.maps.Map | null>(null);
   const shareCardRef = useRef<HTMLDivElement>(null);
   const metricsCardRef = useRef<HTMLDivElement>(null);
-  const navigate = useNavigate();
 
   const [unitSystem, setUnitSystem] = useState<'imperial' | 'metric'>('imperial');
   const [specs, setSpecs] = useState<BikeSpecs>({ voltage: 48, capacityAh: 15, motorWatts: 750, bikeWeightLbs: 65 });
-  const [riderWeightLbs, setRiderWeightLbs] = useState<number | ''>(200);
-  const [ambientTempF, setAmbientTempF] = useState<number | ''>(70);
-  const [tireType, setTireType] = useState<'road' | 'knobby'>('road');
-  const [tirePressurePsi, setTirePressurePsi] = useState<number | ''>(''); 
+  const [riderWeightLbs] = useState<number | ''>(200);
+  const [ambientTempF] = useState<number | ''>(70);
+  const [tireType] = useState<'road' | 'knobby'>('road');
+  const [tirePressurePsi] = useState<number | ''>(''); 
   
   const [trip, setTrip] = useState<TripDetails>({ origin: '', destination: '', waypoints: [] });
-  const [mode, setMode] = useState<'eco' | 'normal' | 'sport'>('normal');
-  const [pasLevel, setPasLevel] = useState<number>(3);
-  const [controlType, setControlType] = useState<'switch' | 'pas'>('pas');
+  const [mode] = useState<'eco' | 'normal' | 'sport'>('normal');
+  const [controlType] = useState<'switch' | 'pas'>('pas');
   const [isRoundTrip, setIsRoundTrip] = useState(false);
-  const [targetSpeedMph, setTargetSpeedMph] = useState<number | ''>(20);
+  const [targetSpeedMph] = useState<number | ''>(20);
   
   const [batteryInputMode, setBatteryInputMode] = useState<'percent' | 'voltage'>('percent'); 
   const [startBattery, setStartBattery] = useState<number | ''>(100);
@@ -133,7 +126,6 @@ function MapHome() {
   
   const [response, setResponse] = useState<google.maps.DirectionsResult | null>(null);
   const [selectedRouteIndex, setSelectedRouteIndex] = useState(0);
-  const [recordedPath, setRecordedPath] = useState<google.maps.LatLngLiteral[] | null>(null);
   const [metrics, setMetrics] = useState<RouteMetrics | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [pois, setPois] = useState<POI[]>([]);
@@ -144,12 +136,9 @@ function MapHome() {
   const [userData, setUserData] = useState<any>(null);
   const [userRole, setUserRole] = useState<'rider' | 'fleet'>('rider');
   const [isPro, setIsPro] = useState(false);
-  const [isHostTier, setIsHostTier] = useState(false);
   const [isExploreTier, setIsExploreTier] = useState(false);
-  const [hostTierExpiresAt, setHostTierExpiresAt] = useState<Date | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showGroupRidePaywall, setShowGroupRidePaywall] = useState(false);
-  const [paywallTier, setPaywallTier] = useState<'host' | 'pro' | 'explore'>('host');
   const [bikeSearchQuery, setBikeSearchQuery] = useState("");
   const [showBikeResults, setShowBikeResults] = useState(false);
   const [savedBikes, setSavedBikes] = useState<SavedBike[]>([]);
@@ -218,33 +207,15 @@ function MapHome() {
     markDirty();
   };
 
-  const moveLocation = (index: number, direction: 'up' | 'down') => {
-    const targetIndex = direction === 'up' ? index - 1 : index + 1;
-    if (targetIndex < 0 || targetIndex >= locations.length) return;
-
-    const newLocs = [...locations];
-    const temp = newLocs[index];
-    newLocs[index] = newLocs[targetIndex];
-    newLocs[targetIndex] = temp;
-    
-    setLocations(newLocs);
-    syncLocationsToStates(newLocs);
-    markDirty();
-  };
-
   // Group Ride State
   const [activeRide, setActiveRide] = useState<GroupRide | null>(null);
-  const [publicRides, setPublicRides] = useState<GroupRide[]>([]);
   const [rideParticipants, setRideParticipants] = useState<Participant[]>([]);
   const [rideRoutePath, setRideRoutePath] = useState<google.maps.LatLngLiteral[]>([]);
   const [rideRouteStops, setRideRouteStops] = useState<{lat:number;lng:number;label:string}[]>([]);
-  const [groupRideName, setGroupRideName] = useState('');
-  const [isPublicRide, setIsPublicRide] = useState(true);
-  const [joinPin, setJoinPin] = useState('');
 
   // Navigation State
   const [isNavigating, setIsNavigating] = useState(false);
-  const [voiceEnabled, setVoiceEnabled] = useState(true);
+  const [voiceEnabled] = useState(true);
   const [currentLegIndex, setCurrentLegIndex] = useState(0);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [distToNextStep, setNextStepDist] = useState<string | null>(null);
@@ -272,9 +243,7 @@ function MapHome() {
             const d = snap.data();
             setUserData(d);
             setIsPro(d.isPro || false);
-            setIsHostTier(d.isHostTier || false);
             setIsExploreTier(d.isExploreTier || false);
-            if (d.hostTierExpiresAt?.toDate) setHostTierExpiresAt(d.hostTierExpiresAt.toDate());
             if (d.bikes) setSavedBikes(d.bikes);
 
             const isAdmin = u.email?.toLowerCase() === 'mattyfliptv@gmail.com';
@@ -324,7 +293,7 @@ function MapHome() {
           }
         }
       } else {
-        setUserData(null); setIsPro(false); setIsHostTier(false); setIsExploreTier(false); setHostTierExpiresAt(null);
+        setUserData(null); setIsPro(false); setIsExploreTier(false);
         localStorage.removeItem('active_ride_id');
         const local = localStorage.getItem('ebike-saved-bikes');
         if (local) {
@@ -389,21 +358,8 @@ function MapHome() {
       try {
         const data = JSON.parse(raw);
         if (data.isRecorded && Array.isArray(data.path)) {
-           setRecordedPath(data.path);
-           setResponse(null);
-           setMetrics({
-             distanceMiles: parseFloat(data.metrics?.distanceMiles || 0),
-             durationMin: parseInt(data.metrics?.durationMin || 0),
-             elevationGainFeet: 0,
-             elevationLossFeet: 0,
-             estimatedWh: 0,
-             batteryPercentUsed: 0,
-             recommendedSpeedMph: 0
-           });
-           const originStr = data.path.length > 0 ? `${data.path[0].lat.toFixed(6)}, ${data.path[0].lng.toFixed(6)}` : 'Recorded Ride Start';
-           const destStr = data.path.length > 0 ? `${data.path[data.path.length - 1].lat.toFixed(6)}, ${data.path[data.path.length - 1].lng.toFixed(6)}` : 'Recorded Ride End';
-           setTrip({ origin: originStr, destination: destStr, waypoints: [] });
-           setLocations([originStr, destStr, '', '', '']);
+           setTrip({ origin: 'Recorded Ride Start', destination: 'Recorded Ride End', waypoints: [] });
+           setLocations(['Recorded Ride Start', 'Recorded Ride End', '', '', '']);
            setPois([]);
            localStorage.removeItem('ebike_load_route');
            if (mapRef.current && data.path.length > 0) {
@@ -411,7 +367,6 @@ function MapHome() {
               mapRef.current.setZoom(14);
            }
         } else if (data && typeof data.origin === 'string' && data.origin.trim()) {
-          setRecordedPath(null);
           setTrip({ origin: data.origin, destination: data.destination, waypoints: data.waypoints });
           const wps = data.waypoints?.filter((w: any) => typeof w === 'string') || [];
           setLocations([data.origin, data.destination, wps[0] || '', wps[1] || '', wps[2] || '']);
@@ -451,17 +406,6 @@ function MapHome() {
       const reader = new FileReader(); reader.onloadend = () => setMapSnapshot(reader.result as string); reader.readAsDataURL(blob);
     }).catch(console.error);
   }, [response, selectedRouteIndex]);
-
-  useEffect(() => {
-    if (!user) return;
-    const q = query(collection(db, "group_rides"), where("isPublic", "==", true), where("status", "==", "active"));
-    const unsub = onSnapshot(q, (snap) => {
-      const rides: GroupRide[] = [];
-      snap.forEach(d => rides.push({ id: d.id, ...d.data() } as GroupRide));
-      setPublicRides(rides);
-    });
-    return () => unsub();
-  }, [user]);
 
   useEffect(() => {
     if (!activeRide || !user) return;
@@ -535,7 +479,7 @@ function MapHome() {
   }, [user, userData, selectedBikeId, shopBikes, activeRide, orgOwnerId]);
 
   const speak = (text: string) => {
-    if (voiceEnabled && 'speechSynthesis' in window) {
+    if ('speechSynthesis' in window) {
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
       window.speechSynthesis.speak(utterance);
@@ -607,9 +551,6 @@ function MapHome() {
   const loadBike = (bike: SavedBike) => {
     setSpecs(bike.specs); setBikeSearchQuery(bike.name); setShowBikeResults(false);
     if (bike.specs.voltage) setStartVoltage(getBatteryLevels(Number(bike.specs.voltage)).max);
-    const name = bike.name.toLowerCase();
-    if (name.includes("surron") || name.includes("talaria") || name.includes("onyx") || name.includes("dualtron") || name.includes("nami") || Number(bike.specs.voltage) >= 60) setControlType('switch');
-    else setControlType('pas');
     markDirty();
   };
 
@@ -637,7 +578,7 @@ function MapHome() {
        if (!userLocation) alert("Please enter both start and end points, or enable location services.");
        return;
     }
-    setRecordedPath(null); setIsLoading(true); setResponse(null); setMetrics(null); setPois([]); setSettingsDirty(false); 
+    setIsLoading(true); setResponse(null); setMetrics(null); setPois([]); setSettingsDirty(false); 
   };
 
   const calculateMetrics = async (result: google.maps.DirectionsResult, routeIndex: number = 0) => {
@@ -669,10 +610,9 @@ function MapHome() {
       }
       const ForceRolling = Crr * massKg * 9.81;
       const ForceDrag = 0.5 * rho * 0.55 * Math.pow(Math.max(0.1, velocityMps + headwindMph * 0.44704), 2);
-      let motorEff = mode === 'eco' ? 0.85 : 0.80;
       const tempEfficiency = tempF < 70 ? Math.max(0.7, 1 - (70 - tempF) * 0.005) : 1;
       const totalWhUsable = (Number(specs.voltage) * Number(specs.capacityAh)) * 0.92 * tempEfficiency;
-      const WhPerMile = Math.max(10, ((ForceRolling + ForceDrag) * velocityMps / velocityMps) * (1609.34 / 3600) / motorEff);
+      const WhPerMile = Math.max(10, ((ForceRolling + ForceDrag) * velocityMps / velocityMps) * (1609.34 / 3600) / 0.8);
       const estimatedWh = (distMiles * WhPerMile) + (gainFeet * 0.1);
       const { min, max } = getBatteryLevels(Number(specs.voltage));
       const startWh = batteryInputMode === 'percent' ? (totalWhUsable * (Number(startBattery)/100)) : (totalWhUsable * ((Number(startVoltage)-min)/(max-min)));
@@ -699,20 +639,7 @@ function MapHome() {
     } catch (e: any) { alert(`Checkout failed: ${e.message || 'Unknown error'}`); }
   };
 
-  const [mapInstance, setMapInstance] = useState<google.maps.Map | null>(null);
-  const onMapLoad = useCallback((map: google.maps.Map) => { mapRef.current = map; setMapInstance(map); }, []);
-
-  const useCurrentLocation = () => {
-    if (!navigator.geolocation) { alert("Geolocation is not supported by your browser."); return; }
-    navigator.geolocation.getCurrentPosition((pos) => {
-        const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        setUserLocation(loc);
-        if (mapRef.current) { mapRef.current.panTo(loc); mapRef.current.setZoom(15); }
-        setTrip(p => ({ ...p, origin: `${loc.lat.toFixed(6)}, ${loc.lng.toFixed(6)}` }));
-        markDirty();
-      }, (err) => { alert(`Location failed: ${err.message}.`); }, { enableHighAccuracy: true, timeout: 8000 }
-    );
-  };
+  const onMapLoad = useCallback((map: google.maps.Map) => { mapRef.current = map; }, []);
 
   const searchPOIs = async (category: string) => {
     if (!isLoaded || !mapRef.current) return;
@@ -831,11 +758,6 @@ function MapHome() {
                     <Autocomplete onLoad={(auto) => onAutocompleteLoad(index, auto)} onPlaceChanged={() => onPlaceChanged(index)}>
                         <input type="text" placeholder={index === 0 ? "Start" : `Stop ${index}`} value={loc} onChange={e => updateLocation(index, e.target.value)} style={{ flex: 1 }} />
                     </Autocomplete>
-                    {index === 0 && <button onClick={useCurrentLocation} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer' }}>📍</button>}
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                    <button disabled={index === 0} onClick={() => moveLocation(index, 'up')} style={{ background: '#222', border: 'none', color: '#888', padding: '2px 6px', borderRadius: '4px', fontSize: '0.6rem', cursor: 'pointer' }}>▲</button>
-                    <button disabled={index === locations.length - 1} onClick={() => moveLocation(index, 'down')} style={{ background: '#222', border: 'none', color: '#888', padding: '2px 6px', borderRadius: '4px', fontSize: '0.6rem', cursor: 'pointer' }}>▼</button>
                   </div>
                 </div>
               );
@@ -850,8 +772,6 @@ function MapHome() {
             <section className="form-group"><label>Voltage</label><input type="number" value={specs.voltage} onChange={e => { setSpecs(p => ({ ...p, voltage: parseFloat(e.target.value) || '' })); markDirty(); }} /></section>
             <section className="form-group"><label>Capacity (Ah)</label><input type="number" value={specs.capacityAh} onChange={e => { setSpecs(p => ({ ...p, capacityAh: parseFloat(e.target.value) || '' })); markDirty(); }} /></section>
           </div>
-
-          <section className="form-group"><label>Avg Speed (mph)</label><input type="number" value={targetSpeedMph} onChange={e => { setTargetSpeedMph(parseFloat(e.target.value) || ''); markDirty(); }} /></section>
 
           <section className="form-group">
             <label>Battery Entry</label>
@@ -881,6 +801,15 @@ function MapHome() {
         </aside>
 
         <main style={{ flex: 1, position: 'relative' }}>
+          {isNavigating && response && (
+            <div style={{ position: 'fixed', top: '5.5rem', left: '50%', transform: 'translateX(-50%)', width: '90%', maxWidth: '500px', zIndex: 10000, background: '#1a1a1a', border: '2px solid #ff6600', borderRadius: '20px', padding: '1.2rem', boxShadow: '0 10px 40px rgba(0,0,0,0.8)', display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ color: 'white', fontWeight: 'bold' }}>{distToNextStep || 'Navigating...'}</div>
+                  <button onClick={stopNavigation} style={{ background: '#444', color: 'white', border: 'none', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer' }}>✕</button>
+                </div>
+            </div>
+          )}
+
           <div style={{ position: 'absolute', top: '1rem', right: '1rem', zIndex: 10, display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
             <button onClick={() => searchPOIs('charging')} style={{ padding: '0.8rem 1.2rem', background: 'rgba(20,20,20,0.9)', color: 'white', border: '1px solid #333', borderRadius: '12px', fontWeight: 900 }}>⚡ Chargers</button>
             <button onClick={() => searchPOIs('cafe')} style={{ padding: '0.8rem 1.2rem', background: 'rgba(20,20,20,0.9)', color: 'white', border: '1px solid #333', borderRadius: '12px', fontWeight: 900 }}>☕ Cafes</button>
@@ -954,6 +883,7 @@ function MapHome() {
           <div style={{ marginTop: '1rem', display: 'flex', gap: '1rem' }}>
             <button onClick={() => setShowSharePreview(false)} style={{ padding: '1rem 2rem', background: '#333', color: 'white', border: 'none', borderRadius: '12px' }}>Cancel</button>
             <button onClick={downloadShareCard} style={{ padding: '1rem 2rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px' }}>Download</button>
+            <button onClick={shareToCommunity} style={{ padding: '1rem 2rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px' }}>Post</button>
           </div>
         </div>
       )}
