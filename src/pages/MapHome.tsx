@@ -260,7 +260,9 @@ function MapHome() {
         // Sync to Shop Org if rented
         if (userData?.orgId) {
           await setDoc(doc(db, `organizations/${userData.orgId}/live_units`, user.uid), {
-            unitName: userData.username || 'Rider',
+            unitName: bike?.unitId || userData.username || 'Rider',
+            riderName: userData.username || 'Rider',
+            bikeId: selectedBikeId,
             position: { lat, lng },
             battery: bike?.specs?.currentBatteryPercent || 100,
             milesRemaining: remainingMiles,
@@ -576,9 +578,39 @@ function MapHome() {
                 <AdvancedMarker 
                   position={shopLocation} 
                   title={userData?.orgName || "Shop HQ"} 
-                  icon={{ path: google.maps.SymbolPath.BACKWARD_CLOSED_ARROW, fillColor: '#ff6600', fillOpacity: 1, scale: 8, strokeColor: 'white', strokeWeight: 2 }} 
-                />
+                >
+                  <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <div style={{ background: '#333', color: 'white', padding: '2px 8px', borderRadius: '8px', fontSize: '0.6rem', fontWeight: 'bold', border: '1px solid #444', marginBottom: '2px' }}>
+                      HQ
+                    </div>
+                    <div style={{ background: '#ff6600', width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', border: '2px solid white', boxShadow: '0 4px 10px rgba(0,0,0,0.5)' }}>
+                      🏢
+                    </div>
+                  </div>
+                </AdvancedMarker>
               )}
+
+              {/* Render Available Bikes at HQ */}
+              {userRole === 'fleet' && shopLocation && shopBikes.filter(b => b.status === 'available').map((bike, idx) => (
+                <AdvancedMarker 
+                  key={`available_${bike.id}`} 
+                  position={{ 
+                    lat: shopLocation.lat + (idx * 0.00002), // Small stagger to avoid perfect overlap
+                    lng: shopLocation.lng + (idx * 0.00002) 
+                  }} 
+                  title={`${bike.unitId} (Available)`}
+                >
+                  <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', opacity: 0.8 }}>
+                    <div style={{ background: '#555', color: 'white', padding: '2px 6px', borderRadius: '8px', fontSize: '0.5rem', fontWeight: 'bold', border: '1px solid #777', marginBottom: '2px' }}>
+                      {bike.unitId}
+                    </div>
+                    <div style={{ background: 'white', width: '24px', height: '24px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem', border: '1px solid #34a853', boxShadow: '0 2px 5px rgba(0,0,0,0.3)' }}>
+                      🚲
+                    </div>
+                  </div>
+                </AdvancedMarker>
+              ))}
+
               {userRole === 'fleet' && liveUnits.map(lu => {
                 const isLow = lu.battery < 15;
                 const isWarn = lu.battery < 30;

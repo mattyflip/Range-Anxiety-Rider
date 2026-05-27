@@ -124,10 +124,13 @@ const FleetDashboard = () => {
     try {
       // 1. Update bike status in master list
       const bikeRef = doc(db, `organizations/${userData.orgId}/bikes`, bike.id);
-      await updateDoc(bikeRef, { status: 'available' });
+      await updateDoc(bikeRef, { 
+        status: 'available',
+        currentRiderId: null 
+      });
 
-      // 2. Remove from live units (if exists)
-      const q = query(collection(db, `organizations/${userData.orgId}/live_units`), where("unitName", "==", bike.unitId));
+      // 2. Remove from live units (if exists) - now querying by bikeId
+      const q = query(collection(db, `organizations/${userData.orgId}/live_units`), where("bikeId", "==", bike.id));
       const liveSnap = await getDocs(q);
       const deletePromises = liveSnap.docs.map(d => deleteDoc(doc(db, `organizations/${userData.orgId}/live_units`, d.id)));
       await Promise.all(deletePromises);
