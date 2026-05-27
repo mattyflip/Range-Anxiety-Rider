@@ -295,8 +295,6 @@ const FleetDashboard = () => {
           </div>
         )}
 
-        </div>
-
         {/* Appointments Section */}
         {rentalRequests.length > 0 && (
           <div style={{ marginBottom: '3rem' }}>
