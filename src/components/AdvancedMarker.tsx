@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
-import { createRoot, Root } from 'react-dom/client';
+import { createRoot } from 'react-dom/client';
+import type { Root } from 'react-dom/client';
 import { useGoogleMap } from '@react-google-maps/api';
 
 interface AdvancedMarkerProps {
