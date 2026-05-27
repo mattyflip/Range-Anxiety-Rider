@@ -108,14 +108,15 @@ function MapHome() {
     let unsubUser: (() => void) | null = null;
     let unsubLive: (() => void) | null = null;
     let unsubBikes: (() => void) | null = null;
+    let unsubOrg: (() => void) | null = null;
 
     const unsubAuth = onAuthStateChanged(auth, async (u) => {
       if (u) {
         setUser(u);
-        // Clear previous listeners if any
         if (unsubUser) unsubUser();
         if (unsubLive) unsubLive();
         if (unsubBikes) unsubBikes();
+        if (unsubOrg) unsubOrg();
 
         const userDocRef = doc(db, "users", u.uid);
         unsubUser = onSnapshot(userDocRef, (snap: DocumentSnapshot) => {
@@ -126,6 +127,17 @@ function MapHome() {
             setUserRole(role);
             
             if (d.orgId) {
+              // Reactively listen to Org details (Location/HQ)
+              unsubOrg = onSnapshot(doc(db, "organizations", d.orgId), (oSnap) => {
+                if (oSnap.exists()) {
+                  const oData = oSnap.data();
+                  setOrgOwnerId(oData.ownerId);
+                  if (oData.location?.lat && oData.location?.lng) {
+                    setShopLocation({ lat: oData.location.lat, lng: oData.location.lng });
+                  }
+                }
+              });
+
               // Manager/Renter needs bikes for specs
               unsubBikes = onSnapshot(query(collection(db, `organizations/${d.orgId}/bikes`)), (s) => {
                  const bikes = s.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -153,22 +165,11 @@ function MapHome() {
       if (unsubUser) unsubUser();
       if (unsubLive) unsubLive();
       if (unsubBikes) unsubBikes();
+      if (unsubOrg) unsubOrg();
     };
   }, []); // Run once on mount
 
-  useEffect(() => {
-    if (userData?.orgId) {
-      getDoc(doc(db, "organizations", userData.orgId)).then(snap => {
-        if (snap.exists()) {
-          const data = snap.data();
-          setOrgOwnerId(data.ownerId);
-          if (data.location?.lat && data.location?.lng) {
-            setShopLocation({ lat: data.location.lat, lng: data.location.lng });
-          }
-        }
-      });
-    }
-  }, [userData?.orgId]);
+  // Remove the static getDoc for orgId as it's now handled by the reactive listener above
 
   // Auto-focus map for Fleet Owners
   useEffect(() => {
