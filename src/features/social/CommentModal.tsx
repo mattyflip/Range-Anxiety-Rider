@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
-import { db } from '../firebase'
+import { db } from '../../firebase'
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, getDoc, doc, updateDoc, increment } from 'firebase/firestore'
-import { createNotification } from '../utils/notifications'
+import { createNotification } from '../../utils/notifications'
 
 interface Comment {
   id: string;

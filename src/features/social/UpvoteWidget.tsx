@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '../firebase';
+import { db } from '../../firebase';
 import { doc, getDoc, setDoc, deleteDoc, collection, getCountFromServer, serverTimestamp } from 'firebase/firestore';
 
 interface UpvoteWidgetProps {

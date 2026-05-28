@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
-import { auth, db } from '../firebase';
+import { auth, db } from '../../firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
 
 const AdBanner = () => {
   const [userData, setUserData] = useState<any>(null);
 
   useEffect(() => {
-    const unsubAuth = auth.onAuthStateChanged((user) => {
+    const unsubAuth = auth.onAuthStateChanged((user: any) => {
       if (user) {
         return onSnapshot(doc(db, "users", user.uid), (snap) => {
           if (snap.exists()) setUserData(snap.data());

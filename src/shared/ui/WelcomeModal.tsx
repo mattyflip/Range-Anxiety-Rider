@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
-import TermsOfService from './TermsOfService';
-import PrivacyPolicy from './PrivacyPolicy';
+import TermsOfService from '../../features/legal/TermsOfService';
+import PrivacyPolicy from '../../features/legal/PrivacyPolicy';
 
 interface WelcomeModalProps {
   onClose: () => void;

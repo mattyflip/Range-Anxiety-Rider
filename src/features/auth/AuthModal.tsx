@@ -1,10 +1,10 @@
 import React, { useState } from 'react'
-import { auth, db } from '../firebase'
+import { auth, db } from '../../firebase'
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth'
 import { doc, setDoc, serverTimestamp, getDocs, collection, query, where } from 'firebase/firestore'
-import TermsOfService from './TermsOfService'
-import PrivacyPolicy from './PrivacyPolicy'
-import { US_STATES, OTHER_REGIONS, calculateAge, getEbikeSafetyInfo } from '../utils/ebikeLaws'
+import TermsOfService from '../legal/TermsOfService'
+import PrivacyPolicy from '../legal/PrivacyPolicy'
+import { US_STATES, OTHER_REGIONS, calculateAge, getEbikeSafetyInfo } from '../../utils/ebikeLaws'
 
 interface AuthModalProps {
   onClose: () => void;
