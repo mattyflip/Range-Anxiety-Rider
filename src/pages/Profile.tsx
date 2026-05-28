@@ -3,9 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { db, auth, storage } from '../firebase'
 import { doc, arrayRemove, collection, setDoc, query, where, onSnapshot, updateDoc, getDoc, getCountFromServer, getDocs, addDoc, serverTimestamp, deleteDoc, orderBy } from 'firebase/firestore'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
-import NavBar from '../components/NavBar'
-import InstallTutorial from '../components/InstallTutorial'
-import AuthModal from '../components/AuthModal'
+import NavBar from '../shared/ui/NavBar'
+import InstallTutorial from '../shared/ui/InstallTutorial'
+import AuthModal from '../features/auth/AuthModal'
 import { createNotification } from '../utils/notifications'
 
 interface Post {

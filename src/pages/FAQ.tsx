@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { auth } from '../firebase'
-import NavBar from '../components/NavBar'
-import AuthModal from '../components/AuthModal'
-import SEO from '../components/SEO'
+import NavBar from '../shared/ui/NavBar'
+import AuthModal from '../features/auth/AuthModal'
+import SEO from '../shared/ui/SEO'
 
 const FAQ: React.FC = () => {
   const [user, setUser] = useState<any>(null);

@@ -2,12 +2,12 @@ import React, { useState, useEffect } from 'react'
 import { db, auth } from '../firebase'
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, updateDoc } from 'firebase/firestore'
 import { useNavigate, Link } from 'react-router-dom'
-import NavBar from '../components/NavBar'
-import InstallTutorial from '../components/InstallTutorial'
-import AuthModal from '../components/AuthModal'
-import UniversalSearch from '../components/UniversalSearch'
-import AdBanner from '../components/AdBanner'
-import SEO from '../components/SEO'
+import NavBar from '../shared/ui/NavBar'
+import InstallTutorial from '../shared/ui/InstallTutorial'
+import AuthModal from '../features/auth/AuthModal'
+import UniversalSearch from '../features/map/UniversalSearch'
+import AdBanner from '../shared/ui/AdBanner'
+import SEO from '../shared/ui/SEO'
 
 interface Community {
   id: string;

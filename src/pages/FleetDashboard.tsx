@@ -6,8 +6,8 @@ import type { User } from 'firebase/auth'
 import { doc, getDoc, collection, onSnapshot, query, updateDoc, setDoc, deleteDoc, getDocs, where } from 'firebase/firestore'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { sendEmail } from '../utils/email'
-import NavBar from '../components/NavBar'
-import SEO from '../components/SEO'
+import NavBar from '../shared/ui/NavBar'
+import SEO from '../shared/ui/SEO'
 
 const FleetDashboard = () => {
   const navigate = useNavigate();

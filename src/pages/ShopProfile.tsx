@@ -4,10 +4,10 @@ import { auth, db } from '../firebase'
 import { onAuthStateChanged, deleteUser, signOut } from 'firebase/auth'
 import { doc, updateDoc, deleteDoc, onSnapshot, setDoc, getDoc } from 'firebase/firestore'
 import { useJsApiLoader, GoogleMap } from '@react-google-maps/api'
-import NavBar from '../components/NavBar'
-import ModernAutocomplete from '../components/ModernAutocomplete'
-import AdvancedMarker from '../components/AdvancedMarker'
-import SEO from '../components/SEO'
+import NavBar from '../shared/ui/NavBar'
+import ModernAutocomplete from '../features/map/ModernAutocomplete'
+import AdvancedMarker from '../features/map/AdvancedMarker'
+import SEO from '../shared/ui/SEO'
 
 const LIBRARIES: ("places" | "geometry")[] = ["places", "geometry"];
 

@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { db, auth } from '../firebase'
 import { collection, query, orderBy, onSnapshot, updateDoc, doc, writeBatch } from 'firebase/firestore'
-import NavBar from '../components/NavBar'
-import InstallTutorial from '../components/InstallTutorial'
-import AuthModal from '../components/AuthModal'
+import NavBar from '../shared/ui/NavBar'
+import InstallTutorial from '../shared/ui/InstallTutorial'
+import AuthModal from '../features/auth/AuthModal'
 
 const Notifications: React.FC = () => {
   const navigate = useNavigate();

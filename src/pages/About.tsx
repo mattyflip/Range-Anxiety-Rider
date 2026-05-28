@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react'
 import { auth, db } from '../firebase'
 import { onAuthStateChanged } from 'firebase/auth'
 import { doc, getDoc, getDocs, collection, addDoc } from 'firebase/firestore'
-import NavBar from '../components/NavBar'
-import AuthModal from '../components/AuthModal'
+import NavBar from '../shared/ui/NavBar'
+import AuthModal from '../features/auth/AuthModal'
 import { createNotification } from '../utils/notifications'
-import SEO from '../components/SEO'
+import SEO from '../shared/ui/SEO'
 
 const About: React.FC = () => {
   const [user, setUser] = useState<any>(null);

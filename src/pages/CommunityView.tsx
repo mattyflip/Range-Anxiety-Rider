@@ -3,11 +3,11 @@ import { db, auth, storage } from '../firebase'
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, getDoc, doc, updateDoc, increment, deleteDoc, arrayUnion, arrayRemove } from 'firebase/firestore'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { useParams, Link } from 'react-router-dom'
-import NavBar from '../components/NavBar'
-import InstallTutorial from '../components/InstallTutorial'
-import AuthModal from '../components/AuthModal'
+import NavBar from '../shared/ui/NavBar'
+import InstallTutorial from '../shared/ui/InstallTutorial'
+import AuthModal from '../features/auth/AuthModal'
 import { createNotification } from '../utils/notifications'
-import SEO from '../components/SEO'
+import SEO from '../shared/ui/SEO'
 
 interface Thread {
   id: string;

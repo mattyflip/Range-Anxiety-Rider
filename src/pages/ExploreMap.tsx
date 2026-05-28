@@ -3,13 +3,13 @@ import { GoogleMap, useJsApiLoader, Polyline } from '@react-google-maps/api';
 import { auth, db } from '../firebase';
 import { doc, getDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
-import NavBar from '../components/NavBar';
-import AuthModal from '../components/AuthModal';
-import TermsOfService from '../components/TermsOfService';
-import PrivacyPolicy from '../components/PrivacyPolicy';
-import InstallTutorial from '../components/InstallTutorial';
-import SEO from '../components/SEO';
-import AdvancedMarker from '../components/AdvancedMarker';
+import NavBar from '../shared/ui/NavBar';
+import AuthModal from '../features/auth/AuthModal';
+import TermsOfService from '../features/legal/TermsOfService';
+import PrivacyPolicy from '../features/legal/PrivacyPolicy';
+import InstallTutorial from '../shared/ui/InstallTutorial';
+import SEO from '../shared/ui/SEO';
+import AdvancedMarker from '../features/map/AdvancedMarker';
 
 const LIBRARIES: ("places" | "geometry")[] = ["places", "geometry"];
 
