@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { GoogleMap, useJsApiLoader, DirectionsRenderer, InfoWindowF, Autocomplete } from '@react-google-maps/api'
-import axios from 'axios'
 import { toPng } from 'html-to-image'
 import { auth, db, storage } from '../firebase'
 import { onAuthStateChanged } from 'firebase/auth'
@@ -32,14 +31,6 @@ interface GroupRide {
   status: string;
   leaderId?: string;
   leaderTrail?: google.maps.LatLngLiteral[];
-}
-
-interface Participant {
-  userId: string;
-  name: string;
-  lat: number;
-  lng: number;
-  lastUpdatedAt: number;
 }
 
 interface BikeSpecs {
@@ -109,14 +100,9 @@ function MapHome() {
 
   const [unitSystem, setUnitSystem] = useState<'imperial' | 'metric'>('imperial');
   const [specs, setSpecs] = useState<BikeSpecs>({ voltage: 48, capacityAh: 15, motorWatts: 750, bikeWeightLbs: 65 });
-  const [riderWeightLbs] = useState<number | ''>(200);
-  const [ambientTempF] = useState<number | ''>(70);
-  const [tireType] = useState<'road' | 'knobby'>('road');
-  const [tirePressurePsi] = useState<number | ''>(''); 
   
   const [trip, setTrip] = useState<TripDetails>({ origin: '', destination: '', waypoints: [] });
   const [isRoundTrip, setIsRoundTrip] = useState(false);
-  const [targetSpeedMph] = useState<number | ''>(20);
   
   const [batteryInputMode, setBatteryInputMode] = useState<'percent' | 'voltage'>('percent'); 
   const [startBattery, setStartBattery] = useState<number | ''>(100);
