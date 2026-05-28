@@ -26,19 +26,85 @@ export const config = {
   },
 };
 
-// More robust buffering for Vercel
+// --- HELPERS ---
+
 async function getRawBody(req: VercelRequest): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const chunks: any[] = [];
-    req.on('data', (chunk) => {
-      chunks.push(chunk);
-    });
-    req.on('end', () => {
-      resolve(Buffer.concat(chunks));
-    });
+    req.on('data', (chunk) => chunks.push(chunk));
+    req.on('end', () => resolve(Buffer.concat(chunks)));
     req.on('error', reject);
   });
 }
+
+// --- EVENT HANDLERS ---
+
+async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) {
+  const userId = session.metadata?.userId;
+  const tier = session.metadata?.tier;
+
+  if (!userId || typeof userId !== 'string' || userId.length > 128) {
+    console.error(`[SECURITY] Invalid or missing userId in session metadata: ${userId}`);
+    return;
+  }
+
+  const updateData: any = {
+    updatedAt: FieldValue.serverTimestamp(),
+  };
+
+  const now = new Date();
+
+  if (tier === 'shop') {
+    updateData.isShopTier = true;
+    const expiresAt = new Date(now);
+    expiresAt.setDate(expiresAt.getDate() + 31);
+    updateData.shopTierExpiresAt = Timestamp.fromDate(expiresAt);
+  } else if (tier === 'group_ride') {
+    updateData.canHostGroupRide = true;
+    const expiresAt = new Date(now);
+    expiresAt.setHours(expiresAt.getHours() + 24);
+    updateData.groupRideExpiresAt = Timestamp.fromDate(expiresAt);
+  } else {
+    console.warn(`[SECURITY] Received unhandled or invalid tier in webhook: ${tier}`);
+    return;
+  }
+
+  await db.collection('users').doc(userId).set(updateData, { merge: true });
+  console.log(`Successfully upgraded user ${userId} to ${tier}`);
+}
+
+async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
+  const subscriptionId = invoice.subscription as string;
+  if (!subscriptionId) return;
+
+  const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+  const userId = subscription.metadata?.userId;
+
+  if (userId) {
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 31);
+    await db.collection('users').doc(userId).update({
+      shopTierExpiresAt: Timestamp.fromDate(expiresAt),
+      isShopTier: true
+    });
+    console.log(`Successfully renewed SHOP TIER for user ${userId}`);
+  }
+}
+
+async function handleSubscriptionDeletedOrFailed(obj: any) {
+  const subscriptionId = obj.subscription || obj.id;
+  const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+  const userId = subscription.metadata?.userId;
+
+  if (userId) {
+    await db.collection('users').doc(userId).update({
+      isShopTier: false
+    });
+    console.log(`Successfully deactivated SHOP TIER for user ${userId}`);
+  }
+}
+
+// --- MAIN HANDLER ---
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -49,92 +115,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
   if (!sig || !webhookSecret) {
-    console.error('Missing signature or webhook secret');
     return res.status(400).send('Webhook Error: Missing signature or secret');
   }
 
-  const rawBody = await getRawBody(req);
-
-  let event: Stripe.Event;
-
   try {
-    // We pass the raw buffer directly to prevent any string-encoding issues
-    event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret);
+    const rawBody = await getRawBody(req);
+    const event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret);
+
+    switch (event.type) {
+      case 'checkout.session.completed':
+        await handleCheckoutSessionCompleted(event.data.object as Stripe.Checkout.Session);
+        break;
+      
+      case 'invoice.payment_succeeded':
+        await handleInvoicePaymentSucceeded(event.data.object as Stripe.Invoice);
+        break;
+
+      case 'customer.subscription.deleted':
+      case 'invoice.payment_failed':
+        await handleSubscriptionDeletedOrFailed(event.data.object);
+        break;
+
+      default:
+        console.log(`Unhandled event type: ${event.type}`);
+    }
+
+    res.status(200).json({ received: true });
   } catch (err: any) {
-    console.error(`Signature Verification Failed: ${err.message}`);
+    console.error(`Webhook Processing Error: ${err.message}`);
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
-
-  if (event.type === 'checkout.session.completed') {
-    const session = event.data.object as Stripe.Checkout.Session;
-    const userId = session.metadata?.userId;
-    const tier = session.metadata?.tier;
-
-    if (userId) {
-      try {
-        const updateData: any = {
-          updatedAt: FieldValue.serverTimestamp(),
-        };
-
-        if (tier === 'shop') {
-          updateData.isShopTier = true;
-          // Shop tier is monthly, but we set an initial expiry for 31 days 
-          // to be safe before the next invoice.payment_succeeded
-          const expiresAt = new Date();
-          expiresAt.setDate(expiresAt.getDate() + 31);
-          updateData.shopTierExpiresAt = Timestamp.fromDate(expiresAt);
-        } else if (tier === 'group_ride') {
-          updateData.canHostGroupRide = true;
-          const expiresAt = new Date();
-          expiresAt.setHours(expiresAt.getHours() + 24);
-          updateData.groupRideExpiresAt = Timestamp.fromDate(expiresAt);
-        } else {
-          console.log(`Unhandled tier: ${tier}`);
-        }
-
-        await db.collection('users').doc(userId).set(updateData, { merge: true });
-        console.log(`Successfully upgraded user ${userId} to ${tier}`);
-      } catch (e: any) {
-        console.error('Error updating user status in Firestore:', e.message);
-        return res.status(500).send(`Database Error: ${e.message}`);
-      }
-    }
-  }
-
-  // Handle subscription renewals for SHOP TIER
-  if (event.type === 'invoice.payment_succeeded') {
-    const invoice = event.data.object as any;
-    const subscriptionId = invoice.subscription as string;
-    
-    // Fetch subscription to get metadata
-    if (subscriptionId) {
-      const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-      const userId = subscription.metadata?.userId;
-
-      if (userId) {
-        const expiresAt = new Date();
-        expiresAt.setDate(expiresAt.getDate() + 31);
-        await db.collection('users').doc(userId).update({
-          shopTierExpiresAt: Timestamp.fromDate(expiresAt),
-          isShopTier: true
-        });
-      }
-    }
-  }
-
-  // Handle cancellation/failure
-  if (event.type === 'customer.subscription.deleted' || event.type === 'invoice.payment_failed') {
-    const obj = event.data.object as any;
-    const subscriptionId = obj.subscription || obj.id;
-    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-    const userId = subscription.metadata?.userId;
-
-    if (userId) {
-      await db.collection('users').doc(userId).update({
-        isShopTier: false
-      });
-    }
-  }
-
-  res.status(200).json({ received: true });
 }

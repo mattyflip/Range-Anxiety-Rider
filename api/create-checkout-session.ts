@@ -66,11 +66,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const { userId, email, tier } = req.body;
 
-  if (!userId) {
-    return res.status(400).json({ error: 'User ID is required' });
+  // SECURITY FIX #1: Strict type and format validation
+  if (!userId || typeof userId !== 'string' || userId.length > 128) {
+    return res.status(400).json({ error: 'Invalid User ID' });
   }
 
-  // SECURITY FIX #1: Verify the authenticated user matches the userId in the request body.
+  if (!tier || typeof tier !== 'string') {
+    return res.status(400).json({ error: 'Tier is required' });
+  }
+
+  // SECURITY FIX #2: Verify the authenticated user matches the userId in the request body.
   // Without this check, any authenticated user could pass a different userId and create
   // a checkout session attributed to another account.
   if (decodedToken.uid !== userId) {
@@ -78,10 +83,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(403).json({ error: 'Forbidden: Cannot create checkout for another user' });
   }
 
-  // SECURITY FIX #2: Validate tier against a server-side whitelist BEFORE any price logic.
-  // Without this, a crafted request could potentially reach unintended code paths.
+  // SECURITY FIX #3: Validate tier against a server-side whitelist BEFORE any price logic.
   const tierConfig = TIER_CONFIG[tier];
   if (!tierConfig) {
+    console.error(`[SECURITY] Invalid tier attempt: ${tier}`);
     return res.status(400).json({ error: 'Invalid tier selected' });
   }
 

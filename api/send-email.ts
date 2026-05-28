@@ -37,6 +37,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const { to, subject, text, html } = req.body;
 
+  // SECURITY FIX: Basic input validation
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!to || typeof to !== 'string' || !emailRegex.test(to)) {
+    return res.status(400).json({ error: 'Invalid recipient email' });
+  }
+
+  if (!subject || typeof subject !== 'string' || subject.length > 255) {
+    return res.status(400).json({ error: 'Invalid subject' });
+  }
+
+  if ((!text || typeof text !== 'string') && (!html || typeof html !== 'string')) {
+    return res.status(400).json({ error: 'Email content (text or html) is required' });
+  }
+
   try {
     const data = await resend.emails.send({
       from: process.env.RESEND_FROM_EMAIL || 'Range Anxiety Rider <Info@rangeanxietyrider.com>',
