@@ -1,73 +1,48 @@
-# React + TypeScript + Vite
+# Range Anxiety Rider 🚲
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A professional-grade platform for e-bike range calculation, fleet management, and community tools.
 
-Currently, two official plugins are available:
+## 🚀 Tech Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **Frontend:** React 19 + TypeScript + Vite
+- **Styling:** Vanilla CSS (Flexible & Modern)
+- **Backend:** Vercel Functions (Serverless Node.js)
+- **Database/Auth:** Firebase (Firestore, Auth, Admin SDK)
+- **Payments:** Stripe (Checkout, Subscriptions, Webhooks)
+- **Email:** Resend
+- **Testing:** Vitest
 
-## React Compiler
+## 🏗️ Project Architecture
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+We follow a **Feature-Based Architecture** to ensure long-term maintainability for solo-developer and small-team environments.
 
-## Expanding the ESLint configuration
+### Folder Structure
+- `/api`: Serverless backend functions and their integration tests.
+- `/src/features`: Domain-specific modules (e.g., `map`, `auth`, `social`).
+- `/src/shared`: Reusable UI components and utilities.
+- `/src/pages`: Top-level routing components.
+- `/src/utils`: Global helper functions.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## 🛠️ Development
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+### Setup
+1. Clone the repo.
+2. Install dependencies: `npm install`.
+3. Configure environment variables in `.env` (see `.env.example`).
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+### Commands
+- `npm run dev`: Start the Vite development server.
+- `npm run build`: Build for production.
+- `npm run test`: Run the integration test suite.
+- `npm run lint`: Run ESLint checks.
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## ✅ Quality Standards
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+This project maintains high standards for **Security** and **Reliability**:
+- **Automated Testing:** All critical paths (Payments, Auth) are protected by Vitest integration tests.
+- **Security Hardening:** Strict input validation and server-side whitelisting are mandatory for all API endpoints.
+- **Clean Code:** Complex logic (like Stripe Webhooks) uses the Strategy Pattern to remain readable.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+---
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+*For detailed development guidelines, see [CONTRIBUTING.md](./CONTRIBUTING.md).*
