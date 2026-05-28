@@ -5,7 +5,7 @@ import { toPng } from 'html-to-image'
 import { auth, db, storage } from '../firebase'
 import { onAuthStateChanged } from 'firebase/auth'
 import type { User } from 'firebase/auth'
-import { doc, getDoc, collection, addDoc, serverTimestamp, updateDoc, query, where, onSnapshot, setDoc, arrayUnion, type DocumentSnapshot } from 'firebase/firestore'
+import { doc, getDoc, collection, addDoc, serverTimestamp, updateDoc, query, onSnapshot, setDoc, arrayUnion, type DocumentSnapshot } from 'firebase/firestore'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import TermsOfService from '../components/TermsOfService'
 import PrivacyPolicy from '../components/PrivacyPolicy'
@@ -115,8 +115,6 @@ function MapHome() {
   const [tirePressurePsi] = useState<number | ''>(''); 
   
   const [trip, setTrip] = useState<TripDetails>({ origin: '', destination: '', waypoints: [] });
-  const [mode] = useState<'eco' | 'normal' | 'sport'>('normal');
-  const [controlType] = useState<'switch' | 'pas'>('pas');
   const [isRoundTrip, setIsRoundTrip] = useState(false);
   const [targetSpeedMph] = useState<number | ''>(20);
   
@@ -125,9 +123,9 @@ function MapHome() {
   const [startVoltage, setStartVoltage] = useState<number | ''>(54.6);
   
   const [response, setResponse] = useState<google.maps.DirectionsResult | null>(null);
-  const [selectedRouteIndex, setSelectedRouteIndex] = useState(0);
+  const [selectedRouteIndex] = useState(0);
   const [metrics, setMetrics] = useState<RouteMetrics | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [, setIsLoading] = useState(false);
   const [pois, setPois] = useState<POI[]>([]);
   const [selectedPoi, setSelectedPoi] = useState<POI | null>(null);
   
@@ -209,13 +207,9 @@ function MapHome() {
 
   // Group Ride State
   const [activeRide, setActiveRide] = useState<GroupRide | null>(null);
-  const [rideParticipants, setRideParticipants] = useState<Participant[]>([]);
-  const [rideRoutePath, setRideRoutePath] = useState<google.maps.LatLngLiteral[]>([]);
-  const [rideRouteStops, setRideRouteStops] = useState<{lat:number;lng:number;label:string}[]>([]);
 
   // Navigation State
   const [isNavigating, setIsNavigating] = useState(false);
-  const [voiceEnabled] = useState(true);
   const [currentLegIndex, setCurrentLegIndex] = useState(0);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [distToNextStep, setNextStepDist] = useState<string | null>(null);
@@ -408,17 +402,6 @@ function MapHome() {
   }, [response, selectedRouteIndex]);
 
   useEffect(() => {
-    if (!activeRide || !user) return;
-    const q = collection(db, `group_rides/${activeRide.id}/participants`);
-    const unsub = onSnapshot(q, (snap) => {
-      const parts: Participant[] = [];
-      snap.forEach(d => parts.push(d.data() as Participant));
-      setRideParticipants(parts);
-    });
-    return () => unsub();
-  }, [activeRide?.id, user]);
-
-  useEffect(() => {
     if (!user) return;
     const watchId = navigator.geolocation.watchPosition(async (pos) => {
       const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
@@ -579,49 +562,6 @@ function MapHome() {
        return;
     }
     setIsLoading(true); setResponse(null); setMetrics(null); setPois([]); setSettingsDirty(false); 
-  };
-
-  const calculateMetrics = async (result: google.maps.DirectionsResult, routeIndex: number = 0) => {
-    try {
-      const route = result.routes[routeIndex];
-      let distMeters = 0; route.legs.forEach(leg => distMeters += (leg.distance?.value || 0));
-      const multiplier = isRoundTrip ? 2 : 1;
-      const distMiles = (distMeters / 1609.34) * multiplier;
-      const path = route.overview_path.map(p => ({ lat: p.lat(), lng: p.lng() }));
-      let gainFeet = 0;
-      try {
-        const encodedPath = google.maps.geometry.encoding.encodePath(route.overview_path);
-        const elevResp = await axios.post('/api/elevation', { encodedPath, samples: 100 });
-        if (elevResp.data?.gain) { gainFeet = elevResp.data.gain * multiplier; }
-      } catch (e) { }
-      let windSpeed = 0, headwindMph = 0;
-      try {
-        const res = await axios.get(`/api/weather?lat=${path[0].lat}&lng=${path[0].lng}`);
-        windSpeed = res.data.wind_speed; headwindMph = windSpeed * 0.5;
-      } catch (e) { }
-      const massKg = (Number(specs.bikeWeightLbs) + (Number(userData?.riderWeight) || Number(riderWeightLbs))) * 0.453592;
-      const velocityMps = Number(targetSpeedMph) * 0.44704;
-      const tempF = Number(ambientTempF) || 70;
-      const rho = 1.225 * (518.67 / (459.67 + tempF));
-      let Crr = tireType === 'road' ? 0.007 : 0.015;
-      if (tirePressurePsi && Number(tirePressurePsi) > 0) {
-        const refPsi = tireType === 'road' ? 40 : 25;
-        Crr = Crr * (refPsi / Number(tirePressurePsi));
-      }
-      const ForceRolling = Crr * massKg * 9.81;
-      const ForceDrag = 0.5 * rho * 0.55 * Math.pow(Math.max(0.1, velocityMps + headwindMph * 0.44704), 2);
-      const tempEfficiency = tempF < 70 ? Math.max(0.7, 1 - (70 - tempF) * 0.005) : 1;
-      const totalWhUsable = (Number(specs.voltage) * Number(specs.capacityAh)) * 0.92 * tempEfficiency;
-      const WhPerMile = Math.max(10, ((ForceRolling + ForceDrag) * velocityMps / velocityMps) * (1609.34 / 3600) / 0.8);
-      const estimatedWh = (distMiles * WhPerMile) + (gainFeet * 0.1);
-      const { min, max } = getBatteryLevels(Number(specs.voltage));
-      const startWh = batteryInputMode === 'percent' ? (totalWhUsable * (Number(startBattery)/100)) : (totalWhUsable * ((Number(startVoltage)-min)/(max-min)));
-      const remaining = ((startWh - estimatedWh) / totalWhUsable) * 100;
-      const endingVoltage = min + (Math.max(0, remaining / 100) * (max - min));
-      let deathPoint; if (remaining <= 0) deathPoint = path[Math.floor(path.length * 0.8)];
-      setMetrics({ distanceMiles: distMiles, durationMin: distMiles / (Number(targetSpeedMph) || 15) * 60, elevationGainFeet: gainFeet, elevationLossFeet: 0, estimatedWh, batteryPercentUsed: Math.max(0, remaining), recommendedSpeedMph: 20, deathPoint, endingVoltage, windConditions: { speed: windSpeed, direction: 0, headwindComponent: headwindMph } });
-      setIsLoading(false);
-    } catch (e) { setIsLoading(false); }
   };
 
   const checkoutExploreTier = async () => {
