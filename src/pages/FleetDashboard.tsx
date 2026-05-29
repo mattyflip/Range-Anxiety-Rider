@@ -35,8 +35,11 @@ const FleetDashboard = () => {
     unitId: '',
     voltage: '48',
     capacityAh: '15',
+    capacityUnit: 'Ah',
     motorWatts: '750',
     tirePSI: '30',
+    tireType: 'all-terrain',
+    driveMode: 'both',
     bikeWeightLbs: '65',
     targetSpeedMph: '20',
     controllerAmps: '',
@@ -303,14 +306,24 @@ const FleetDashboard = () => {
     if (!userData?.orgId || !bikeForm.unitId.trim()) return;
     const bikeId = editingBike?.id || Date.now().toString();
     try {
+      let finalCapacityAh = parseFloat(bikeForm.capacityAh);
+      if (bikeForm.capacityUnit === 'Wh') {
+        const v = parseFloat(bikeForm.voltage) || 48;
+        finalCapacityAh = finalCapacityAh / v;
+      }
+
       await setDoc(doc(db, `organizations/${userData.orgId}/bikes`, bikeId), {
         unitId: bikeForm.unitId,
         imageUrl: bikeForm.imageUrl || '',
         specs: {
           voltage: parseFloat(bikeForm.voltage),
-          capacityAh: parseFloat(bikeForm.capacityAh),
+          capacityAh: finalCapacityAh,
+          capacityUnit: bikeForm.capacityUnit,
+          originalCapacityInput: parseFloat(bikeForm.capacityAh),
           motorWatts: parseFloat(bikeForm.motorWatts),
           tirePSI: parseFloat(bikeForm.tirePSI),
+          tireType: bikeForm.tireType,
+          driveMode: bikeForm.driveMode,
           bikeWeightLbs: parseFloat(bikeForm.bikeWeightLbs),
           targetSpeedMph: parseFloat(bikeForm.targetSpeedMph),
           controllerAmps: bikeForm.controllerAmps ? parseFloat(bikeForm.controllerAmps) : null,
@@ -329,12 +342,15 @@ const FleetDashboard = () => {
     setEditingBike(bike);
     setBikeForm({
       unitId: bike.unitId,
-      voltage: bike.specs.voltage.toString(),
-      capacityAh: bike.specs.capacityAh.toString(),
-      motorWatts: bike.specs.motorWatts.toString(),
-      tirePSI: bike.specs.tirePSI.toString(),
-      bikeWeightLbs: bike.specs.bikeWeightLbs.toString(),
-      targetSpeedMph: bike.specs.targetSpeedMph.toString(),
+      voltage: bike.specs.voltage?.toString() || '48',
+      capacityAh: bike.specs.originalCapacityInput?.toString() || bike.specs.capacityAh?.toString() || '15',
+      capacityUnit: bike.specs.capacityUnit || 'Ah',
+      motorWatts: bike.specs.motorWatts?.toString() || '750',
+      tirePSI: bike.specs.tirePSI?.toString() || '30',
+      tireType: bike.specs.tireType || 'all-terrain',
+      driveMode: bike.specs.driveMode || 'both',
+      bikeWeightLbs: bike.specs.bikeWeightLbs?.toString() || '65',
+      targetSpeedMph: bike.specs.targetSpeedMph?.toString() || '20',
       controllerAmps: bike.specs.controllerAmps?.toString() || '',
       cycleCount: bike.specs.cycleCount?.toString() || '0',
       imageUrl: bike.imageUrl || ''
@@ -649,16 +665,42 @@ const FleetDashboard = () => {
                    <input type="number" value={bikeForm.voltage} onChange={e => setBikeForm({...bikeForm, voltage: e.target.value})} style={{ width: '100%', padding: '0.8rem', background: '#111', border: '1px solid #333', borderRadius: '8px', color: 'white' }} />
                  </div>
                  <div>
-                   <label style={{ display: 'block', color: '#666', fontSize: '0.7rem', marginBottom: '0.3rem' }}>Capacity (Ah)</label>
-                   <input type="number" value={bikeForm.capacityAh} onChange={e => setBikeForm({...bikeForm, capacityAh: e.target.value})} style={{ width: '100%', padding: '0.8rem', background: '#111', border: '1px solid #333', borderRadius: '8px', color: 'white' }} />
+                   <label style={{ display: 'block', color: '#666', fontSize: '0.7rem', marginBottom: '0.3rem' }}>Capacity (Ah or Wh)</label>
+                   <div style={{ display: 'flex', gap: '0.5rem' }}>
+                     <input type="number" value={bikeForm.capacityAh} onChange={e => setBikeForm({...bikeForm, capacityAh: e.target.value})} style={{ flex: 1, padding: '0.8rem', background: '#111', border: '1px solid #333', borderRadius: '8px', color: 'white' }} />
+                     <select value={bikeForm.capacityUnit} onChange={e => setBikeForm({...bikeForm, capacityUnit: e.target.value})} style={{ width: '60px', padding: '0.8rem', background: '#111', border: '1px solid #333', borderRadius: '8px', color: 'white' }}>
+                       <option value="Ah">Ah</option>
+                       <option value="Wh">Wh</option>
+                     </select>
+                   </div>
                  </div>
                  <div>
                    <label style={{ display: 'block', color: '#666', fontSize: '0.7rem', marginBottom: '0.3rem' }}>Motor Watts</label>
                    <input type="number" value={bikeForm.motorWatts} onChange={e => setBikeForm({...bikeForm, motorWatts: e.target.value})} style={{ width: '100%', padding: '0.8rem', background: '#111', border: '1px solid #333', borderRadius: '8px', color: 'white' }} />
                  </div>
                  <div>
+                   <label style={{ display: 'block', color: '#666', fontSize: '0.7rem', marginBottom: '0.3rem' }}>Tire Type</label>
+                   <select value={bikeForm.tireType} onChange={e => setBikeForm({...bikeForm, tireType: e.target.value})} style={{ width: '100%', padding: '0.8rem', background: '#111', border: '1px solid #333', borderRadius: '8px', color: 'white' }}>
+                     <option value="slick">Slick</option>
+                     <option value="all-terrain">All-Terrain</option>
+                     <option value="knobby">Knobby</option>
+                   </select>
+                 </div>
+                 <div>
                    <label style={{ display: 'block', color: '#666', fontSize: '0.7rem', marginBottom: '0.3rem' }}>Tire PSI</label>
                    <input type="number" value={bikeForm.tirePSI} onChange={e => setBikeForm({...bikeForm, tirePSI: e.target.value})} style={{ width: '100%', padding: '0.8rem', background: '#111', border: '1px solid #333', borderRadius: '8px', color: 'white' }} />
+                 </div>
+                 <div>
+                   <label style={{ display: 'block', color: '#666', fontSize: '0.7rem', marginBottom: '0.3rem' }}>Drive Mode</label>
+                   <select value={bikeForm.driveMode} onChange={e => setBikeForm({...bikeForm, driveMode: e.target.value})} style={{ width: '100%', padding: '0.8rem', background: '#111', border: '1px solid #333', borderRadius: '8px', color: 'white' }}>
+                     <option value="throttle_only">Throttle Only</option>
+                     <option value="pas_only">Pedal Assist Only</option>
+                     <option value="both">Throttle + Pedal Assist</option>
+                   </select>
+                 </div>
+                 <div>
+                   <label style={{ display: 'block', color: '#666', fontSize: '0.7rem', marginBottom: '0.3rem' }}>Bike Weight (lbs)</label>
+                   <input type="number" value={bikeForm.bikeWeightLbs} onChange={e => setBikeForm({...bikeForm, bikeWeightLbs: e.target.value})} style={{ width: '100%', padding: '0.8rem', background: '#111', border: '1px solid #333', borderRadius: '8px', color: 'white' }} />
                  </div>
                  <div style={{ gridColumn: 'span 2' }}>
                    <label style={{ display: 'block', color: '#666', fontSize: '0.7rem', marginBottom: '0.3rem' }}>Bike Photo</label>

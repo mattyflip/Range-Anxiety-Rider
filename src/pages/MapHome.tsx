@@ -824,8 +824,12 @@ function MapHome() {
           <section className="form-group" style={{ marginTop: '1rem' }}>
             <label>Drive Mode</label>
             <div className="mode-toggle">
-              <button className={driveMode === 'throttle' ? 'active' : ''} onClick={() => { setDriveMode('throttle'); markDirty(); }}>Throttle Only</button>
-              <button className={driveMode === 'pas' ? 'active' : ''} onClick={() => { setDriveMode('pas'); markDirty(); }}>Pedal Assist</button>
+              {(!isRenting || specs.driveMode !== 'pas_only') && (
+                <button className={driveMode === 'throttle' ? 'active' : ''} onClick={() => { setDriveMode('throttle'); markDirty(); }}>Throttle Only</button>
+              )}
+              {(!isRenting || specs.driveMode !== 'throttle_only') && (
+                <button className={driveMode === 'pas' ? 'active' : ''} onClick={() => { setDriveMode('pas'); markDirty(); }}>Pedal Assist</button>
+              )}
             </div>
             {driveMode === 'pas' && (
               <div style={{ marginTop: '0.5rem' }}>
