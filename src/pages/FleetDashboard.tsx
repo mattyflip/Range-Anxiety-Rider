@@ -467,10 +467,20 @@ const FleetDashboard = () => {
                        </div>
                     </div>
 
-                    <div style={{ background: '#111', padding: '1rem', borderRadius: '12px', marginBottom: '1.5rem', border: '1px solid #222' }}>
+                    <div style={{ background: '#111', padding: '1rem', borderRadius: '12px', marginBottom: '1rem', border: '1px solid #222' }}>
                        <div style={{ color: '#555', fontSize: '0.6rem', fontWeight: 'bold', marginBottom: '4px' }}>CONTACT INFO</div>
                        <div style={{ color: 'white', fontSize: '0.85rem' }}>📞 {req.riderPhone || 'No Phone'}</div>
                        <div style={{ color: '#888', fontSize: '0.85rem', marginTop: '4px' }}>📧 {req.riderEmail}</div>
+                    </div>
+
+                    <div style={{ marginBottom: '1.5rem' }}>
+                       <label style={{ display: 'block', color: '#555', fontSize: '0.6rem', fontWeight: 'bold', marginBottom: '4px' }}>INTERNAL SHOP NOTES</label>
+                       <textarea 
+                         placeholder="Add pickup notes, ID verification details, etc..."
+                         defaultValue={req.shopNotes || ''}
+                         onBlur={(e) => handleUpdateReqNotes(req.id, e.target.value)}
+                         style={{ width: '100%', background: '#111', border: '1px solid #222', borderRadius: '10px', color: '#aaa', padding: '0.8rem', fontSize: '0.75rem', minHeight: '60px', resize: 'vertical' }}
+                       />
                     </div>
 
                     <div style={{ display: 'flex', gap: '0.8rem' }}>
