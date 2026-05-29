@@ -718,15 +718,3 @@ const FleetDashboard = () => {
 };
 
 export default FleetDashboard;
-p style={{ fontSize: '0.65rem', color: '#444', margin: 0 }}>
-                *The rider must have an active Range Anxiety account. Ask them to register on their phone if they haven't yet.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-export default FleetDashboard;
