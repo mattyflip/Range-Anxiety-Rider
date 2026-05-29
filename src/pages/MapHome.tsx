@@ -726,6 +726,7 @@ function MapHome() {
   };
 
   const filteredBikes = [...STANDARD_BIKES, ...savedBikes].filter(b => b.name.toLowerCase().includes(bikeSearchQuery.toLowerCase()));
+  const isRenting = userRole === 'rider' && !!selectedBikeId;
 
   if (loading || !isLoaded) return <div style={{ color: 'white', padding: '4rem', textAlign: 'center' }}>Initializing Map Hub...</div>;
 
