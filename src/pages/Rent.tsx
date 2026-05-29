@@ -58,38 +58,25 @@ const Rent: React.FC = () => {
   const handleStartRental = async (bike: any) => {
     if (!user || !userData || !selectedShop) return;
     
-    if (window.confirm(`Confirm rental for ${bike.unitId}? Your live telemetry will be shared with ${selectedShop.name}.`)) {
+    if (window.confirm(`Request rental for ${bike.unitId}? You will need to confirm payment at the shop to start your ride.`)) {
       try {
-        const rentalDate = new Date().toISOString();
+        const requestDate = new Date().toISOString();
 
-        // 1. Update master bike status
-        await updateDoc(doc(db, `organizations/${selectedShop.id}/bikes`, bike.id), {
-          status: 'rented',
-          currentRiderId: user.uid,
-          rentedAt: rentalDate
+        // 1. Create a pending rental request
+        await addDoc(collection(db, `organizations/${selectedShop.id}/rental_requests`), {
+          shopId: selectedShop.id,
+          shopName: selectedShop.name,
+          riderId: user.uid,
+          riderName: userData.username || user.email,
+          riderEmail: user.email,
+          bikeId: bike.id,
+          unitId: bike.unitId,
+          status: 'pending',
+          createdAt: serverTimestamp(),
+          requestedAt: requestDate
         });
 
-        // 2. Initialize live unit for shop tracking
-        await setDoc(doc(db, `organizations/${selectedShop.id}/live_units`, user.uid), {
-          unitName: bike.unitId,
-          battery: bike.specs.currentBatteryPercent || 100,
-          position: { lat: 0, lng: 0 },
-          lastSeen: Date.now(),
-          status: 'rented'
-        });
-
-        // 3. Update user's active rental
-        await updateDoc(doc(db, "users", user.uid), {
-          activeRental: {
-            shopId: selectedShop.id,
-            bikeId: bike.id,
-            unitId: bike.unitId,
-            rentedAt: rentalDate
-          },
-          orgId: selectedShop.id
-        });
-
-        // 4. Send in-app notification to shop owner
+        // 2. Send in-app notification to shop owner
         if (selectedShop.ownerId) {
           await createNotification(
             selectedShop.ownerId,
@@ -97,29 +84,33 @@ const Rent: React.FC = () => {
             userData.username || user.email,
             'rental_request',
             bike.id,
-            `New rental for ${bike.unitId} started by ${userData.username || user.email}. Contact: ${user.email}`
+            `New rental request for ${bike.unitId} from ${userData.username || user.email}.`
           );
         }
 
-        // 5. Create booking record (triggers email via Cloud Function/Extension)
-        await addDoc(collection(db, "bookings"), {
-          shopId: selectedShop.id,
-          shopName: selectedShop.name,
-          shopEmail: selectedShop.email,
-          riderId: user.uid,
-          riderName: userData.username || user.email,
-          riderEmail: user.email,
-          bikeId: bike.id,
-          unitId: bike.unitId,
-          rentalDate,
-          createdAt: serverTimestamp()
-        });
+        // 3. Send email to shop
+        if (selectedShop.email) {
+          const { sendEmail } = await import('../utils/email');
+          await sendEmail({
+            to: selectedShop.email,
+            subject: `New Rental Request: ${bike.unitId}`,
+            text: `${userData.username || user.email} has requested to rent bike ${bike.unitId}. Please review in your Fleet Dashboard.`,
+            html: `
+              <div style="font-family: sans-serif; padding: 20px;">
+                <h2 style="color: #ff6600;">New Rental Request</h2>
+                <p><strong>Rider:</strong> ${userData.username || user.email} (${user.email})</p>
+                <p><strong>Bike:</strong> ${bike.unitId}</p>
+                <p>Please log in to your Fleet Dashboard to assign the bike after payment confirmation.</p>
+              </div>
+            `
+          }).catch(e => console.error("Email send failed non-critically", e));
+        }
 
-        alert("Rental started! Redirecting to Trip Map...");
+        alert("Request sent! Please see shop staff to confirm payment and receive your bike.");
         navigate('/map');
       } catch (e: any) {
         console.error(e);
-        alert("Failed to start rental: " + e.message);
+        alert("Failed to send request: " + e.message);
       }
     }
   };

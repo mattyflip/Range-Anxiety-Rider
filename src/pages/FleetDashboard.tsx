@@ -106,21 +106,47 @@ const FleetDashboard = () => {
   const handleAssignRider = async (request: any) => {
     if (!userData?.orgId) return;
     try {
+      const rentalDate = new Date().toISOString();
+
       // 1. Mark request as assigned
       await updateDoc(doc(db, `organizations/${userData.orgId}/rental_requests`, request.id), { status: 'assigned' });
 
       // 2. Mark bike as rented and link to rider UID
       await updateDoc(doc(db, `organizations/${userData.orgId}/bikes`, request.bikeId), { 
         status: 'rented',
-        currentRiderId: request.riderId 
+        currentRiderId: request.riderId,
+        rentedAt: rentalDate
       });
 
       // 3. Initialize Live Unit
       await setDoc(doc(db, `organizations/${userData.orgId}/live_units`, request.riderId), {
         unitName: request.unitId,
+        bikeId: request.bikeId,
         status: 'rented',
         lastSeen: Date.now()
       });
+
+      // 4. Update user's active rental
+      await updateDoc(doc(db, "users", request.riderId), {
+        activeRental: {
+          shopId: userData.orgId,
+          bikeId: request.bikeId,
+          unitId: request.unitId,
+          rentedAt: rentalDate
+        },
+        orgId: userData.orgId
+      });
+
+      // 5. Send notification to rider
+      const { createNotification } = await import('../utils/notifications');
+      await createNotification(
+        request.riderId,
+        userData.orgId,
+        userData.orgName || 'Shop',
+        'rental_approved',
+        request.bikeId,
+        `Your rental for ${request.unitId} has been approved! Have a safe ride.`
+      );
 
       alert(`Bike ${request.unitId} successfully assigned to ${request.riderName}! Live tracking enabled.`);
     } catch (e) { console.error(e); }
@@ -136,10 +162,17 @@ const FleetDashboard = () => {
         currentRiderId: null 
       });
 
-      // 2. Remove from live units (if exists) - now querying by bikeId
+      // 2. Remove from live units and cleanup user active rental
       const q = query(collection(db, `organizations/${userData.orgId}/live_units`), where("bikeId", "==", bike.id));
       const liveSnap = await getDocs(q);
-      const deletePromises = liveSnap.docs.map(d => deleteDoc(doc(db, `organizations/${userData.orgId}/live_units`, d.id)));
+      const deletePromises = liveSnap.docs.map(async (d) => {
+        const riderUid = d.id;
+        await deleteDoc(doc(db, `organizations/${userData.orgId}/live_units`, riderUid));
+        await updateDoc(doc(db, "users", riderUid), {
+          activeRental: null,
+          orgId: null
+        });
+      });
       await Promise.all(deletePromises);
 
       alert(`${bike.unitId} returned to inventory.`);
@@ -163,20 +196,35 @@ const FleetDashboard = () => {
       const riderData = riderDoc.data();
       const riderId = riderDoc.id;
 
+      const rentalDate = new Date().toISOString();
+
       // 2. Link bike to rider UID
       await updateDoc(doc(db, `organizations/${userData.orgId}/bikes`, bikeToAssign.id), { 
         status: 'rented',
-        currentRiderId: riderId 
+        currentRiderId: riderId,
+        rentedAt: rentalDate
       });
 
       // 3. Initialize Live Unit
       await setDoc(doc(db, `organizations/${userData.orgId}/live_units`, riderId), {
         unitName: bikeToAssign.unitId,
+        bikeId: bikeToAssign.id,
         status: 'rented',
         lastSeen: Date.now()
       });
 
-      // 4. Send Confirmation Email to Rider
+      // 4. Update user's active rental
+      await updateDoc(doc(db, "users", riderId), {
+        activeRental: {
+          shopId: userData.orgId,
+          bikeId: bikeToAssign.id,
+          unitId: bikeToAssign.unitId,
+          rentedAt: rentalDate
+        },
+        orgId: userData.orgId
+      });
+
+      // 5. Send Confirmation Email to Rider
       try {
         await sendEmail({
           to: targetRiderEmail.trim().toLowerCase(),
