@@ -135,15 +135,24 @@ const Notifications: React.FC = () => {
                   {n.type === 'upvote' && '🔋'}
                   {n.type === 'review' && '⭐'}
                   {n.type === 'moderation' && '🛡️'}
+                  {n.type === 'rental_request' && '🗓️'}
+                  {n.type === 'rental_approved' && '✅'}
+                  {n.type === 'fleet_alert' && '🚨'}
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ color: 'white', fontSize: '1rem', lineHeight: '1.4' }}>
-                    <span style={{ fontWeight: 'bold' }}>{n.senderUsername}</span>
-                    {n.type === 'like' && ' liked your post'}
-                    {n.type === 'comment' && ' commented on your post'}
-                    {n.type === 'upvote' && ' upvoted your thread'}
-                    {n.type === 'review' && ' left you a rider review'}
-                    {n.type === 'moderation' && ` moderated your content: ${n.content}`}
+                    {n.type === 'rental_request' || n.type === 'rental_approved' || n.type === 'fleet_alert' ? (
+                      <span>{n.content}</span>
+                    ) : (
+                      <>
+                        <span style={{ fontWeight: 'bold' }}>{n.senderUsername}</span>
+                        {n.type === 'like' && ' liked your post'}
+                        {n.type === 'comment' && ' commented on your post'}
+                        {n.type === 'upvote' && ' upvoted your thread'}
+                        {n.type === 'review' && ' left you a rider review'}
+                        {n.type === 'moderation' && ` moderated your content: ${n.content}`}
+                      </>
+                    )}
                   </div>
                   <div style={{ color: '#666', fontSize: '0.75rem', marginTop: '0.5rem' }}>
                     {n.createdAt?.toDate().toLocaleString()}
