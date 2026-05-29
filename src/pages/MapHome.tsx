@@ -985,14 +985,3 @@ function MapHome() {
 }
 
 export default MapHome;
- </div>
-            <button onClick={checkoutExploreTier} style={{ width: '100%', padding: '1rem', background: 'linear-gradient(45deg, #ff6600, #ff9900)', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 900, fontSize: '1.1rem', cursor: 'pointer' }}>Activate Explore Mode</button>
-            <button onClick={() => setShowGroupRidePaywall(false)} style={{ width: '100%', padding: '0.8rem', background: 'none', color: '#888', border: 'none', borderRadius: '12px', cursor: 'pointer', fontSize: '0.8rem', marginTop: '1rem' }}>Maybe Later</button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-export default MapHome;

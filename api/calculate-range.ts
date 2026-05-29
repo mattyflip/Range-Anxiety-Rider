@@ -159,16 +159,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: 'INVALID_TYPE' });
 
   } catch (error: any) {
-    return res.status(500).json({ error: 'CALCULATION_ERROR', message: error.message });
-  }
-}
-mber(burnRateW.toFixed(2))
-      });
-    }
-
-    return res.status(400).json({ error: 'INVALID_TYPE' });
-
-  } catch (error: any) {
-    return res.status(500).json({ error: 'CALCULATION_ERROR', message: error.message });
+    return res.status(500).json({ error: 'CALCULATION_ERROR', message: error.message });      
   }
 }
