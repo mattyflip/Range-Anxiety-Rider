@@ -111,6 +111,10 @@ function MapHome() {
   const [startBattery, setStartBattery] = useState<number | ''>(100);
   const [startVoltage, setStartVoltage] = useState<number | ''>(54.6);
   
+  const [riderWeight, setRiderWeight] = useState<number | ''>(180);
+  const [driveMode, setDriveMode] = useState<'throttle' | 'pas'>('throttle');
+  const [pedalAssistLevel, setPedalAssistLevel] = useState<number>(3);
+  
   const [response, setResponse] = useState<google.maps.DirectionsResult | null>(null);
   const [selectedRouteIndex] = useState(0);
   const [metrics, setMetrics] = useState<RouteMetrics | null>(null);
