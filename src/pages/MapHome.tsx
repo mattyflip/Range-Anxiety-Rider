@@ -38,6 +38,9 @@ interface BikeSpecs {
   capacityAh: number | '';
   motorWatts: number | '';
   bikeWeightLbs: number | '';
+  tirePSI?: number | '';
+  tireType?: 'slick' | 'knobby' | 'all-terrain';
+  currentBatteryPercent?: number;
 }
 
 interface TripDetails {
@@ -246,8 +249,22 @@ function MapHome() {
                  setShopBikes(bikes);
                  if (role === 'rider') {
                    const assigned = bikes.find(b => b.currentRiderId === u.uid && b.status === 'rented');
-                   if (assigned) setSelectedBikeId(assigned.id);
-                   else setSelectedBikeId('');
+                   if (assigned) {
+                     setSelectedBikeId(assigned.id);
+                     if (assigned.specs && !settingsDirty) {
+                       setSpecs({
+                         voltage: assigned.specs.voltage || 48,
+                         capacityAh: assigned.specs.capacityAh || 15,
+                         motorWatts: assigned.specs.motorWatts || 750,
+                         bikeWeightLbs: assigned.specs.bikeWeightLbs || 65,
+                         tirePSI: assigned.specs.tirePSI || 30,
+                         tireType: assigned.specs.tireType || 'all-terrain'
+                       });
+                       setStartBattery(assigned.specs.currentBatteryPercent || 100);
+                     }
+                   } else {
+                     setSelectedBikeId('');
+                   }
                  } else if (bikes.length > 0 && !selectedBikeId) {
                    setSelectedBikeId(bikes[0].id);
                  }
@@ -523,7 +540,7 @@ function MapHome() {
     markDirty();
   };
 
-  const handleCalculate = () => { 
+  const handleCalculate = async () => { 
     let currentOrigin = trip.origin;
     let currentDest = trip.destination;
     const nonAt = locations.filter(l => l.trim() !== '');
@@ -548,6 +565,90 @@ function MapHome() {
        return;
     }
     setIsLoading(true); setResponse(null); setMetrics(null); setPois([]); setSettingsDirty(false); 
+
+    try {
+      const directionsService = new google.maps.DirectionsService();
+      
+      const waypoints = trip.waypoints.map(wp => ({ location: wp, stopover: true }));
+      if (isRoundTrip) waypoints.push({ location: currentDest, stopover: true });
+
+      const request: google.maps.DirectionsRequest = {
+        origin: currentOrigin,
+        destination: isRoundTrip ? currentOrigin : currentDest,
+        waypoints: waypoints.length > 0 ? waypoints : undefined,
+        travelMode: google.maps.TravelMode.BICYCLING,
+      };
+
+      const result = await new Promise<google.maps.DirectionsResult>((resolve, reject) => {
+        directionsService.route(request, (res, status) => {
+          if (status === google.maps.DirectionsStatus.OK && res) resolve(res);
+          else reject(status);
+        });
+      });
+
+      setResponse(result);
+
+      // Now calculate metrics using our API
+      const route = result.routes[0];
+      let totalDistanceMeters = 0;
+      let totalDurationSeconds = 0;
+      route.legs.forEach(leg => {
+        totalDistanceMeters += leg.distance?.value || 0;
+        totalDurationSeconds += leg.duration?.value || 0;
+      });
+
+      const distanceMiles = totalDistanceMeters * 0.000621371;
+      const speedMph = distanceMiles / (totalDurationSeconds / 3600);
+
+      const path = route.overview_path.map(p => `${p.lat()},${p.lng()}`).join('|');
+
+      const [eRes, wRes] = await Promise.all([
+        fetch('/api/elevation', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path }) }).then(r => r.json()),
+        fetch(`/api/weather?lat=${route.legs[0].start_location.lat()}&lng=${route.legs[0].start_location.lng()}`).then(r => r.json())
+      ]);
+
+      const elevationChangeFt = (eRes.gain || 0) * 3.28084;
+      const windSpeed = wRes.wind_speed || 0;
+
+      const calcRes = await fetch('/api/calculate-range', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'route',
+          specs: { ...specs, riderWeightLbs: riderWeight },
+          batteryPercent: startBattery,
+          durationSeconds: totalDurationSeconds,
+          speedMph: speedMph,
+          elevationChangeFt: elevationChangeFt,
+          windMph: windSpeed,
+          windDirDeg: wRes.wind_degree || 0,
+          headingDeg: google.maps.geometry.spherical.computeHeading(route.legs[0].start_location, route.legs[0].end_location) || 0,
+          driveMode,
+          pedalAssistLevel
+        })
+      }).then(r => r.json());
+
+      setMetrics({
+        distanceMiles,
+        durationMin: totalDurationSeconds / 60,
+        elevationGainFeet: elevationChangeFt,
+        elevationLossFeet: (eRes.loss || 0) * 3.28084,
+        estimatedWh: calcRes.energyWh || 0,
+        batteryPercentUsed: 100 - (calcRes.batteryPercentRemaining || 0),
+        recommendedSpeedMph: speedMph,
+        windConditions: {
+          speed: windSpeed,
+          direction: wRes.wind_degree || 0,
+          headwindComponent: 0 // Simplification for display
+        }
+      });
+
+    } catch (e: any) {
+      console.error("Route calculation failed:", e);
+      alert("Could not calculate route. Please try different locations.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const checkoutExploreTier = async () => {
@@ -699,7 +800,38 @@ function MapHome() {
             <section className="form-group"><label>Capacity (Ah)</label><input type="number" value={specs.capacityAh} onChange={e => { setSpecs(p => ({ ...p, capacityAh: parseFloat(e.target.value) || '' })); markDirty(); }} /></section>
           </div>
 
-          <section className="form-group">
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
+            <section className="form-group"><label>Bike Weight (lbs)</label><input type="number" value={specs.bikeWeightLbs} onChange={e => { setSpecs(p => ({ ...p, bikeWeightLbs: parseFloat(e.target.value) || '' })); markDirty(); }} /></section>
+            <section className="form-group"><label>Rider Weight (lbs)</label><input type="number" value={riderWeight} onChange={e => { setRiderWeight(parseFloat(e.target.value) || ''); markDirty(); }} /></section>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
+            <section className="form-group"><label>Tire Type</label>
+              <select value={specs.tireType || 'all-terrain'} onChange={e => { setSpecs(p => ({ ...p, tireType: e.target.value as any })); markDirty(); }} style={{ width: '100%', padding: '0.8rem', background: '#111', border: '1px solid #333', borderRadius: '12px', color: 'white' }}>
+                <option value="slick">Slick</option>
+                <option value="all-terrain">All-Terrain</option>
+                <option value="knobby">Knobby</option>
+              </select>
+            </section>
+            <section className="form-group"><label>Tire PSI</label><input type="number" value={specs.tirePSI || 30} onChange={e => { setSpecs(p => ({ ...p, tirePSI: parseFloat(e.target.value) || '' })); markDirty(); }} /></section>
+          </div>
+
+          <section className="form-group" style={{ marginTop: '1rem' }}>
+            <label>Drive Mode</label>
+            <div className="mode-toggle">
+              <button className={driveMode === 'throttle' ? 'active' : ''} onClick={() => { setDriveMode('throttle'); markDirty(); }}>Throttle Only</button>
+              <button className={driveMode === 'pas' ? 'active' : ''} onClick={() => { setDriveMode('pas'); markDirty(); }}>Pedal Assist</button>
+            </div>
+            {driveMode === 'pas' && (
+              <div style={{ marginTop: '0.5rem' }}>
+                <label style={{ fontSize: '0.7rem', color: '#666' }}>Assist Level (0-5)</label>
+                <input type="range" min="0" max="5" value={pedalAssistLevel} onChange={e => { setPedalAssistLevel(parseInt(e.target.value)); markDirty(); }} style={{ width: '100%' }} />
+                <div style={{ textAlign: 'center', color: '#ff6600', fontWeight: 'bold' }}>Level {pedalAssistLevel}</div>
+              </div>
+            )}
+          </section>
+
+          <section className="form-group" style={{ marginTop: '1rem' }}>
             <label>Battery Entry</label>
             <div className="mode-toggle">
               <button className={batteryInputMode === 'percent' ? 'active' : ''} onClick={() => handleToggleBatteryMode('percent')}>%</button>
