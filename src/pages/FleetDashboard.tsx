@@ -406,7 +406,7 @@ const FleetDashboard = () => {
               📧 TEST EMAIL SYSTEM
             </button>
             <button 
-              onClick={() => { setEditingBike(null); setBikeForm({ unitId: '', voltage: '48', capacityAh: '15', motorWatts: '750', tirePSI: '30', bikeWeightLbs: '65', targetSpeedMph: '20', controllerAmps: '', cycleCount: '0', imageUrl: '' }); setShowShowBikeModal(true); }}
+              onClick={() => { setEditingBike(null); setBikeForm({ unitId: '', voltage: '48', capacityAh: '15', capacityUnit: 'Ah', motorWatts: '750', tirePSI: '30', tireType: 'all-terrain', driveMode: 'both', bikeWeightLbs: '65', targetSpeedMph: '20', controllerAmps: '', cycleCount: '0', imageUrl: '' }); setShowShowBikeModal(true); }}
               style={{ padding: '1rem 2rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer' }}
             >
               + REGISTER NEW BIKE

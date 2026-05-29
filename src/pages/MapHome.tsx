@@ -40,6 +40,7 @@ interface BikeSpecs {
   bikeWeightLbs: number | '';
   tirePSI?: number | '';
   tireType?: 'slick' | 'knobby' | 'all-terrain';
+  driveMode?: 'throttle_only' | 'pas_only' | 'both';
   currentBatteryPercent?: number;
 }
 
