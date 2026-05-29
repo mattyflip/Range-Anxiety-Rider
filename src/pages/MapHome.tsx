@@ -433,7 +433,10 @@ function MapHome() {
                   speedMph: speed,
                   headingDeg: pos.coords.heading || 0,
                   windMph: wRes.wind_speed || 0,
-                  windDirDeg: wRes.wind_degree || 0
+                  windDirDeg: wRes.wind_degree || 0,
+                  driveMode,
+                  pedalAssistLevel,
+                  throttleMode
                 })
              }).then(r => r.json());
              await setDoc(doc(db, `organizations/${userData.orgId}/live_units`, user.uid), {
@@ -972,6 +975,17 @@ function MapHome() {
               <div style={{ fontSize: '2rem', fontWeight: 900, color: 'white' }}>$3.99</div>
               <div style={{ color: '#888', fontSize: '0.7rem' }}>monthly subscription · cancel anytime</div>
             </div>
+            <button onClick={checkoutExploreTier} style={{ width: '100%', padding: '1rem', background: 'linear-gradient(45deg, #ff6600, #ff9900)', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 900, fontSize: '1.1rem', cursor: 'pointer' }}>Activate Explore Mode</button>
+            <button onClick={() => setShowGroupRidePaywall(false)} style={{ width: '100%', padding: '0.8rem', background: 'none', color: '#888', border: 'none', borderRadius: '12px', cursor: 'pointer', fontSize: '0.8rem', marginTop: '1rem' }}>Maybe Later</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default MapHome;
+ </div>
             <button onClick={checkoutExploreTier} style={{ width: '100%', padding: '1rem', background: 'linear-gradient(45deg, #ff6600, #ff9900)', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 900, fontSize: '1.1rem', cursor: 'pointer' }}>Activate Explore Mode</button>
             <button onClick={() => setShowGroupRidePaywall(false)} style={{ width: '100%', padding: '0.8rem', background: 'none', color: '#888', border: 'none', borderRadius: '12px', cursor: 'pointer', fontSize: '0.8rem', marginTop: '1rem' }}>Maybe Later</button>
           </div>

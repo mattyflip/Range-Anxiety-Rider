@@ -43,7 +43,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       headingDeg,
       riderWeightLbs = 180,
       pedalAssistLevel = 0, // 0-5
-      driveMode = 'throttle' // 'throttle' or 'pas'
+      driveMode = 'throttle', // 'throttle' or 'pas'
+      throttleMode = 'normal' // 'eco' | 'normal' | 'sport'
     } = req.body;
 
     if (!specs) {
@@ -152,6 +153,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         batteryPercentRemaining,
         energyWh: Number(energyWh.toFixed(2)),
         burnRate: Number(burnRateW.toFixed(2))
+      });
+    }
+
+    return res.status(400).json({ error: 'INVALID_TYPE' });
+
+  } catch (error: any) {
+    return res.status(500).json({ error: 'CALCULATION_ERROR', message: error.message });
+  }
+}
+mber(burnRateW.toFixed(2))
       });
     }
 
