@@ -451,14 +451,26 @@ const FleetDashboard = () => {
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
                        <div>
                           <div style={{ color: 'white', fontWeight: 900, fontSize: '1.1rem' }}>{req.riderName}</div>
-                          <div style={{ color: '#888', fontSize: '0.7rem' }}>Requested: {new Date(req.createdAt).toLocaleString()}</div>
+                          <div style={{ color: '#888', fontSize: '0.7rem' }}>Requested: {new Date(req.createdAt?.seconds * 1000 || Date.now()).toLocaleString()}</div>
                        </div>
                        <div style={{ background: 'rgba(52,168,83,0.1)', color: '#34a853', padding: '4px 10px', borderRadius: '8px', fontSize: '0.65rem', fontWeight: 'bold', height: 'fit-content' }}>PENDING</div>
                     </div>
                     
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8rem', marginBottom: '1rem' }}>
+                       <div style={{ background: '#111', padding: '0.8rem', borderRadius: '12px', border: '1px solid #222' }}>
+                          <div style={{ color: '#555', fontSize: '0.6rem', fontWeight: 'bold', marginBottom: '4px' }}>BIKE</div>
+                          <div style={{ color: 'white', fontWeight: 'bold', fontSize: '0.9rem' }}>{req.unitId}</div>
+                       </div>
+                       <div style={{ background: '#111', padding: '0.8rem', borderRadius: '12px', border: '1px solid #222' }}>
+                          <div style={{ color: '#555', fontSize: '0.6rem', fontWeight: 'bold', marginBottom: '4px' }}>PICKUP</div>
+                          <div style={{ color: '#ff6600', fontWeight: 'bold', fontSize: '0.9rem' }}>{req.rentalDate} @ {req.rentalTime}</div>
+                       </div>
+                    </div>
+
                     <div style={{ background: '#111', padding: '1rem', borderRadius: '12px', marginBottom: '1.5rem', border: '1px solid #222' }}>
-                       <div style={{ color: '#555', fontSize: '0.6rem', fontWeight: 'bold', marginBottom: '4px' }}>REQUESTED BIKE</div>
-                       <div style={{ color: 'white', fontWeight: 'bold' }}>{req.unitId}</div>
+                       <div style={{ color: '#555', fontSize: '0.6rem', fontWeight: 'bold', marginBottom: '4px' }}>CONTACT INFO</div>
+                       <div style={{ color: 'white', fontSize: '0.85rem' }}>📞 {req.riderPhone || 'No Phone'}</div>
+                       <div style={{ color: '#888', fontSize: '0.85rem', marginTop: '4px' }}>📧 {req.riderEmail}</div>
                     </div>
 
                     <div style={{ display: 'flex', gap: '0.8rem' }}>
@@ -466,7 +478,7 @@ const FleetDashboard = () => {
                          onClick={() => handleAssignRider(req)}
                          style={{ flex: 1, padding: '0.8rem', background: '#34a853', color: 'white', border: 'none', borderRadius: '10px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem' }}
                        >
-                         ASSIGN RIDER IN-PERSON
+                         ASSIGN RIDER
                        </button>
                        <button 
                          onClick={async () => {

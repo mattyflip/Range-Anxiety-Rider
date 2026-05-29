@@ -15,6 +15,12 @@ const Rent: React.FC = () => {
   const [selectedShop, setSelectedShop] = useState<any>(null);
   const [availableBikes, setAvailableBikes] = useState<any[]>([]);
   const [bikeCounts, setBikeCounts] = useState<Record<string, number>>({});
+  const [selectedBike, setSelectedBike] = useState<any>(null);
+  const [bookingForm, setBookingForm] = useState({
+    date: new Date().toISOString().split('T')[0],
+    time: '10:00',
+    phone: ''
+  });
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -22,7 +28,11 @@ const Rent: React.FC = () => {
       setUser(u);
       if (u) {
         const snap = await getDoc(doc(db, "users", u.uid));
-        if (snap.exists()) setUserData(snap.data());
+        if (snap.exists()) {
+          const d = snap.data();
+          setUserData(d);
+          if (d.phone) setBookingForm(prev => ({ ...prev, phone: d.phone }));
+        }
       }
     });
 
@@ -55,10 +65,24 @@ const Rent: React.FC = () => {
     }
   }, [selectedShop]);
 
-  const handleStartRental = async (bike: any) => {
-    if (!user || !userData || !selectedShop) return;
+  const handleStartRental = async () => {
+    if (!user || !userData || !selectedShop || !selectedBike) return;
     
-    if (window.confirm(`Request rental for ${bike.unitId}? You will need to confirm payment at the shop to start your ride.`)) {
+    // Validation
+    if (!bookingForm.phone.trim()) {
+      alert("Please provide a phone number so the shop can contact you.");
+      return;
+    }
+
+    const shopHours = selectedShop.hours || { open: '09:00', close: '18:00' };
+    if (bookingForm.time < shopHours.open || bookingForm.time > shopHours.close) {
+      alert(`Selected time is outside shop hours (${shopHours.open} - ${shopHours.close}).`);
+      return;
+    }
+
+    const bookingMsg = `${userData.username || user.email} booked ${selectedBike.unitId} for ${bookingForm.date} at ${bookingForm.time}`;
+
+    if (window.confirm(`Request rental for ${selectedBike.unitId} on ${bookingForm.date} at ${bookingForm.time}?`)) {
       try {
         const requestDate = new Date().toISOString();
 
@@ -69,8 +93,11 @@ const Rent: React.FC = () => {
           riderId: user.uid,
           riderName: userData.username || user.email,
           riderEmail: user.email,
-          bikeId: bike.id,
-          unitId: bike.unitId,
+          riderPhone: bookingForm.phone,
+          bikeId: selectedBike.id,
+          unitId: selectedBike.unitId,
+          rentalDate: bookingForm.date,
+          rentalTime: bookingForm.time,
           status: 'pending',
           createdAt: serverTimestamp(),
           requestedAt: requestDate
@@ -83,8 +110,8 @@ const Rent: React.FC = () => {
             user.uid,
             userData.username || user.email,
             'rental_request',
-            bike.id,
-            `New rental request for ${bike.unitId} from ${userData.username || user.email} (${user.email}).`
+            selectedBike.id,
+            bookingMsg
           );
         }
 
@@ -93,20 +120,23 @@ const Rent: React.FC = () => {
           const { sendEmail } = await import('../utils/email');
           await sendEmail({
             to: selectedShop.email,
-            subject: `New Rental Request: ${bike.unitId}`,
-            text: `${userData.username || user.email} has requested to rent bike ${bike.unitId}. Please review in your Fleet Dashboard.`,
+            subject: `New Rental Request: ${selectedBike.unitId}`,
+            text: `${bookingMsg}. Contact: ${bookingForm.phone}`,
             html: `
               <div style="font-family: sans-serif; padding: 20px;">
                 <h2 style="color: #ff6600;">New Rental Request</h2>
-                <p><strong>Rider:</strong> ${userData.username || user.email} (${user.email})</p>
-                <p><strong>Bike:</strong> ${bike.unitId}</p>
-                <p>Please log in to your Fleet Dashboard to assign the bike after payment confirmation.</p>
+                <p><strong>Rider:</strong> ${userData.username || user.email}</p>
+                <p><strong>Bike:</strong> ${selectedBike.unitId}</p>
+                <p><strong>Scheduled:</strong> ${bookingForm.date} @ ${bookingForm.time}</p>
+                <p><strong>Contact:</strong> ${bookingForm.phone} / ${user.email}</p>
+                <p>Please log in to your Fleet Dashboard to review this request.</p>
               </div>
             `
           }).catch(e => console.error("Email send failed non-critically", e));
         }
 
         alert("Request sent! Please see shop staff to confirm payment and receive your bike.");
+        setSelectedBike(null);
         navigate('/map');
       } catch (e: any) {
         console.error(e);
@@ -167,7 +197,7 @@ const Rent: React.FC = () => {
         ) : (
           <div>
             <button 
-              onClick={() => setSelectedShop(null)}
+              onClick={() => { setSelectedShop(null); setSelectedBike(null); }}
               style={{ background: 'none', border: 'none', color: '#ff6600', cursor: 'pointer', fontWeight: 'bold', marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
             >
               ← BACK TO SHOPS
@@ -176,6 +206,9 @@ const Rent: React.FC = () => {
             <div style={{ background: 'linear-gradient(135deg, #1a1a1a 0%, #111 100%)', padding: '2.5rem', borderRadius: '32px', border: '1px solid #ff6600', marginBottom: '3rem' }}>
                <h2 style={{ fontSize: '2rem', color: 'white', margin: 0 }}>{selectedShop.name}</h2>
                <p style={{ color: '#888', marginTop: '1rem' }}>{selectedShop.bio}</p>
+               <div style={{ marginTop: '1rem', fontSize: '0.8rem', color: '#666' }}>
+                  🕒 Rental Hours: {selectedShop.hours?.open || '09:00'} - {selectedShop.hours?.close || '18:00'}
+               </div>
             </div>
 
             <h3 style={{ fontSize: '1.2rem', marginBottom: '1.5rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Available Fleet</h3>
@@ -184,7 +217,7 @@ const Rent: React.FC = () => {
                  <div style={{ gridColumn: '1/-1', color: '#444', textAlign: 'center', padding: '2rem' }}>All units are currently rented. Check back soon!</div>
                ) : (
                  availableBikes.map(bike => (
-                   <div key={bike.id} style={{ background: '#1a1a1a', padding: '0', borderRadius: '24px', border: '1px solid #333', overflow: 'hidden' }}>
+                   <div key={bike.id} style={{ background: '#1a1a1a', padding: '0', borderRadius: '24px', border: selectedBike?.id === bike.id ? '2px solid #ff6600' : '1px solid #333', overflow: 'hidden', transition: 'border 0.2s' }}>
                       {bike.imageUrl ? (
                         <img src={bike.imageUrl} alt={bike.unitId} style={{ width: '100%', height: '180px', objectFit: 'cover' }} />
                       ) : (
@@ -207,16 +240,65 @@ const Rent: React.FC = () => {
                            </div>
                         </div>
                         <button 
-                          onClick={() => handleStartRental(bike)}
-                          style={{ width: '100%', padding: '1rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer' }}
+                          onClick={() => setSelectedBike(bike)}
+                          style={{ width: '100%', padding: '1rem', background: selectedBike?.id === bike.id ? '#333' : '#ff6600', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer' }}
                         >
-                          RENT THIS BIKE
+                          {selectedBike?.id === bike.id ? 'SELECTED' : 'SELECT THIS BIKE'}
                         </button>
                       </div>
                    </div>
                  ))
                )}
             </div>
+
+            {selectedBike && (
+              <div style={{ marginTop: '3rem', background: '#1a1a1a', padding: '2rem', borderRadius: '24px', border: '1px solid #333', animation: 'slideUp 0.3s' }}>
+                <h3 style={{ color: '#ff6600', marginTop: 0, marginBottom: '1.5rem' }}>Complete Your Booking</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
+                   <div>
+                     <label style={{ display: 'block', color: '#666', fontSize: '0.7rem', marginBottom: '0.5rem', fontWeight: 'bold' }}>RENTAL DATE</label>
+                     <input 
+                       type="date" 
+                       min={new Date().toISOString().split('T')[0]}
+                       value={bookingForm.date} 
+                       onChange={e => setBookingForm({...bookingForm, date: e.target.value})} 
+                       style={{ width: '100%', padding: '1rem', background: '#111', border: '1px solid #333', borderRadius: '12px', color: 'white' }} 
+                     />
+                   </div>
+                   <div>
+                     <label style={{ display: 'block', color: '#666', fontSize: '0.7rem', marginBottom: '0.5rem', fontWeight: 'bold' }}>PICKUP TIME</label>
+                     <input 
+                       type="time" 
+                       value={bookingForm.time} 
+                       onChange={e => setBookingForm({...bookingForm, time: e.target.value})} 
+                       style={{ width: '100%', padding: '1rem', background: '#111', border: '1px solid #333', borderRadius: '12px', color: 'white' }} 
+                     />
+                   </div>
+                   <div>
+                     <label style={{ display: 'block', color: '#666', fontSize: '0.7rem', marginBottom: '0.5rem', fontWeight: 'bold' }}>YOUR PHONE NUMBER</label>
+                     <input 
+                       type="tel" 
+                       placeholder="(555) 000-0000"
+                       value={bookingForm.phone} 
+                       onChange={e => setBookingForm({...bookingForm, phone: e.target.value})} 
+                       style={{ width: '100%', padding: '1rem', background: '#111', border: '1px solid #333', borderRadius: '12px', color: 'white' }} 
+                     />
+                   </div>
+                </div>
+                <button 
+                  onClick={handleStartRental}
+                  style={{ width: '100%', marginTop: '2rem', padding: '1.2rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '16px', fontWeight: 900, fontSize: '1.1rem', cursor: 'pointer', boxShadow: '0 4px 20px rgba(255,102,0,0.3)' }}
+                >
+                  CONFIRM RENTAL REQUEST
+                </button>
+                <style>{`
+                  @keyframes slideUp {
+                    from { transform: translateY(20px); opacity: 0; }
+                    to { transform: translateY(0); opacity: 1; }
+                  }
+                `}</style>
+              </div>
+            )}
           </div>
         )}
       </main>
