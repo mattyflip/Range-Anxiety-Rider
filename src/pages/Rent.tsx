@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { db, auth } from '../firebase'
-import { collection, query, onSnapshot, doc, updateDoc, setDoc, getDoc, addDoc, serverTimestamp } from 'firebase/firestore'
+import { collection, query, onSnapshot, doc, getDoc, addDoc, serverTimestamp } from 'firebase/firestore'
 import { onAuthStateChanged } from 'firebase/auth'
 import NavBar from '../shared/ui/NavBar'
 import SEO from '../shared/ui/SEO'
