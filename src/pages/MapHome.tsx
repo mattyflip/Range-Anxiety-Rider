@@ -115,6 +115,7 @@ function MapHome() {
   const [riderWeight, setRiderWeight] = useState<number | ''>(180);
   const [driveMode, setDriveMode] = useState<'throttle' | 'pas'>('throttle');
   const [pedalAssistLevel, setPedalAssistLevel] = useState<number>(3);
+  const [throttleMode, setThrottleMode] = useState<'eco' | 'normal' | 'sport'>('normal');
   
   const [response, setResponse] = useState<google.maps.DirectionsResult | null>(null);
   const [selectedRouteIndex] = useState(0);
@@ -840,6 +841,16 @@ function MapHome() {
                 <label style={{ fontSize: '0.7rem', color: '#666' }}>Assist Level (0-5)</label>
                 <input type="range" min="0" max="5" value={pedalAssistLevel} onChange={e => { setPedalAssistLevel(parseInt(e.target.value)); markDirty(); }} style={{ width: '100%' }} />
                 <div style={{ textAlign: 'center', color: '#ff6600', fontWeight: 'bold' }}>Level {pedalAssistLevel}</div>
+              </div>
+            )}
+            {driveMode === 'throttle' && (
+              <div style={{ marginTop: '0.5rem' }}>
+                <label style={{ fontSize: '0.7rem', color: '#666' }}>Throttle Mode</label>
+                <div className="mode-toggle">
+                  <button className={throttleMode === 'eco' ? 'active' : ''} onClick={() => { setThrottleMode('eco'); markDirty(); }}>Eco</button>
+                  <button className={throttleMode === 'normal' ? 'active' : ''} onClick={() => { setThrottleMode('normal'); markDirty(); }}>Normal</button>
+                  <button className={throttleMode === 'sport' ? 'active' : ''} onClick={() => { setThrottleMode('sport'); markDirty(); }}>Sport</button>
+                </div>
               </div>
             )}
           </section>
