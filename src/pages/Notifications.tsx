@@ -61,6 +61,10 @@ const Notifications: React.FC = () => {
       navigate('/forum'); 
     } else if (notif.type === 'review' || notif.type === 'moderation') {
       navigate(`/profile/me`);
+    } else if (notif.type === 'rental_request') {
+      navigate('/fleet#appointments');
+    } else if (notif.type === 'fleet_alert') {
+      navigate('/fleet#alerts');
     }
   };
 

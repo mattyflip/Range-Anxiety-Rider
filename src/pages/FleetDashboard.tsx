@@ -441,7 +441,7 @@ const FleetDashboard = () => {
 
         {/* Appointments Section */}
         {rentalRequests.length > 0 && (
-          <div style={{ marginBottom: '3rem' }}>
+          <div id="appointments" style={{ marginBottom: '3rem' }}>
             <h2 style={{ fontSize: '1.2rem', color: '#34a853', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               🗓️ APPOINTMENTS & BOOKING REQUESTS ({rentalRequests.length})
             </h2>
@@ -707,6 +707,18 @@ const FleetDashboard = () => {
             
             <div style={{ marginTop: '1.5rem', padding: '1rem', background: '#111', borderRadius: '12px', border: '1px solid #222' }}>
               <p style={{ fontSize: '0.65rem', color: '#444', margin: 0 }}>
+                *The rider must have an active Range Anxiety account. Ask them to register on their phone if they haven't yet.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default FleetDashboard;
+p style={{ fontSize: '0.65rem', color: '#444', margin: 0 }}>
                 *The rider must have an active Range Anxiety account. Ask them to register on their phone if they haven't yet.
               </p>
             </div>

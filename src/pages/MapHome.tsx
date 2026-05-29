@@ -423,12 +423,12 @@ function MapHome() {
              if (orgOwnerId) {
                const now = Date.now();
                if (speed > 28 && (!lastAlertTime.current['speed'] || now - lastAlertTime.current['speed'] > 300000)) {
-                  createNotification(orgOwnerId, user.uid, userData.username || "Rider", 'fleet_alert', user.uid, `🚨 SPEED ALERT: ${bike.unitId} at ${speed.toFixed(0)} MPH!`);
+                  createNotification(orgOwnerId, user.uid, userData.username || "Rider", 'fleet_alert', user.uid, `🚨 SPEED ALERT: ${bike.unitId} at ${speed.toFixed(0)} MPH! Rider: ${userData.username || user.email} (${user.email})`);
                   lastAlertTime.current['speed'] = now;
                }
                const bat = bike.specs?.currentBatteryPercent || 100;
                if (bat < 15 && (!lastAlertTime.current['battery'] || now - lastAlertTime.current['battery'] > 1800000)) {
-                  createNotification(orgOwnerId, user.uid, userData.username || "Rider", 'fleet_alert', user.uid, `🪫 LOW BATTERY: ${bike.unitId} is at ${bat}%!`);
+                  createNotification(orgOwnerId, user.uid, userData.username || "Rider", 'fleet_alert', user.uid, `🪫 LOW BATTERY: ${bike.unitId} is at ${bat}%! Rider: ${userData.username || user.email} (${user.email})`);
                   lastAlertTime.current['battery'] = now;
                }
              }

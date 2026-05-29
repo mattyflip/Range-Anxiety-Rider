@@ -84,7 +84,7 @@ const Rent: React.FC = () => {
             userData.username || user.email,
             'rental_request',
             bike.id,
-            `New rental request for ${bike.unitId} from ${userData.username || user.email}.`
+            `New rental request for ${bike.unitId} from ${userData.username || user.email} (${user.email}).`
           );
         }
 
