@@ -429,9 +429,10 @@ function MapHome() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                   type: 'telemetry',
-                  specs: { ...bike.specs, riderWeightLbs: userData?.riderWeight || 180 },
+                  specs: bike.specs,
                   batteryPercent: bike.specs.currentBatteryPercent || 100,
                   speedMph: speed,
+                  riderWeightLbs: riderWeight,
                   headingDeg: pos.coords.heading || 0,
                   windMph: wRes.wind_speed || 0,
                   windDirDeg: wRes.wind_degree || 0,

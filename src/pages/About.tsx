@@ -1,15 +1,13 @@
 import React, { useState, useEffect } from 'react'
 import { auth, db } from '../firebase'
 import { onAuthStateChanged } from 'firebase/auth'
-import { doc, getDoc, getDocs, collection, addDoc } from 'firebase/firestore'
+import { doc, getDoc } from 'firebase/firestore'
 import NavBar from '../shared/ui/NavBar'
 import AuthModal from '../features/auth/AuthModal'
-import { createNotification } from '../utils/notifications'
 import SEO from '../shared/ui/SEO'
 
 const About: React.FC = () => {
   const [user, setUser] = useState<any>(null);
-  const [userData, setUserData] = useState<any>(null);
   const [userRole, setUserRole] = useState<'rider' | 'fleet' | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -21,12 +19,10 @@ const About: React.FC = () => {
         const snap = await getDoc(doc(db, "users", u.uid));
         if (snap.exists()) {
           const data = snap.data();
-          setUserData(data);
           setUserRole(data.role || 'rider');
         }
       } else {
         setUserRole(null);
-        setUserData(null);
       }
       setLoading(false);
     });
@@ -130,130 +126,26 @@ const About: React.FC = () => {
     </div>
   );
 
-  const [shops, setShops] = useState<any[]>([]);
-  const [selectedShop, setSelectedShop] = useState<any>(null);
-  const [shopBikes, setShopBikes] = useState<any[]>([]);
-  const [isBooking, setIsBooking] = useState(false);
-
-  useEffect(() => {
-    if (userRole === 'rider') {
-      getDocs(collection(db, "organizations")).then((snap: any) => {
-        setShops(snap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() })));
-      });
-    }
-  }, [userRole]);
-
-  useEffect(() => {
-    if (selectedShop) {
-      getDocs(collection(db, `organizations/${selectedShop.id}/bikes`)).then((snap: any) => {
-        setShopBikes(snap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() })).filter((b: any) => b.status === 'available'));
-      });
-    }
-  }, [selectedShop]);
-
-  const handleBookBike = async (bike: any) => {
-    if (!user || !selectedShop) return;
-    setIsBooking(true);
-    try {
-      const requestData = {
-        riderId: user.uid,
-        riderName: userData?.username || user.email,
-        bikeId: bike.id,
-        unitId: bike.unitId,
-        shopId: selectedShop.id,
-        status: 'pending',
-        createdAt: new Date().toISOString()
-      };
-
-      // 1. Create Request in Shop's Collection
-      await addDoc(collection(db, `organizations/${selectedShop.id}/rental_requests`), requestData);
-
-      // 2. In-App Notification to Owner
-      await createNotification(
-        selectedShop.ownerId,
-        user.uid,
-        userData?.username || "Rider",
-        'rental_request',
-        bike.id,
-        `wants to rent ${bike.unitId}. Check appointments!`
-      );
-
-      // 3. Email Notification to Owner
-      if (selectedShop.email) {
-        await fetch('/api/send-email', {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${await user.getIdToken()}`
-          },
-          body: JSON.stringify({
-            to: selectedShop.email,
-            subject: `New Rental Request: ${bike.unitId}`,
-            text: `${userData?.username || user.email} has requested to book ${bike.unitId}. Log into your Fleet Hub to manage this appointment.`,
-            html: `<h3>New Rental Appointment</h3><p><strong>Rider:</strong> ${userData?.username || user.email}</p><p><strong>Bike:</strong> ${bike.unitId}</p><p>Please log into your <a href="https://rangeanxietyrider.com/fleet">Fleet Hub</a> to assign this bike when the customer arrives.</p>`
-          })
-        });
-      }
-
-      alert(`Request sent to ${selectedShop.name}! They will contact you to confirm.`);
-    } catch (e) {
-      console.error(e);
-      alert("Booking failed. Please try again.");
-    } finally { setIsBooking(false); }
-  };
-
   const renderRiderView = () => (
     <div style={{ textAlign: 'left' }}>
       <div style={{ background: 'rgba(52,168,83,0.1)', padding: '2rem', borderRadius: '24px', border: '1px solid #34a853', marginBottom: '3rem' }}>
         <h2 style={{ color: '#34a853', marginTop: 0 }}>Welcome, Rider</h2>
-        <p style={{ color: '#ccc', margin: 0 }}>Find a shop and book your precision-tuned e-bike rental:</p>
+        <p style={{ color: '#ccc', margin: 0 }}>Get ready for a precision-tuned e-bike experience. Use our marketplace to find a local shop and reserve your unit.</p>
       </div>
 
-      {!selectedShop ? (
-        <section>
-           <h3 style={{ color: 'white', marginBottom: '1.5rem' }}>Step 1: Select a Local Shop</h3>
-           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
-              {shops.map(shop => (
-                <div key={shop.id} onClick={() => setSelectedShop(shop)} style={{ background: '#1a1a1a', padding: '1.5rem', borderRadius: '20px', border: '1px solid #333', cursor: 'pointer', transition: 'border-color 0.2s' }}>
-                   <div style={{ color: '#ff6600', fontWeight: '900', fontSize: '1.2rem' }}>{shop.name}</div>
-                   <div style={{ color: '#888', fontSize: '0.8rem', marginTop: '0.5rem' }}>📍 {shop.address}</div>
-                </div>
-              ))}
-           </div>
-        </section>
-      ) : (
-        <section>
-           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-              <h3 style={{ color: 'white', margin: 0 }}>Step 2: Choose a Bike at {selectedShop.name}</h3>
-              <button onClick={() => setSelectedShop(null)} style={{ background: 'none', border: '1px solid #444', color: '#888', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer' }}>Change Shop</button>
-           </div>
-           
-           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1.5rem' }}>
-              {shopBikes.length === 0 ? (
-                <div style={{ color: '#444' }}>No bikes available for booking at the moment.</div>
-              ) : (
-                shopBikes.map(bike => (
-                  <div key={bike.id} style={{ background: '#1a1a1a', borderRadius: '20px', border: '1px solid #333', overflow: 'hidden' }}>
-                     <div style={{ width: '100%', aspectRatio: '4/3', background: '#222', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        {bike.imageUrl ? <img src={bike.imageUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: '2rem' }}>🚲</span>}
-                     </div>
-                     <div style={{ padding: '1rem' }}>
-                        <div style={{ fontWeight: 'bold', color: 'white' }}>{bike.unitId}</div>
-                        <div style={{ fontSize: '0.7rem', color: '#666', marginTop: '0.3rem' }}>{bike.specs.motorWatts}W • {bike.specs.voltage}V</div>
-                        <button 
-                          onClick={() => handleBookBike(bike)}
-                          disabled={isBooking}
-                          style={{ width: '100%', marginTop: '1rem', padding: '0.8rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '10px', fontWeight: 'bold', cursor: 'pointer' }}
-                        >
-                          {isBooking ? 'BOOKING...' : 'BOOK NOW'}
-                        </button>
-                     </div>
-                  </div>
-                ))
-              )}
-           </div>
-        </section>
-      )}
+      <section style={{ textAlign: 'center', padding: '3rem', background: '#1a1a1a', borderRadius: '32px', border: '1px solid #333' }}>
+        <div style={{ fontSize: '4rem', marginBottom: '1.5rem' }}>🚲</div>
+        <h3 style={{ color: 'white', fontSize: '1.5rem', marginBottom: '1rem' }}>Ready to conquer range anxiety?</h3>
+        <p style={{ color: '#888', marginBottom: '2rem', maxWidth: '500px', margin: '0 auto 2rem auto' }}>
+          Browse available fleets, check battery health in real-time, and book your ride with integrated terrain-aware navigation.
+        </p>
+        <button 
+          onClick={() => window.location.href = '/rent'}
+          style={{ padding: '1.2rem 3rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '50px', fontWeight: '900', fontSize: '1.2rem', cursor: 'pointer', boxShadow: '0 10px 30px rgba(255,102,0,0.3)' }}
+        >
+          EXPLORE RENTAL MARKETPLACE
+        </button>
+      </section>
     </div>
   );
 

@@ -103,8 +103,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       const motorMechanicalPowerW = Math.max(0, totalMechanicalPowerW - humanPowerW);
       
-      // Assume 80% efficiency for motor/controller
-      const electricalPowerW = Math.max(50, motorMechanicalPowerW / 0.8); 
+      // Efficiency adjustments based on drive mode and throttle style
+      let efficiency = 0.8; // Baseline 80%
+      if (driveMode === 'throttle') {
+        if (throttleMode === 'eco') efficiency = 0.85; // Less heat waste, limited amp spikes
+        else if (throttleMode === 'sport') efficiency = 0.70; // High heat waste from aggressive acceleration
+      }
+
+      const electricalPowerW = Math.max(50, motorMechanicalPowerW / efficiency); 
       return Math.min(electricalPowerW, motorWatts); 
     };
 
