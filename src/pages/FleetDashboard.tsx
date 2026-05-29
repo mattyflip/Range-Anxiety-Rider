@@ -97,6 +97,15 @@ const FleetDashboard = () => {
     return () => { unsubBikes(); unsubLive(); unsubAlerts(); unsubRequests(); };
   }, [userData?.orgId, userRole, user?.uid]);
 
+  const handleUpdateReqNotes = async (requestId: string, notes: string) => {
+    if (!userData?.orgId) return;
+    try {
+      await updateDoc(doc(db, `organizations/${userData.orgId}/rental_requests`, requestId), { 
+        shopNotes: notes 
+      });
+    } catch (e) { console.error("Failed to update notes", e); }
+  };
+
   const handleDismissAlert = async (alertId: string) => {
     try {
       await updateDoc(doc(db, `users/${user?.uid}/notifications`, alertId), { read: true });
