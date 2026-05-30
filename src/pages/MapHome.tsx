@@ -924,14 +924,17 @@ function MapHome() {
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
+            <section className="form-group"><label>Motor Rating (Watts)</label><input type="number" disabled={isRenting} style={{ opacity: isRenting ? 0.5 : 1 }} value={specs.motorWatts} onChange={e => { setSpecs(p => ({ ...p, motorWatts: parseFloat(e.target.value) || '' })); markDirty(); }} /></section>
+            <section className="form-group"><label>Tire PSI</label><input type="number" disabled={isRenting} style={{ opacity: isRenting ? 0.5 : 1 }} value={specs.tirePSI || 30} onChange={e => { setSpecs(p => ({ ...p, tirePSI: parseFloat(e.target.value) || '' })); markDirty(); }} /></section>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem', marginTop: '1rem' }}>
             <section className="form-group"><label>Tire Type</label>
-              <select disabled={isRenting} value={specs.tireType || 'all-terrain'} onChange={e => { setSpecs(p => ({ ...p, tireType: e.target.value as any })); markDirty(); }} style={{ width: '100%', padding: '0.8rem', background: '#111', border: '1px solid #333', borderRadius: '12px', color: 'white', opacity: isRenting ? 0.5 : 1 }}>
-                <option value="slick">Slick</option>
-                <option value="all-terrain">All-Terrain</option>
+              <select disabled={isRenting} value={specs.tireType || 'road'} onChange={e => { setSpecs(p => ({ ...p, tireType: e.target.value as any })); markDirty(); }} style={{ width: '100%', padding: '0.8rem', background: '#111', border: '1px solid #333', borderRadius: '12px', color: 'white', opacity: isRenting ? 0.5 : 1 }}>
+                <option value="road">Road</option>
                 <option value="knobby">Knobby</option>
               </select>
             </section>
-            <section className="form-group"><label>Tire PSI</label><input type="number" disabled={isRenting} style={{ opacity: isRenting ? 0.5 : 1 }} value={specs.tirePSI || 30} onChange={e => { setSpecs(p => ({ ...p, tirePSI: parseFloat(e.target.value) || '' })); markDirty(); }} /></section>
           </div>
 
           <section className="form-group" style={{ marginTop: '1rem' }}>
