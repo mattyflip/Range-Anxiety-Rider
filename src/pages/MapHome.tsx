@@ -629,13 +629,13 @@ function MapHome() {
           travelMode: 'BICYCLING'
         },
         routes: [{
-          overview_path: decodedPath,
+          overview_path: decodedPath.map(p => new google.maps.LatLng(p.lat, p.lng)),
           overview_polyline: { points: encodedPolyline },
           legs: route.legs.map((leg: any) => ({
             distance: { value: leg.distanceMeters, text: `${(leg.distanceMeters * 0.000621371).toFixed(1)} mi` },
             duration: { value: parseInt(leg.duration), text: leg.duration },
-            start_location: { lat: () => leg.startLocation.latLng.latitude, lng: () => leg.startLocation.latLng.longitude },
-            end_location: { lat: () => leg.endLocation.latLng.latitude, lng: () => leg.endLocation.latLng.longitude },
+            start_location: new google.maps.LatLng(leg.startLocation.latLng.latitude, leg.startLocation.latLng.longitude),
+            end_location: new google.maps.LatLng(leg.endLocation.latLng.latitude, leg.endLocation.latLng.longitude),
             steps: [] 
           }))
         }]
@@ -671,6 +671,14 @@ function MapHome() {
       const elevationChangeFt = (eRes.gain || 0); // Elevation API already returns feet
       const windSpeed = wRes.wind_speed || 0;
 
+      // Ensure geometry library is available
+      let heading = 0;
+      if (window.google?.maps?.geometry?.spherical) {
+        const start = new google.maps.LatLng(route.legs[0].startLocation.latLng.latitude, route.legs[0].startLocation.latLng.longitude);
+        const end = new google.maps.LatLng(route.legs[0].endLocation.latLng.latitude, route.legs[0].endLocation.latLng.longitude);
+        heading = google.maps.geometry.spherical.computeHeading(start, end);
+      }
+
       const calcRes = await fetch('/api/calculate-range', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -683,7 +691,7 @@ function MapHome() {
           elevationChangeFt: elevationChangeFt,
           windMph: windSpeed,
           windDirDeg: wRes.wind_degree || 0,
-          headingDeg: google.maps.geometry.spherical.computeHeading(route.legs[0].start_location, route.legs[0].end_location) || 0,
+          headingDeg: heading,
           driveMode,
           pedalAssistLevel
         })
