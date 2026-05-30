@@ -15,6 +15,7 @@ import AuthModal from '../features/auth/AuthModal'
 import WelcomeModal from '../shared/ui/WelcomeModal'
 import RouteReplay3D from '../features/map/RouteReplay3D'
 import AdvancedMarker from '../features/map/AdvancedMarker'
+import redPin from '../assets/red-pin.jpg'
 import { createNotification } from '../utils/notifications'
 import { STATE_COORDINATES } from '../utils/ebikeLaws'
 import SEO from '../shared/ui/SEO'
@@ -970,7 +971,7 @@ function MapHome() {
               style={{ width: '45px', height: '45px', borderRadius: '50%', background: 'white', border: '1px solid #ccc', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 6px rgba(0,0,0,0.3)', cursor: 'pointer' }}
               title="Locate Me"
             >
-              <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#ff4444', border: '2px solid white', boxShadow: '0 0 0 2px #ff4444' }}></div>
+              <img src={redPin} alt="Locate" style={{ width: '30px', height: '30px', objectFit: 'contain' }} />
             </button>
             <button className="mobile-toggle-btn" onClick={() => setShowMobileMenu(!showMobileMenu)} style={{ width: '45px', height: '45px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>
               {showMobileMenu ? '🗺️' : '⚙️'}
@@ -988,6 +989,12 @@ function MapHome() {
           >
             {response && <DirectionsRenderer options={{ directions: response, routeIndex: selectedRouteIndex }} />}
             
+            {userLocation && (
+              <AdvancedMarker position={userLocation} title="Your Location">
+                <img src={redPin} alt="You" style={{ width: '35px', height: '35px', objectFit: 'contain', filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.5))' }} />
+              </AdvancedMarker>
+            )}
+
             {userRole === 'fleet' && shopLocation && (
                 <AdvancedMarker position={shopLocation} title={userData?.orgName || "Shop HQ"}>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
