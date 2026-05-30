@@ -49,7 +49,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const response = await axios.get(staticMapUrl, { 
       responseType: 'arraybuffer',
-      timeout: 5000 // Ensure we don't hang the function
+      timeout: 8000
     });
     
     const origin = req.headers.origin as string | undefined;
@@ -62,10 +62,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     
     return res.send(response.data);
   } catch (error: any) {
-    console.error('Static Map Proxy Error:', error.message);
+    let message = error.message;
+    let details = '';
+    
     if (error.response) {
-       console.error('Google Response Error:', Buffer.from(error.response.data).toString());
+       // Extract error message from Google's binary response if possible
+       try {
+         const errorBody = Buffer.from(error.response.data).toString();
+         details = errorBody;
+         console.error('Google API Error Response:', errorBody);
+       } catch (e) {
+         details = 'Could not parse error body';
+       }
     }
-    return res.status(500).json({ error: 'Failed to fetch static map from Google' });
+
+    console.error('Static Map Proxy Error:', message, details);
+    
+    return res.status(500).json({ 
+      error: 'Failed to fetch static map from Google',
+      message: message,
+      details: details,
+      urlAttempted: staticMapUrl.split('&key=')[0] // Safely log URL without key
+    });
   }
 }
