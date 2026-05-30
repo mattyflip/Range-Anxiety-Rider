@@ -968,10 +968,10 @@ function MapHome() {
           <div style={{ position: 'absolute', bottom: '5rem', left: '50%', transform: 'translateX(-50%)', zIndex: 10001, display: 'flex', flexDirection: 'row', gap: '0.8rem', background: 'rgba(0,0,0,0.5)', padding: '0.6rem 1rem', borderRadius: '40px', backdropFilter: 'blur(5px)', border: '1px solid rgba(255,255,255,0.1)' }}>
             <button 
               onClick={locateMe}
-              style={{ width: '50px', height: '50px', borderRadius: '50%', background: 'white', border: '1px solid #ccc', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.4)', cursor: 'pointer' }}
+              style={{ width: '50px', height: '50px', borderRadius: '50%', background: 'none', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
               title="Locate Me"
             >
-              <img src={redPin} alt="Locate" style={{ width: '35px', height: '35px', objectFit: 'contain' }} />
+              <img src={redPin} alt="Locate" style={{ width: '45px', height: '45px', objectFit: 'contain', mixBlendMode: 'multiply' }} />
             </button>
             <button className="mobile-toggle-btn" onClick={() => setShowMobileMenu(!showMobileMenu)} style={{ width: '50px', height: '50px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem', boxShadow: '0 4px 12px rgba(0,0,0,0.4)' }}>
               {showMobileMenu ? '🗺️' : '⚙️'}
@@ -991,7 +991,7 @@ function MapHome() {
             
             {userLocation && (
               <AdvancedMarker position={userLocation} title="Your Location">
-                <img src={redPin} alt="You" style={{ width: '35px', height: '35px', objectFit: 'contain', filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.5))' }} />
+                <img src={redPin} alt="You" style={{ width: '35px', height: '35px', objectFit: 'contain', mixBlendMode: 'multiply', filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.5))' }} />
               </AdvancedMarker>
             )}
 
