@@ -593,7 +593,6 @@ function MapHome() {
           ? trip.waypoints.map(wp => ({ address: wp }))
           : (isRoundTrip ? [{ address: currentDest }] : []),
         travelMode: 'BICYCLE',
-        routingPreference: 'TRAFFIC_AWARE',
         units: unitSystem === 'imperial' ? 'IMPERIAL' : 'METRIC',
       };
 
