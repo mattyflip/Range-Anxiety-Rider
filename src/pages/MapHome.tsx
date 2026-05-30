@@ -12,6 +12,7 @@ import InstallTutorial from '../shared/ui/InstallTutorial'
 import NavBar from '../shared/ui/NavBar'
 import AuthModal from '../features/auth/AuthModal'
 import WelcomeModal from '../shared/ui/WelcomeModal'
+import RouteReplay3D from '../features/map/RouteReplay3D'
 import AdvancedMarker from '../features/map/AdvancedMarker'
 import { createNotification } from '../utils/notifications'
 import { STATE_COORDINATES } from '../utils/ebikeLaws'
@@ -146,6 +147,7 @@ function MapHome() {
   const [settingsDirty, setSettingsDirty] = useState(true);
   const [userLocation, setUserLocation] = useState<google.maps.LatLngLiteral | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showRouteReplay, setShowRouteReplay] = useState(false);
 
   // --- FLEET / B2B SPECIFIC STATE ---
   const [liveUnits, setLiveUnits] = useState<any[]>([]);
@@ -877,7 +879,10 @@ function MapHome() {
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#666' }}>Distance:</span><span style={{ fontWeight: 'bold' }}>{metrics.distanceMiles.toFixed(1)} mi</span></div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#666' }}>🌬️ Wind:</span><span style={{ color: '#4caf50', fontWeight: 'bold' }}>{metrics.windConditions?.speed.toFixed(1)} mph</span></div>
               </div>
-              <button onClick={() => { if (isExploreTier) setShowSharePreview(true); else setShowGroupRidePaywall(true); }} style={{ width: '100%', padding: '1rem', background: '#333', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 900, marginBottom: '0.5rem' }}>Share Trip {isExploreTier ? '' : '🔒'}</button>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                <button onClick={() => { if (isExploreTier) setShowSharePreview(true); else setShowGroupRidePaywall(true); }} style={{ width: '100%', padding: '1rem', background: '#333', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 900 }}>Share {isExploreTier ? '' : '🔒'}</button>
+                <button onClick={() => setShowRouteReplay(true)} style={{ width: '100%', padding: '1rem', background: '#333', color: '#ff6600', border: '1px solid #ff6600', borderRadius: '12px', fontWeight: 900 }}>3D VIEW</button>
+              </div>
               <button onClick={startNavigation} style={{ width: '100%', padding: '1.2rem', background: 'linear-gradient(to bottom, #ff8800, #ff6600)', color: 'white', border: 'none', borderRadius: '16px', fontWeight: 900, fontSize: '1.2rem', boxShadow: '0 4px 15px rgba(255,102,0,0.4)' }}>🏁 START TRIP</button>
             </div>
           )}
@@ -977,6 +982,14 @@ function MapHome() {
       {showWelcomeModal && <WelcomeModal onClose={() => setShowWelcomeModal(false)} />}
       {showInstallTutorial && <InstallTutorial onClose={() => setShowInstallTutorial(false)} />}
       
+      {showRouteReplay && response && response.routes[selectedRouteIndex] && (
+        <RouteReplay3D 
+          polyline={response.routes[selectedRouteIndex].overview_polyline as any} 
+          onClose={() => setShowRouteReplay(false)}
+          maptilerKey={import.meta.env.VITE_MAPTILER_KEY}
+        />
+      )}
+
       {showGroupRidePaywall && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.95)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(10px)' }}>
           <div style={{ background: '#1a1a1a', border: '1px solid #ff6600', borderRadius: '24px', padding: '2.5rem', maxWidth: '400px', width: '90%', textAlign: 'center' }}>
