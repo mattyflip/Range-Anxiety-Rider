@@ -623,8 +623,11 @@ function MapHome() {
       // Decode polyline for compatibility with existing components
       const decodedPath = decode(encodedPolyline).map(([lat, lng]) => ({ lat, lng }));
       
-      // Construct a mock google.maps.DirectionsResult for compatibility
+      // Construct a mock google.maps.DirectionsResult for compatibility with legacy components
       const mockResult: any = {
+        request: {
+          travelMode: 'BICYCLING'
+        },
         routes: [{
           overview_path: decodedPath,
           overview_polyline: { points: encodedPolyline },
@@ -633,7 +636,7 @@ function MapHome() {
             duration: { value: parseInt(leg.duration), text: leg.duration },
             start_location: { lat: () => leg.startLocation.latLng.latitude, lng: () => leg.startLocation.latLng.longitude },
             end_location: { lat: () => leg.endLocation.latLng.latitude, lng: () => leg.endLocation.latLng.longitude },
-            steps: [] // We could map steps if needed for nav
+            steps: [] 
           }))
         }]
       };
@@ -646,7 +649,7 @@ function MapHome() {
       const distanceMiles = totalDistanceMeters * 0.000621371;
       const speedMph = distanceMiles / (totalDurationSeconds / 3600);
 
-      const path = encodedPolyline; // We can pass encoded path to elevation API now
+      const path = encodedPolyline; 
 
       const [eRes, wRes] = await Promise.all([
         fetch('/api/elevation', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path }) }).then(async r => {
@@ -656,7 +659,7 @@ function MapHome() {
           }
           return r.json();
         }),
-        fetch(`/api/weather?lat=${route.legs[0].start_location.lat()}&lng=${route.legs[0].start_location.lng()}`).then(async r => {
+        fetch(`/api/weather?lat=${route.legs[0].startLocation.latLng.latitude}&lng=${route.legs[0].startLocation.latLng.longitude}`).then(async r => {
           if (!r.ok) {
             const err = await r.json();
             throw new Error(`Weather API Error: ${err.message || err.error || r.statusText}`);
