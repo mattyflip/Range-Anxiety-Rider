@@ -585,16 +585,24 @@ function MapHome() {
 
     try {
       // Modern Google Routes API with Multi-Route support
-      const body = {
+      const body: any = {
         origin: { address: currentOrigin },
-        destination: { address: isRoundTrip ? currentOrigin : currentDest },
-        intermediates: !isRoundTrip && trip.waypoints.length > 0 
-          ? trip.waypoints.map(wp => ({ address: wp }))
-          : (isRoundTrip ? [{ address: currentDest }] : []),
         travelMode: 'BICYCLE',
         units: unitSystem === 'imperial' ? 'IMPERIAL' : 'METRIC',
-        computeAlternativeRoutes: true // Request alternatives for optimization
+        computeAlternativeRoutes: !isRoundTrip // Alternatives usually limited with many waypoints
       };
+
+      if (isRoundTrip) {
+        // In Round Trip mode, we return to the start. 
+        // Every other non-empty stop (including the final destination) becomes an intermediate point.
+        body.destination = { address: currentOrigin };
+        const stops = locations.slice(1).filter(l => l.trim() !== '');
+        body.intermediates = stops.map(s => ({ address: s }));
+      } else {
+        // Standard One Way route
+        body.destination = { address: currentDest };
+        body.intermediates = trip.waypoints.map(wp => ({ address: wp }));
+      }
 
       const routesRes = await fetch('https://routes.googleapis.com/directions/v2:computeRoutes', {
         method: 'POST',
