@@ -112,10 +112,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       let drivetrainEfficiency = 0.85; 
       if (motorWatts > 5000) drivetrainEfficiency = 0.78; // Higher friction at high torque
 
-      let controllerEfficiency = 0.85;
+      // Controller Efficiency based on type
+      let controllerEfficiency = 0.85; // Baseline
+      const cType = (specs.controllerType || '').toLowerCase();
+      if (cType.includes('foc')) controllerEfficiency = 0.94;
+      else if (cType.includes('sine')) controllerEfficiency = 0.90;
+      else if (cType.includes('kelly') || cType.includes('bac')) controllerEfficiency = 0.92;
+      else if (cType.includes('standard')) controllerEfficiency = 0.82;
+
+      // Aggressiveness/Heat waste penalty
       if (driveMode === 'throttle') {
-        if (throttleMode === 'eco') controllerEfficiency = 0.90;
-        else if (throttleMode === 'sport') controllerEfficiency = 0.75; // Heat waste
+        if (throttleMode === 'eco') controllerEfficiency *= 1.05; // Peak efficiency
+        else if (throttleMode === 'sport') controllerEfficiency *= 0.85; // High heat waste
       }
 
       const totalEfficiency = drivetrainEfficiency * controllerEfficiency;

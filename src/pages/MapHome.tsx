@@ -18,6 +18,8 @@ import AdvancedMarker from '../features/map/AdvancedMarker'
 import orangePin from '../assets/orange-pin.png'
 import { createNotification } from '../utils/notifications'
 import { STATE_COORDINATES } from '../utils/ebikeLaws'
+import { STANDARD_BIKES, PEDAL_EBIKES_US_UK_CA, E_MOTOS_GLOBAL } from '../utils/bikeLibrary'
+import type { SavedBike } from '../utils/bikeLibrary'
 import SEO from '../shared/ui/SEO'
 
 const LIBRARIES: ("places" | "geometry" | "marker")[] = ["places", "geometry", "marker"];
@@ -42,9 +44,10 @@ interface BikeSpecs {
   motorWatts: number | '';
   bikeWeightLbs: number | '';
   tirePSI?: number | '';
-  tireType?: 'slick' | 'knobby' | 'all-terrain';
+  tireType?: 'road' | 'knobby';
   driveMode?: 'throttle_only' | 'pas_only' | 'both';
   currentBatteryPercent?: number;
+  controllerType?: string;
 }
 
 interface TripDetails {
@@ -71,25 +74,6 @@ interface RouteMetrics {
     headwindComponent: number;
   };
 }
-
-interface SavedBike {
-  id?: string;
-  name: string;
-  specs: BikeSpecs;
-}
-
-const STANDARD_BIKES: SavedBike[] = [
-  { name: "Surron Light Bee X (2025)", specs: { voltage: 60, capacityAh: 40, motorWatts: 8000, bikeWeightLbs: 125 } },
-  { name: "Talaria Sting MX5 Pro", specs: { voltage: 72, capacityAh: 40, motorWatts: 13400, bikeWeightLbs: 167 } },
-  { name: "Onyx RCR", specs: { voltage: 72, capacityAh: 41, motorWatts: 5000, bikeWeightLbs: 145 } },
-  { name: "Stark Varg Alpha", specs: { voltage: 360, capacityAh: 18, motorWatts: 60000, bikeWeightLbs: 260 } },
-  { name: "Specialized Turbo Levo", specs: { voltage: 36, capacityAh: 19.4, motorWatts: 565, bikeWeightLbs: 50 } },
-  { name: "Trek Fuel EXe", specs: { voltage: 50, capacityAh: 7.2, motorWatts: 250, bikeWeightLbs: 41 } },
-  { name: "Segway Ninebot Max G2", specs: { voltage: 36, capacityAh: 15.3, motorWatts: 450, bikeWeightLbs: 53 } },
-  { name: "Dualtron Thunder 3", specs: { voltage: 72, capacityAh: 40, motorWatts: 2500, bikeWeightLbs: 126 } },
-  { name: "Nami Burn-E 2 Max", specs: { voltage: 72, capacityAh: 40, motorWatts: 1500, bikeWeightLbs: 103 } },
-  { name: "Inmotion RS", specs: { voltage: 72, capacityAh: 40, motorWatts: 2000, bikeWeightLbs: 128 } }
-];
 
 interface POI {
   id: string;
@@ -810,7 +794,7 @@ function MapHome() {
     } catch (e) { setIsLoading(false); }
   };
 
-  const filteredBikes = [...STANDARD_BIKES, ...savedBikes].filter(b => b.name.toLowerCase().includes(bikeSearchQuery.toLowerCase()));
+  const filteredBikes = [...STANDARD_BIKES, ...PEDAL_EBIKES_US_UK_CA, ...E_MOTOS_GLOBAL, ...savedBikes].filter(b => b.name.toLowerCase().includes(bikeSearchQuery.toLowerCase()));
   const isRenting = userRole === 'rider' && !!selectedBikeId;
 
   // Dynamic Mobile Label Logic
