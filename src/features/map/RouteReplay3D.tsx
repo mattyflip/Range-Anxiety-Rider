@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
-import Map, { Source, Layer, Sky, MapRef } from 'react-map-gl/maplibre';
+import Map, { Source, Layer } from 'react-map-gl/maplibre';
+import type { MapRef } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { polylineToGeoJSON } from '../../utils/mapUtils';
 
@@ -114,14 +115,6 @@ const RouteReplay3D: React.FC<RouteReplay3DProps> = ({
             tileSize={256}
           />
           
-          <Sky
-            style={{
-              'sky-type': 'atmosphere',
-              'sky-atmosphere-sun': [0, 90],
-              'sky-atmosphere-sun-intensity': 15
-            }}
-          />
-
           {/* Route Line */}
           {routeData && (
             <Source id="route" type="geojson" data={routeData}>
