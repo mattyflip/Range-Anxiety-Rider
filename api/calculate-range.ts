@@ -153,7 +153,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const avgSpeed = speedMph || 15;
       const totalSlope = (elevationChangeFt || 0) / (avgSpeed * (durationSeconds / 3600) * 5280);
       
-      const burnRateW = calculateBurnRate(avgSpeed, Math.max(0, totalSlope), 0);
+      let headwind = 0;
+      if (windMph && windDirDeg !== undefined && headingDeg !== undefined) {
+        const relativeAngle = (windDirDeg - headingDeg) * (Math.PI / 180);
+        headwind = windMph * Math.cos(relativeAngle);
+      }
+
+      const burnRateW = calculateBurnRate(avgSpeed, Math.max(0, totalSlope), headwind);
       const energyWh = burnRateW * (durationSeconds / 3600);
       const batteryPercentUsed = (energyWh / totalWh) * 100;
       const batteryPercentRemaining = Math.max(0, Math.round((batteryPercent || 100) - batteryPercentUsed));
@@ -168,7 +174,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         batteryPercentRemaining,
         energyWh: Number(energyWh.toFixed(2)),
         burnRate: Number(burnRateW.toFixed(2)),
-        efficiencyWhMi: Number((energyWh / (avgSpeed * durationSeconds / 3600)).toFixed(1)),
+        efficiencyWhMi: Number((energyWh / (avgSpeed * (durationSeconds / 3600))).toFixed(1)),
         endingVoltage: Number(endingVoltage.toFixed(1)),
         elevationGainFt: elevationChangeFt
       });

@@ -620,14 +620,10 @@ function MapHome() {
       // Process ALL returned routes through the physics engine to find the most efficient one
       const analyzedRoutes = await Promise.all(routesData.routes.map(async (route: any) => {
         const encodedPolyline = route.polyline.encodedPolyline;
-        const totalDistanceMeters = route.distanceMeters || 0;
-        const totalDurationSeconds = parseInt(route.duration) || 0;
-        const distanceMiles = totalDistanceMeters * 0.000621371;
-        
         // E-Bike speed adjustment: Surrons/Talarias ride much faster than standard bikes.
         // Google's bicycle duration is very slow (~10-12mph). 
         // We apply a multiplier (1.5x - 2x) for high-power bikes to get a realistic Wh/mi.
-        const speedMultiplier = specs.motorWatts > 1000 ? 1.8 : 1.2;
+        const speedMultiplier = (Number(specs.motorWatts) || 0) > 1000 ? 1.8 : 1.2;
         const realisticDurationSeconds = totalDurationSeconds / speedMultiplier;
         const speedMph = distanceMiles / (realisticDurationSeconds / 3600);
 
