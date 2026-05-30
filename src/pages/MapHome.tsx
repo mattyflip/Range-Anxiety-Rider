@@ -924,7 +924,7 @@ function MapHome() {
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
-            <section className="form-group"><label>Motor Rating (Watts)</label><input type="number" disabled={isRenting} style={{ opacity: isRenting ? 0.5 : 1 }} value={specs.motorWatts} onChange={e => { setSpecs(p => ({ ...p, motorWatts: parseFloat(e.target.value) || '' })); markDirty(); }} /></section>
+            <section className="form-group"><label>Nominal Motor Rating (Watts)</label><input type="number" disabled={isRenting} style={{ opacity: isRenting ? 0.5 : 1 }} value={specs.motorWatts} onChange={e => { setSpecs(p => ({ ...p, motorWatts: parseFloat(e.target.value) || '' })); markDirty(); }} /></section>
             <section className="form-group"><label>Tire PSI</label><input type="number" disabled={isRenting} style={{ opacity: isRenting ? 0.5 : 1 }} value={specs.tirePSI || 30} onChange={e => { setSpecs(p => ({ ...p, tirePSI: parseFloat(e.target.value) || '' })); markDirty(); }} /></section>
           </div>
 
