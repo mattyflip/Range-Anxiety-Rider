@@ -1,10 +1,29 @@
 import axios from 'axios';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import polylineCodec from '@mapbox/polyline';
 
 const ALLOWED_ORIGINS = [
   'https://rangeanxietyrider.com',
   'https://www.rangeanxietyrider.com',
 ];
+
+/**
+ * Simplifies a polyline to stay within safe URL limits for the Google Elevation API.
+ */
+function simplifyPolyline(encoded: string, maxLen: number = 2000): string {
+  if (encoded.length <= maxLen) return encoded;
+  try {
+    const points = polylineCodec.decode(encoded);
+    const step = Math.ceil(encoded.length / maxLen);
+    const simplified = points.filter((_: any, i: number) => i % step === 0);
+    if (simplified.length > 0 && (simplified[simplified.length - 1] !== points[points.length - 1])) {
+      simplified.push(points[points.length - 1]);
+    }
+    return polylineCodec.encode(simplified);
+  } catch (e) {
+    return encoded.substring(0, maxLen);
+  }
+}
 
 function setCorsHeaders(req: VercelRequest, res: VercelResponse): boolean {
   const origin = req.headers.origin as string | undefined;
@@ -53,18 +72,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const isRawCoords = /^[0-9.,|\-\s]+$/.test(pathParam);
 
     if (isEncoded || !isRawCoords) {
-      queryParams.path = pathParam.startsWith('enc:') ? pathParam : 'enc:' + pathParam;
-      queryParams.samples = 100;
+      // Protect against extremely long Route API polylines
+      const safePath = simplifyPolyline(pathParam, 1500);
+      queryParams.path = safePath.startsWith('enc:') ? safePath : 'enc:' + safePath;
+      queryParams.samples = 80; // Slightly lower samples to speed up processing
     } else {
       queryParams.locations = pathParam.replace(/\s/g, '');
     }
 
     const response = await axios.get('https://maps.googleapis.com/maps/api/elevation/json', { 
       params: queryParams,
-      timeout: 5000 
+      timeout: 8000 // Allow more time for processing
     });
 
     if (response.data.status !== 'OK') {
+      console.error('Google Elevation API Error:', response.data);
       return res.status(502).json({ 
         error: 'GOOGLE_API_ERROR', 
         status: response.data.status, 
@@ -91,6 +113,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
   } catch (error: any) {
+    console.error('Elevation Proxy Error:', error.message);
     return res.status(500).json({ 
       error: 'PROXY_ERROR', 
       message: error.message 
