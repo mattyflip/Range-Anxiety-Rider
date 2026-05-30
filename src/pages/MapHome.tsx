@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { GoogleMap, useJsApiLoader, DirectionsRenderer, InfoWindowF, Autocomplete } from '@react-google-maps/api'
 import { toPng } from 'html-to-image'
+import { decode } from '@googlemaps/polyline-codec'
 import { auth, db, storage } from '../firebase'
 import { onAuthStateChanged } from 'firebase/auth'
 import type { User } from 'firebase/auth'
@@ -579,40 +580,72 @@ function MapHome() {
     setIsLoading(true); setResponse(null); setMetrics(null); setPois([]); setSettingsDirty(false); 
 
     try {
-      const directionsService = new google.maps.DirectionsService();
-      
-      const waypoints = trip.waypoints.map(wp => ({ location: wp, stopover: true }));
-      if (isRoundTrip) waypoints.push({ location: currentDest, stopover: true });
-
-      const request: google.maps.DirectionsRequest = {
-        origin: currentOrigin,
-        destination: isRoundTrip ? currentOrigin : currentDest,
-        waypoints: waypoints.length > 0 ? waypoints : undefined,
-        travelMode: google.maps.TravelMode.BICYCLING,
+      // Modern Google Routes API Migration
+      const body = {
+        origin: {
+          address: currentOrigin
+        },
+        destination: {
+          address: isRoundTrip ? currentOrigin : currentDest
+        },
+        intermediates: !isRoundTrip && trip.waypoints.length > 0 
+          ? trip.waypoints.map(wp => ({ address: wp }))
+          : (isRoundTrip ? [{ address: currentDest }] : []),
+        travelMode: 'BICYCLE',
+        routingPreference: 'TRAFFIC_AWARE',
+        units: unitSystem === 'imperial' ? 'IMPERIAL' : 'METRIC',
       };
 
-      const result = await new Promise<google.maps.DirectionsResult>((resolve, reject) => {
-        directionsService.route(request, (res, status) => {
-          if (status === google.maps.DirectionsStatus.OK && res) resolve(res);
-          else reject(status);
-        });
+      const routesRes = await fetch('https://routes.googleapis.com/directions/v2:computeRoutes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Goog-Api-Key': import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
+          'X-Goog-FieldMask': 'routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline,routes.legs'
+        },
+        body: JSON.stringify(body)
       });
 
-      setResponse(result);
+      if (!routesRes.ok) {
+        const errorData = await routesRes.json();
+        throw new Error(`Routes API Error: ${errorData.error?.message || routesRes.statusText}`);
+      }
 
-      // Now calculate metrics using our API
-      const route = result.routes[0];
-      let totalDistanceMeters = 0;
-      let totalDurationSeconds = 0;
-      route.legs.forEach(leg => {
-        totalDistanceMeters += leg.distance?.value || 0;
-        totalDurationSeconds += leg.duration?.value || 0;
-      });
+      const routesData = await routesRes.json();
+      if (!routesData.routes || routesData.routes.length === 0) {
+        throw new Error("No routes found for these locations.");
+      }
+
+      const route = routesData.routes[0];
+      const encodedPolyline = route.polyline.encodedPolyline;
+      
+      // Decode polyline for compatibility with existing components
+      const decodedPath = decode(encodedPolyline).map(([lat, lng]) => ({ lat, lng }));
+      
+      // Construct a mock google.maps.DirectionsResult for compatibility
+      const mockResult: any = {
+        routes: [{
+          overview_path: decodedPath,
+          overview_polyline: { points: encodedPolyline },
+          legs: route.legs.map((leg: any) => ({
+            distance: { value: leg.distanceMeters, text: `${(leg.distanceMeters * 0.000621371).toFixed(1)} mi` },
+            duration: { value: parseInt(leg.duration), text: leg.duration },
+            start_location: { lat: () => leg.startLocation.latLng.latitude, lng: () => leg.startLocation.latLng.longitude },
+            end_location: { lat: () => leg.endLocation.latLng.latitude, lng: () => leg.endLocation.latLng.longitude },
+            steps: [] // We could map steps if needed for nav
+          }))
+        }]
+      };
+
+      setResponse(mockResult);
+
+      let totalDistanceMeters = route.distanceMeters || 0;
+      let totalDurationSeconds = parseInt(route.duration) || 0;
 
       const distanceMiles = totalDistanceMeters * 0.000621371;
       const speedMph = distanceMiles / (totalDurationSeconds / 3600);
 
-      const path = route.overview_path.map(p => `${p.lat()},${p.lng()}`).join('|');
+      const path = encodedPolyline; // We can pass encoded path to elevation API now
 
       const [eRes, wRes] = await Promise.all([
         fetch('/api/elevation', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path }) }).then(async r => {
