@@ -59,7 +59,7 @@ interface RouteMetrics {
   elevationGainFeet: number;
   elevationLossFeet: number;
   estimatedWh: number;
-  batteryPercentUsed: number;
+  batteryPercentRemaining: number;
   recommendedSpeedMph: number;
   deathPoint?: google.maps.LatLngLiteral;
   endingVoltage?: number;
@@ -684,7 +684,9 @@ function MapHome() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           type: 'route',
-          specs: { ...specs, riderWeightLbs: riderWeight },
+          specs,
+          riderWeightLbs: riderWeight,
+          throttleMode,
           batteryPercent: startBattery,
           durationSeconds: totalDurationSeconds,
           speedMph: speedMph,
@@ -709,7 +711,7 @@ function MapHome() {
         elevationGainFeet: elevationChangeFt,
         elevationLossFeet: (eRes.loss || 0), // Elevation API already returns feet
         estimatedWh: calcRes.energyWh || 0,
-        batteryPercentUsed: 100 - (calcRes.batteryPercentRemaining || 0),
+        batteryPercentRemaining: calcRes.batteryPercentRemaining || 0,
         recommendedSpeedMph: speedMph,
         windConditions: {
           speed: windSpeed,
@@ -958,7 +960,7 @@ function MapHome() {
           {metrics && (
             <div ref={metricsCardRef} className="card metrics-card" style={{ marginTop: '1.5rem', borderLeft: '4px solid #ff6600', padding: '1.5rem', background: '#1a1a1a', borderRadius: '16px' }}>
               <div style={{ color: '#ff6600', fontWeight: 800, fontSize: '0.8rem', textTransform: 'uppercase' }}>Estimated Metrics</div>
-              <div style={{ fontSize: '1.8rem', fontWeight: 900, color: 'white' }}>Battery Left: {metrics.batteryPercentUsed.toFixed(1)}%</div>
+              <div style={{ fontSize: '1.8rem', fontWeight: 900, color: 'white' }}>Battery Left: {metrics.batteryPercentRemaining.toFixed(1)}%</div>
               <div style={{ color: '#888', fontSize: '0.9rem', marginBottom: '1.5rem' }}>Est. End Voltage: {metrics.endingVoltage?.toFixed(1)}V</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '12px', marginBottom: '1.5rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#666' }}>Travel Time:</span><span style={{ fontWeight: 'bold' }}>{Math.floor(metrics.durationMin/60)}h {Math.round(metrics.durationMin%60)}m</span></div>
@@ -1071,7 +1073,7 @@ function MapHome() {
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.95)', zIndex: 10000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(10px)', padding: '10px', overflow: 'auto' }}>
           <div ref={shareCardRef} style={{ width: '400px', background: '#0a0a0a', padding: '2rem', borderRadius: '40px', border: '1px solid #333' }}>
              <h2 style={{ color: '#ff6600', margin: 0 }}>RANGE ANXIETY</h2>
-             <div style={{ fontSize: '2.5rem', fontWeight: 900, color: 'white', margin: '1rem 0' }}>{metrics.batteryPercentUsed.toFixed(0)}% Left</div>
+             <div style={{ fontSize: '2.5rem', fontWeight: 900, color: 'white', margin: '1rem 0' }}>{metrics.batteryPercentRemaining.toFixed(0)}% Left</div>
              <p style={{ color: '#888' }}>Rode {metrics.distanceMiles.toFixed(1)} miles!</p>
           </div>
           <div style={{ marginTop: '1rem', display: 'flex', gap: '1rem' }}>

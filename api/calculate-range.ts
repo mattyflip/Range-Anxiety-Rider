@@ -153,7 +153,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const burnRateW = calculateBurnRate(avgSpeed, Math.max(0, totalSlope), 0);
       const energyWh = burnRateW * (durationSeconds / 3600);
       const batteryPercentUsed = (energyWh / totalWh) * 100;
-      const batteryPercentRemaining = Math.max(0, Math.round(100 - batteryPercentUsed));
+      const batteryPercentRemaining = Math.max(0, Math.round((batteryPercent || 100) - batteryPercentUsed));
 
       return res.status(200).json({
         batteryPercentRemaining,
