@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { GoogleMap, useJsApiLoader, DirectionsRenderer, InfoWindowF, Autocomplete } from '@react-google-maps/api'
+import { GoogleMap, useJsApiLoader, Polyline, InfoWindowF, Autocomplete } from '@react-google-maps/api'
 import { toPng } from 'html-to-image'
 import { decode } from '@googlemaps/polyline-codec'
 import { auth, db, storage } from '../firebase'
@@ -1013,7 +1013,28 @@ function MapHome() {
             onLoad={onMapLoad}
             options={{ mapId: import.meta.env.VITE_GOOGLE_MAP_ID || 'DEMO_MAP_ID', disableDefaultUI: true }}
           >
-            {response && <DirectionsRenderer options={{ directions: response, routeIndex: selectedRouteIndex }} />}
+            {/* Robust Route Rendering with Polyline */}
+            {response && response.routes[0]?.overview_path && (
+              <>
+                <Polyline
+                  path={response.routes[0].overview_path}
+                  options={{
+                    strokeColor: '#ff6600',
+                    strokeOpacity: 0.8,
+                    strokeWeight: 6,
+                    geodesic: true,
+                  }}
+                />
+                {/* Start Marker */}
+                <AdvancedMarker position={{ lat: response.routes[0].overview_path[0].lat(), lng: response.routes[0].overview_path[0].lng() }}>
+                   <div style={{ background: '#34a853', padding: '6px', borderRadius: '50%', border: '2px solid white', width: '20px', height: '20px', boxShadow: '0 2px 4px rgba(0,0,0,0.5)' }}></div>
+                </AdvancedMarker>
+                {/* End Marker */}
+                <AdvancedMarker position={{ lat: response.routes[0].overview_path[response.routes[0].overview_path.length - 1].lat(), lng: response.routes[0].overview_path[response.routes[0].overview_path.length - 1].lng() }}>
+                   <div style={{ background: '#ff4444', padding: '6px', borderRadius: '50%', border: '2px solid white', width: '20px', height: '20px', boxShadow: '0 2px 4px rgba(0,0,0,0.5)' }}></div>
+                </AdvancedMarker>
+              </>
+            )}
             
             {userLocation && (
               <AdvancedMarker position={userLocation} title="Your Location">
