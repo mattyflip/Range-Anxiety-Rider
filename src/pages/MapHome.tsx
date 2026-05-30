@@ -15,7 +15,7 @@ import AuthModal from '../features/auth/AuthModal'
 import WelcomeModal from '../shared/ui/WelcomeModal'
 import RouteReplay3D from '../features/map/RouteReplay3D'
 import AdvancedMarker from '../features/map/AdvancedMarker'
-import redPin from '../assets/red-pin.jpg'
+import redPin from '../assets/red-pin.png'
 import { createNotification } from '../utils/notifications'
 import { STATE_COORDINATES } from '../utils/ebikeLaws'
 import SEO from '../shared/ui/SEO'
@@ -971,7 +971,7 @@ function MapHome() {
               style={{ width: '50px', height: '50px', borderRadius: '50%', background: 'none', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
               title="Locate Me"
             >
-              <img src={redPin} alt="Locate" style={{ width: '45px', height: '45px', objectFit: 'contain', mixBlendMode: 'multiply' }} />
+              <img src={redPin} alt="Locate" style={{ width: '45px', height: '45px', objectFit: 'contain' }} />
             </button>
             <button className="mobile-toggle-btn" onClick={() => setShowMobileMenu(!showMobileMenu)} style={{ width: '50px', height: '50px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem', boxShadow: '0 4px 12px rgba(0,0,0,0.4)' }}>
               {showMobileMenu ? '🗺️' : '⚙️'}
@@ -991,7 +991,7 @@ function MapHome() {
             
             {userLocation && (
               <AdvancedMarker position={userLocation} title="Your Location">
-                <img src={redPin} alt="You" style={{ width: '35px', height: '35px', objectFit: 'contain', mixBlendMode: 'multiply', filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.5))' }} />
+                <img src={redPin} alt="You" style={{ width: '35px', height: '35px', objectFit: 'contain', filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.5))' }} />
               </AdvancedMarker>
             )}
 
