@@ -15,7 +15,7 @@ import AuthModal from '../features/auth/AuthModal'
 import WelcomeModal from '../shared/ui/WelcomeModal'
 import RouteReplay3D from '../features/map/RouteReplay3D'
 import AdvancedMarker from '../features/map/AdvancedMarker'
-import redPin from '../assets/red-pin.png'
+import orangePin from '../assets/orange-pin.png'
 import { createNotification } from '../utils/notifications'
 import { STATE_COORDINATES } from '../utils/ebikeLaws'
 import SEO from '../shared/ui/SEO'
@@ -803,6 +803,14 @@ function MapHome() {
   const filteredBikes = [...STANDARD_BIKES, ...savedBikes].filter(b => b.name.toLowerCase().includes(bikeSearchQuery.toLowerCase()));
   const isRenting = userRole === 'rider' && !!selectedBikeId;
 
+  // Dynamic Mobile Label Logic
+  const getMobileToggleLabel = () => {
+    if (showMobileMenu) return 'MAP';
+    if (!response) return 'START HERE';
+    if (settingsDirty) return 'UPDATE TRIP';
+    return 'TRIP SETTINGS';
+  };
+
   if (loading || !isLoaded) return <div style={{ color: 'white', padding: '4rem', textAlign: 'center' }}>Initializing Map Hub...</div>;
 
   return (
@@ -971,10 +979,14 @@ function MapHome() {
               style={{ width: '50px', height: '50px', borderRadius: '50%', background: 'none', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
               title="Locate Me"
             >
-              <img src={redPin} alt="Locate" style={{ width: '45px', height: '45px', objectFit: 'contain' }} />
+              <img src={orangePin} alt="Locate" style={{ width: '45px', height: '45px', objectFit: 'contain' }} />
             </button>
-            <button className="mobile-toggle-btn" onClick={() => setShowMobileMenu(!showMobileMenu)} style={{ width: '50px', height: '50px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem', boxShadow: '0 4px 12px rgba(0,0,0,0.4)' }}>
-              {showMobileMenu ? '🗺️' : '⚙️'}
+            <button 
+              className="mobile-toggle-btn" 
+              onClick={() => setShowMobileMenu(!showMobileMenu)} 
+              style={{ height: '50px', padding: '0 1.5rem', borderRadius: '40px', background: '#ff6600', color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '0.85rem', boxShadow: '0 4px 12px rgba(0,0,0,0.4)', textTransform: 'uppercase', whiteSpace: 'nowrap' }}
+            >
+              {getMobileToggleLabel()}
             </button>
             <button onClick={() => searchPOIs('charging')} className="desktop-only" style={{ padding: '0.8rem 1.2rem', background: 'rgba(20,20,20,0.9)', color: 'white', border: '1px solid #333', borderRadius: '12px', fontWeight: 900 }}>⚡ Chargers</button>
             <button onClick={() => searchPOIs('cafe')} className="desktop-only" style={{ padding: '0.8rem 1.2rem', background: 'rgba(20,20,20,0.9)', color: 'white', border: '1px solid #333', borderRadius: '12px', fontWeight: 900 }}>☕ Cafes</button>
@@ -991,7 +1003,7 @@ function MapHome() {
             
             {userLocation && (
               <AdvancedMarker position={userLocation} title="Your Location">
-                <img src={redPin} alt="You" style={{ width: '35px', height: '35px', objectFit: 'contain', filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.5))' }} />
+                <img src={orangePin} alt="You" style={{ width: '35px', height: '35px', objectFit: 'contain', filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.5))' }} />
               </AdvancedMarker>
             )}
 
