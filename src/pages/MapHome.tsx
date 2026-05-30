@@ -609,7 +609,8 @@ function MapHome() {
 
       if (!routesRes.ok) {
         const errorData = await routesRes.json();
-        throw new Error(`Routes API Error: ${errorData.error?.message || routesRes.statusText}`);
+        console.error('Google Routes API Full Error:', JSON.stringify(errorData, null, 2));
+        throw new Error(`Routes API Error: ${errorData.error?.message || errorData.message || routesRes.statusText}`);
       }
 
       const routesData = await routesRes.json();
