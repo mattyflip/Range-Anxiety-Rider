@@ -617,7 +617,7 @@ function MapHome() {
       }
 
       // Process ALL returned routes through the physics engine to find the most efficient one
-      const analyzedRoutes = await Promise.all(routesData.routes.map(async (route: any, idx: number) => {
+      const analyzedRoutes = await Promise.all(routesData.routes.map(async (route: any) => {
         const encodedPolyline = route.polyline.encodedPolyline;
         const totalDistanceMeters = route.distanceMeters || 0;
         const totalDurationSeconds = parseInt(route.duration) || 0;
