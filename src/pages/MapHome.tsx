@@ -731,6 +731,21 @@ function MapHome() {
 
   const onMapLoad = useCallback((map: google.maps.Map) => { mapRef.current = map; }, []);
 
+  const locateMe = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition((pos) => {
+        const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        setUserLocation(loc);
+        if (mapRef.current) {
+          mapRef.current.panTo(loc);
+          mapRef.current.setZoom(15);
+        }
+      }, (err) => {
+        alert("Location error: " + err.message);
+      }, { enableHighAccuracy: true });
+    }
+  };
+
   const searchPOIs = async (category: string) => {
     if (!isLoaded || !mapRef.current) return;
     if (category === 'charging' && !isPro) { alert("PRO required."); return; }
@@ -950,8 +965,18 @@ function MapHome() {
           )}
 
           <div style={{ position: 'absolute', top: '1rem', right: '1rem', zIndex: 10, display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
-            <button onClick={() => searchPOIs('charging')} style={{ padding: '0.8rem 1.2rem', background: 'rgba(20,20,20,0.9)', color: 'white', border: '1px solid #333', borderRadius: '12px', fontWeight: 900 }}>⚡ Chargers</button>
-            <button onClick={() => searchPOIs('cafe')} style={{ padding: '0.8rem 1.2rem', background: 'rgba(20,20,20,0.9)', color: 'white', border: '1px solid #333', borderRadius: '12px', fontWeight: 900 }}>☕ Cafes</button>
+            <button 
+              onClick={locateMe}
+              style={{ width: '45px', height: '45px', borderRadius: '50%', background: 'white', border: '1px solid #ccc', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 6px rgba(0,0,0,0.3)', cursor: 'pointer' }}
+              title="Locate Me"
+            >
+              <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#ff4444', border: '2px solid white', boxShadow: '0 0 0 2px #ff4444' }}></div>
+            </button>
+            <button className="mobile-toggle-btn" onClick={() => setShowMobileMenu(!showMobileMenu)} style={{ width: '45px', height: '45px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>
+              {showMobileMenu ? '🗺️' : '⚙️'}
+            </button>
+            <button onClick={() => searchPOIs('charging')} className="desktop-only" style={{ padding: '0.8rem 1.2rem', background: 'rgba(20,20,20,0.9)', color: 'white', border: '1px solid #333', borderRadius: '12px', fontWeight: 900 }}>⚡ Chargers</button>
+            <button onClick={() => searchPOIs('cafe')} className="desktop-only" style={{ padding: '0.8rem 1.2rem', background: 'rgba(20,20,20,0.9)', color: 'white', border: '1px solid #333', borderRadius: '12px', fontWeight: 900 }}>☕ Cafes</button>
           </div>
 
           <GoogleMap 
