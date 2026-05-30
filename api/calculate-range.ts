@@ -155,10 +155,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const batteryPercentUsed = (energyWh / totalWh) * 100;
       const batteryPercentRemaining = Math.max(0, Math.round((batteryPercent || 100) - batteryPercentUsed));
 
+      // Simple voltage estimation logic based on discharge curve
+      const nominalVoltage = specs.voltage || 48;
+      const fullVoltage = nominalVoltage * 1.15; // e.g. 54.6 for 48V
+      const emptyVoltage = nominalVoltage * 0.85; // e.g. 39.0 for 48V
+      const endingVoltage = emptyVoltage + (batteryPercentRemaining / 100) * (fullVoltage - emptyVoltage);
+
       return res.status(200).json({
         batteryPercentRemaining,
         energyWh: Number(energyWh.toFixed(2)),
-        burnRate: Number(burnRateW.toFixed(2))
+        burnRate: Number(burnRateW.toFixed(2)),
+        endingVoltage: Number(endingVoltage.toFixed(1))
       });
     }
 

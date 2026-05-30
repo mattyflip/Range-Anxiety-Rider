@@ -712,6 +712,7 @@ function MapHome() {
         elevationLossFeet: (eRes.loss || 0), // Elevation API already returns feet
         estimatedWh: calcRes.energyWh || 0,
         batteryPercentRemaining: calcRes.batteryPercentRemaining || 0,
+        endingVoltage: calcRes.endingVoltage,
         recommendedSpeedMph: speedMph,
         windConditions: {
           speed: windSpeed,
