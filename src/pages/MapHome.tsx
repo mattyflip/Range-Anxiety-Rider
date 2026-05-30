@@ -615,11 +615,23 @@ function MapHome() {
       const path = route.overview_path.map(p => `${p.lat()},${p.lng()}`).join('|');
 
       const [eRes, wRes] = await Promise.all([
-        fetch('/api/elevation', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path }) }).then(r => r.json()),
-        fetch(`/api/weather?lat=${route.legs[0].start_location.lat()}&lng=${route.legs[0].start_location.lng()}`).then(r => r.json())
+        fetch('/api/elevation', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path }) }).then(async r => {
+          if (!r.ok) {
+            const err = await r.json();
+            throw new Error(`Elevation API Error: ${err.message || err.error || r.statusText}`);
+          }
+          return r.json();
+        }),
+        fetch(`/api/weather?lat=${route.legs[0].start_location.lat()}&lng=${route.legs[0].start_location.lng()}`).then(async r => {
+          if (!r.ok) {
+            const err = await r.json();
+            throw new Error(`Weather API Error: ${err.message || err.error || r.statusText}`);
+          }
+          return r.json();
+        })
       ]);
 
-      const elevationChangeFt = (eRes.gain || 0) * 3.28084;
+      const elevationChangeFt = (eRes.gain || 0); // Elevation API already returns feet
       const windSpeed = wRes.wind_speed || 0;
 
       const calcRes = await fetch('/api/calculate-range', {
@@ -638,13 +650,19 @@ function MapHome() {
           driveMode,
           pedalAssistLevel
         })
-      }).then(r => r.json());
+      }).then(async r => {
+        if (!r.ok) {
+          const err = await r.json();
+          throw new Error(`Range Calculation API Error: ${err.message || err.error || r.statusText}`);
+        }
+        return r.json();
+      });
 
       setMetrics({
         distanceMiles,
         durationMin: totalDurationSeconds / 60,
         elevationGainFeet: elevationChangeFt,
-        elevationLossFeet: (eRes.loss || 0) * 3.28084,
+        elevationLossFeet: (eRes.loss || 0), // Elevation API already returns feet
         estimatedWh: calcRes.energyWh || 0,
         batteryPercentUsed: 100 - (calcRes.batteryPercentRemaining || 0),
         recommendedSpeedMph: speedMph,
