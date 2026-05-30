@@ -975,6 +975,7 @@ function MapHome() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '12px', marginBottom: '1.5rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#666' }}>Travel Time:</span><span style={{ fontWeight: 'bold', color: 'white' }}>{Math.floor(metrics.durationMin/60)}h {Math.round(metrics.durationMin%60)}m</span></div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#666' }}>Distance:</span><span style={{ fontWeight: 'bold', color: 'white' }}>{metrics.distanceMiles.toFixed(1)} mi</span></div>
+                <div style={{ borderTop: '1px solid #333', margin: '0.5rem 0' }}></div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#666' }}>⛰️ Elevation Gain:</span><span style={{ color: '#ffbb33', fontWeight: 'bold' }}>{Math.round(metrics.elevationGainFeet)} ft</span></div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#666' }}>🔋 Efficiency:</span><span style={{ color: '#00ccff', fontWeight: 'bold' }}>{metrics.efficiencyWhMi.toFixed(1)} Wh/mi</span></div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#666' }}>🌬️ Wind:</span><span style={{ color: '#4caf50', fontWeight: 'bold' }}>{metrics.windConditions?.speed.toFixed(1)} mph</span></div>

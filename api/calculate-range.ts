@@ -68,21 +68,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const airDensity = 1.225;
     
     // Categorized Drag (Area * Coef)
-    let CdA = 0.5; // Default
-    if (motorWatts > 5000) CdA = 0.7; // Dirt bike style (Surron/Talaria) has more drag
-    else if (motorWatts < 500) CdA = 0.35; // Sleek road e-bike
+    let CdA = 0.55; // Default
+    if (motorWatts > 5000) CdA = 1.0; // Dirt bike style (Surron/Talaria) has much more drag (upright + wide)
+    else if (motorWatts > 2000) CdA = 0.75; // Heavy commuter/moped
+    else if (motorWatts < 500) CdA = 0.4; // Sleek road e-bike
 
     // Rolling Resistance Adjustment
-    let baseCrr = 0.012; // Adjusted up for real-world tires
-    if (tireType === 'slick') baseCrr = 0.008;
-    if (tireType === 'knobby') baseCrr = 0.020;
+    let baseCrr = 0.015; // Realistic for off-road/heavy e-bike tires
+    if (tireType === 'slick') baseCrr = 0.009;
+    if (tireType === 'knobby') baseCrr = 0.025;
     
     const psiDiff = Math.max(0, 40 - tirePSI);
-    const rollingRes = baseCrr * (1 + (psiDiff / 5) * 0.15); // Higher penalty for low PSI
+    const rollingRes = baseCrr * (1 + (psiDiff / 5) * 0.2); // Aggressive penalty for low PSI
 
     const calculateBurnRate = (speed: number, slope: number, headwind: number) => {
       const speedMs = speed * 0.44704;
-      if (speedMs <= 0) return 30; // Idle draw (lights, controller)
+      if (speedMs <= 0) return 40; // Idle draw (lights, controller, cooling)
 
       const windMs = headwind * 0.44704;
       const totalAirSpeedMs = Math.max(0, speedMs + windMs);
@@ -101,20 +102,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Human Contribution
       let humanPowerW = 0;
       if (driveMode === 'pas') {
-        humanPowerW = 50 + (pedalAssistLevel * 25); 
+        humanPowerW = 40 + (pedalAssistLevel * 20); 
       }
 
       const motorMechanicalPowerW = Math.max(0, totalMechanicalPowerW - humanPowerW);
       
-      // Efficiency adjustments based on drive mode and throttle style
-      let efficiency = 0.75; // Real-world average motor/controller efficiency
+      // Efficiency & Drivetrain Losses
+      // Surrons/Talarias have significant drivetrain loss (belt + chain)
+      let drivetrainEfficiency = 0.85; 
+      if (motorWatts > 5000) drivetrainEfficiency = 0.78; // Higher friction at high torque
+
+      let controllerEfficiency = 0.85;
       if (driveMode === 'throttle') {
-        if (throttleMode === 'eco') efficiency = 0.82;
-        else if (throttleMode === 'sport') efficiency = 0.65; // High torque peaks are inefficient
+        if (throttleMode === 'eco') controllerEfficiency = 0.90;
+        else if (throttleMode === 'sport') controllerEfficiency = 0.75; // Heat waste
       }
 
-      const electricalPowerW = Math.max(30, motorMechanicalPowerW / efficiency); 
-      return Math.min(electricalPowerW, motorWatts * 1.2); // Allow short peaks
+      const totalEfficiency = drivetrainEfficiency * controllerEfficiency;
+      const electricalPowerW = Math.max(40, motorMechanicalPowerW / totalEfficiency); 
+      
+      // Acceleration Penalty (Stop-and-go)
+      // Real riding involves constant speed changes. We add a 25% "Inertial Penalty"
+      const stopAndGoPenalty = 1.25;
+
+      return Math.min(electricalPowerW * stopAndGoPenalty, motorWatts * 1.5); 
     };
 
     if (type === 'telemetry') {
