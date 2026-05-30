@@ -41,6 +41,7 @@
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/google.maps": "^3.64.1",
+    "@types/mapbox__polyline": "^1.0.5",
     "@types/maplibre-gl": "^1.13.2",
     "@types/node": "^25.8.0",
     "@types/react": "^19.2.14",

@@ -16,9 +16,9 @@ function simplifyPolyline(encoded: string, maxLen: number = 2000): string {
   try {
     const points = polylineCodec.decode(encoded);
     const step = Math.ceil(encoded.length / maxLen);
-    const simplified = points.filter((_, i) => i % step === 0);
+    const simplified = points.filter((_: any, i: number) => i % step === 0);
     // Always include the last point
-    if (simplified[simplified.length - 1] !== points[points.length - 1]) {
+    if (simplified.length > 0 && simplified[simplified.length - 1] !== points[points.length - 1]) {
       simplified.push(points[points.length - 1]);
     }
     return polylineCodec.encode(simplified);
