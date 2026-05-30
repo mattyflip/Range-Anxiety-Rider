@@ -61,6 +61,7 @@ interface RouteMetrics {
   estimatedWh: number;
   batteryPercentRemaining: number;
   recommendedSpeedMph: number;
+  label?: string; // e.g. "Most Efficient"
   deathPoint?: google.maps.LatLngLiteral;
   endingVoltage?: number;
   windConditions?: {
@@ -579,21 +580,19 @@ function MapHome() {
        return;
     }
     setIsLoading(true); setResponse(null); setMetrics(null); setPois([]); setSettingsDirty(false); 
+    setShowMobileMenu(false); // Automated switch to map view for mobile users
 
     try {
-      // Modern Google Routes API Migration
+      // Modern Google Routes API with Multi-Route support
       const body = {
-        origin: {
-          address: currentOrigin
-        },
-        destination: {
-          address: isRoundTrip ? currentOrigin : currentDest
-        },
+        origin: { address: currentOrigin },
+        destination: { address: isRoundTrip ? currentOrigin : currentDest },
         intermediates: !isRoundTrip && trip.waypoints.length > 0 
           ? trip.waypoints.map(wp => ({ address: wp }))
           : (isRoundTrip ? [{ address: currentDest }] : []),
         travelMode: 'BICYCLE',
         units: unitSystem === 'imperial' ? 'IMPERIAL' : 'METRIC',
+        computeAlternativeRoutes: true // Request alternatives for optimization
       };
 
       const routesRes = await fetch('https://routes.googleapis.com/directions/v2:computeRoutes', {
@@ -617,21 +616,79 @@ function MapHome() {
         throw new Error("No routes found for these locations.");
       }
 
-      const route = routesData.routes[0];
-      const encodedPolyline = route.polyline.encodedPolyline;
-      
-      // Decode polyline for compatibility with existing components
+      // Process ALL returned routes through the physics engine to find the most efficient one
+      const analyzedRoutes = await Promise.all(routesData.routes.map(async (route: any, idx: number) => {
+        const encodedPolyline = route.polyline.encodedPolyline;
+        const totalDistanceMeters = route.distanceMeters || 0;
+        const totalDurationSeconds = parseInt(route.duration) || 0;
+        const distanceMiles = totalDistanceMeters * 0.000621371;
+        const speedMph = distanceMiles / (totalDurationSeconds / 3600);
+
+        const [eRes, wRes] = await Promise.all([
+          fetch('/api/elevation', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: encodedPolyline }) }).then(r => r.json()),
+          fetch(`/api/weather?lat=${route.legs[0].startLocation.latLng.latitude}&lng=${route.legs[0].startLocation.latLng.longitude}`).then(r => r.json())
+        ]);
+
+        const elevationGainFt = eRes.gain || 0;
+        const windSpeed = wRes.wind_speed || 0;
+
+        let heading = 0;
+        if (window.google?.maps?.geometry?.spherical) {
+          const start = new google.maps.LatLng(route.legs[0].startLocation.latLng.latitude, route.legs[0].startLocation.latLng.longitude);
+          const end = new google.maps.LatLng(route.legs[0].endLocation.latLng.latitude, route.legs[0].endLocation.latLng.longitude);
+          heading = google.maps.geometry.spherical.computeHeading(start, end);
+        }
+
+        const calcRes = await fetch('/api/calculate-range', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'route',
+            specs, riderWeightLbs: riderWeight, throttleMode, batteryPercent: startBattery,
+            durationSeconds: totalDurationSeconds, speedMph: speedMph, elevationChangeFt: elevationGainFt,
+            windMph: windSpeed, windDirDeg: wRes.wind_degree || 0, headingDeg: heading, driveMode, pedalAssistLevel
+          })
+        }).then(r => r.json());
+
+        return {
+          originalRoute: route,
+          metrics: {
+            distanceMiles,
+            durationMin: totalDurationSeconds / 60,
+            elevationGainFeet: elevationGainFt,
+            elevationLossFeet: eRes.loss || 0,
+            estimatedWh: calcRes.energyWh || 0,
+            batteryPercentRemaining: calcRes.batteryPercentRemaining || 0,
+            endingVoltage: calcRes.endingVoltage,
+            recommendedSpeedMph: speedMph,
+            windConditions: { speed: windSpeed, direction: wRes.wind_degree || 0, headwindComponent: 0 }
+          }
+        };
+      }));
+
+      // Sort routes: 1. Most Battery Left, 2. Shortest Distance
+      analyzedRoutes.sort((a, b) => {
+        if (b.metrics.batteryPercentRemaining !== a.metrics.batteryPercentRemaining) {
+          return b.metrics.batteryPercentRemaining - a.metrics.batteryPercentRemaining;
+        }
+        return a.metrics.distanceMiles - b.metrics.distanceMiles;
+      });
+
+      // Label the top routes
+      analyzedRoutes[0].metrics.label = "Most Efficient";
+      if (analyzedRoutes.length > 1) analyzedRoutes[1].metrics.label = "Alternative 1";
+      if (analyzedRoutes.length > 2) analyzedRoutes[2].metrics.label = "Alternative 2";
+
+      const topRoute = analyzedRoutes[0];
+      const encodedPolyline = topRoute.originalRoute.polyline.encodedPolyline;
       const decodedPath = decode(encodedPolyline).map(([lat, lng]) => ({ lat, lng }));
       
-      // Construct a mock google.maps.DirectionsResult for compatibility with legacy components
       const mockResult: any = {
-        request: {
-          travelMode: 'BICYCLING'
-        },
+        request: { travelMode: 'BICYCLING' },
         routes: [{
           overview_path: decodedPath.map(p => new google.maps.LatLng(p.lat, p.lng)),
           overview_polyline: { points: encodedPolyline },
-          legs: route.legs.map((leg: any) => ({
+          legs: topRoute.originalRoute.legs.map((leg: any) => ({
             distance: { value: leg.distanceMeters, text: `${(leg.distanceMeters * 0.000621371).toFixed(1)} mi` },
             duration: { value: parseInt(leg.duration), text: leg.duration },
             start_location: new google.maps.LatLng(leg.startLocation.latLng.latitude, leg.startLocation.latLng.longitude),
@@ -642,84 +699,7 @@ function MapHome() {
       };
 
       setResponse(mockResult);
-
-      let totalDistanceMeters = route.distanceMeters || 0;
-      let totalDurationSeconds = parseInt(route.duration) || 0;
-
-      const distanceMiles = totalDistanceMeters * 0.000621371;
-      const speedMph = distanceMiles / (totalDurationSeconds / 3600);
-
-      const path = encodedPolyline; 
-
-      const [eRes, wRes] = await Promise.all([
-        fetch('/api/elevation', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path }) }).then(async r => {
-          if (!r.ok) {
-            const err = await r.json();
-            throw new Error(`Elevation API Error: ${err.message || err.error || r.statusText}`);
-          }
-          return r.json();
-        }),
-        fetch(`/api/weather?lat=${route.legs[0].startLocation.latLng.latitude}&lng=${route.legs[0].startLocation.latLng.longitude}`).then(async r => {
-          if (!r.ok) {
-            const err = await r.json();
-            throw new Error(`Weather API Error: ${err.message || err.error || r.statusText}`);
-          }
-          return r.json();
-        })
-      ]);
-
-      const elevationChangeFt = (eRes.gain || 0); // Elevation API already returns feet
-      const windSpeed = wRes.wind_speed || 0;
-
-      // Ensure geometry library is available
-      let heading = 0;
-      if (window.google?.maps?.geometry?.spherical) {
-        const start = new google.maps.LatLng(route.legs[0].startLocation.latLng.latitude, route.legs[0].startLocation.latLng.longitude);
-        const end = new google.maps.LatLng(route.legs[0].endLocation.latLng.latitude, route.legs[0].endLocation.latLng.longitude);
-        heading = google.maps.geometry.spherical.computeHeading(start, end);
-      }
-
-      const calcRes = await fetch('/api/calculate-range', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'route',
-          specs,
-          riderWeightLbs: riderWeight,
-          throttleMode,
-          batteryPercent: startBattery,
-          durationSeconds: totalDurationSeconds,
-          speedMph: speedMph,
-          elevationChangeFt: elevationChangeFt,
-          windMph: windSpeed,
-          windDirDeg: wRes.wind_degree || 0,
-          headingDeg: heading,
-          driveMode,
-          pedalAssistLevel
-        })
-      }).then(async r => {
-        if (!r.ok) {
-          const err = await r.json();
-          throw new Error(`Range Calculation API Error: ${err.message || err.error || r.statusText}`);
-        }
-        return r.json();
-      });
-
-      setMetrics({
-        distanceMiles,
-        durationMin: totalDurationSeconds / 60,
-        elevationGainFeet: elevationChangeFt,
-        elevationLossFeet: (eRes.loss || 0), // Elevation API already returns feet
-        estimatedWh: calcRes.energyWh || 0,
-        batteryPercentRemaining: calcRes.batteryPercentRemaining || 0,
-        endingVoltage: calcRes.endingVoltage,
-        recommendedSpeedMph: speedMph,
-        windConditions: {
-          speed: windSpeed,
-          direction: wRes.wind_degree || 0,
-          headwindComponent: 0 // Simplification for display
-        }
-      });
+      setMetrics(topRoute.metrics);
 
     } catch (e: any) {
       console.error("Route calculation failed:", e);
