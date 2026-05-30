@@ -22,7 +22,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   // Construct the Static Map URL with the same dark theme and route highlighting
-  const staticMapUrl = `https://maps.googleapis.com/maps/api/staticmap?size=600x300&scale=2&maptype=roadmap&path=color:0xff6600ff|weight:6|enc:${polyline}&key=${apiKey}&style=feature:all|element:all|saturation:-100|lightness:-20&style=feature:water|element:geometry|color:0x000000&style=feature:landscape|element:geometry|color:0x111111&style=feature:road|element:geometry|color:0x333333&style=feature:poi|element:labels|visibility:off&style=feature:transit|element:labels|visibility:off`;
+  // IMPORTANT: The encoded polyline string itself needs to be URL-encoded because it contains special characters
+  const staticMapUrl = `https://maps.googleapis.com/maps/api/staticmap?size=600x300&scale=2&maptype=roadmap&path=color:0xff6600ff|weight:6|enc:${encodeURIComponent(polyline as string)}&key=${apiKey}&style=feature:all|element:all|saturation:-100|lightness:-20&style=feature:water|element:geometry|color:0x000000&style=feature:landscape|element:geometry|color:0x111111&style=feature:road|element:geometry|color:0x333333&style=feature:poi|element:labels|visibility:off&style=feature:transit|element:labels|visibility:off`;
 
   try {
     const response = await axios.get(staticMapUrl, { responseType: 'arraybuffer' });
