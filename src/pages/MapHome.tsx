@@ -61,6 +61,7 @@ interface RouteMetrics {
   estimatedWh: number;
   batteryPercentRemaining: number;
   recommendedSpeedMph: number;
+  efficiencyWhMi: number;
   label?: string; // e.g. "Most Efficient"
   deathPoint?: google.maps.LatLngLiteral;
   endingVoltage?: number;
@@ -622,7 +623,13 @@ function MapHome() {
         const totalDistanceMeters = route.distanceMeters || 0;
         const totalDurationSeconds = parseInt(route.duration) || 0;
         const distanceMiles = totalDistanceMeters * 0.000621371;
-        const speedMph = distanceMiles / (totalDurationSeconds / 3600);
+        
+        // E-Bike speed adjustment: Surrons/Talarias ride much faster than standard bikes.
+        // Google's bicycle duration is very slow (~10-12mph). 
+        // We apply a multiplier (1.5x - 2x) for high-power bikes to get a realistic Wh/mi.
+        const speedMultiplier = specs.motorWatts > 1000 ? 1.8 : 1.2;
+        const realisticDurationSeconds = totalDurationSeconds / speedMultiplier;
+        const speedMph = distanceMiles / (realisticDurationSeconds / 3600);
 
         const [eRes, wRes] = await Promise.all([
           fetch('/api/elevation', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: encodedPolyline }) }).then(r => r.json()),
@@ -658,6 +665,7 @@ function MapHome() {
             elevationGainFeet: elevationGainFt,
             elevationLossFeet: eRes.loss || 0,
             estimatedWh: calcRes.energyWh || 0,
+            efficiencyWhMi: calcRes.efficiencyWhMi || 0,
             batteryPercentRemaining: calcRes.batteryPercentRemaining || 0,
             endingVoltage: calcRes.endingVoltage,
             recommendedSpeedMph: speedMph,
@@ -960,14 +968,18 @@ function MapHome() {
 
           {metrics && (
             <div ref={metricsCardRef} className="card metrics-card" style={{ marginTop: '1.5rem', borderLeft: '4px solid #ff6600', padding: '1.5rem', background: '#1a1a1a', borderRadius: '16px' }}>
-              <div style={{ color: '#ff6600', fontWeight: 800, fontSize: '0.8rem', textTransform: 'uppercase' }}>Estimated Metrics</div>
+              <div style={{ color: '#ff6600', fontWeight: 800, fontSize: '0.8rem', textTransform: 'uppercase' }}>Estimated Metrics ({metrics.label || 'Optimal Route'})</div>
               <div style={{ fontSize: '1.8rem', fontWeight: 900, color: 'white' }}>Battery Left: {metrics.batteryPercentRemaining.toFixed(1)}%</div>
               <div style={{ color: '#888', fontSize: '0.9rem', marginBottom: '1.5rem' }}>Est. End Voltage: {metrics.endingVoltage?.toFixed(1)}V</div>
+              
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '12px', marginBottom: '1.5rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#666' }}>Travel Time:</span><span style={{ fontWeight: 'bold' }}>{Math.floor(metrics.durationMin/60)}h {Math.round(metrics.durationMin%60)}m</span></div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#666' }}>Distance:</span><span style={{ fontWeight: 'bold' }}>{metrics.distanceMiles.toFixed(1)} mi</span></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#666' }}>Travel Time:</span><span style={{ fontWeight: 'bold', color: 'white' }}>{Math.floor(metrics.durationMin/60)}h {Math.round(metrics.durationMin%60)}m</span></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#666' }}>Distance:</span><span style={{ fontWeight: 'bold', color: 'white' }}>{metrics.distanceMiles.toFixed(1)} mi</span></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#666' }}>⛰️ Elevation Gain:</span><span style={{ color: '#ffbb33', fontWeight: 'bold' }}>{Math.round(metrics.elevationGainFeet)} ft</span></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#666' }}>🔋 Efficiency:</span><span style={{ color: '#00ccff', fontWeight: 'bold' }}>{metrics.efficiencyWhMi.toFixed(1)} Wh/mi</span></div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#666' }}>🌬️ Wind:</span><span style={{ color: '#4caf50', fontWeight: 'bold' }}>{metrics.windConditions?.speed.toFixed(1)} mph</span></div>
               </div>
+
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '0.5rem' }}>
                 <button onClick={() => { if (isExploreTier) setShowSharePreview(true); else setShowGroupRidePaywall(true); }} style={{ width: '100%', padding: '1rem', background: '#333', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 900 }}>Share {isExploreTier ? '' : '🔒'}</button>
                 <button onClick={() => setShowRouteReplay(true)} style={{ width: '100%', padding: '1rem', background: '#333', color: '#ff6600', border: '1px solid #ff6600', borderRadius: '12px', fontWeight: 900 }}>3D VIEW</button>

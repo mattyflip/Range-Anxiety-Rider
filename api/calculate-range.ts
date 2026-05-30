@@ -57,7 +57,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       motorWatts = 750, 
       bikeWeightLbs = 65,
       tirePSI = 30,
-      tireType = 'all-terrain' // 'slick' | 'knobby' | 'all-terrain'
+      tireType = 'all-terrain'
     } = specs;
 
     const totalWh = voltage * capacityAh;
@@ -66,20 +66,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Physics Constants & Adjustments
     const gravity = 9.81;
     const airDensity = 1.225;
-    const dragCoef = 0.9; 
-    const frontalArea = 0.5;
+    
+    // Categorized Drag (Area * Coef)
+    let CdA = 0.5; // Default
+    if (motorWatts > 5000) CdA = 0.7; // Dirt bike style (Surron/Talaria) has more drag
+    else if (motorWatts < 500) CdA = 0.35; // Sleek road e-bike
 
     // Rolling Resistance Adjustment
-    let baseCrr = 0.01;
-    if (tireType === 'slick') baseCrr = 0.006;
-    if (tireType === 'knobby') baseCrr = 0.015;
+    let baseCrr = 0.012; // Adjusted up for real-world tires
+    if (tireType === 'slick') baseCrr = 0.008;
+    if (tireType === 'knobby') baseCrr = 0.020;
     
-    // PSI Adjustment: Lower PSI = Higher Resistance (+10% resistance for every 5 PSI below 40)
     const psiDiff = Math.max(0, 40 - tirePSI);
-    const rollingRes = baseCrr * (1 + (psiDiff / 5) * 0.1);
+    const rollingRes = baseCrr * (1 + (psiDiff / 5) * 0.15); // Higher penalty for low PSI
 
     const calculateBurnRate = (speed: number, slope: number, headwind: number) => {
       const speedMs = speed * 0.44704;
+      if (speedMs <= 0) return 30; // Idle draw (lights, controller)
+
       const windMs = headwind * 0.44704;
       const totalAirSpeedMs = Math.max(0, speedMs + windMs);
 
@@ -90,28 +94,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const Fg = totalWeightKg * gravity * Math.sin(Math.atan(slope));
 
       // 3. Aero Drag Force (N)
-      const Fd = 0.5 * airDensity * dragCoef * frontalArea * Math.pow(totalAirSpeedMs, 2);
+      const Fd = 0.5 * airDensity * CdA * Math.pow(totalAirSpeedMs, 2);
 
       const totalMechanicalPowerW = (Frr + Fg + Fd) * speedMs;
       
       // Human Contribution
       let humanPowerW = 0;
-      if (driveMode === 'pas' && speed > 0) {
-        // Average human output is ~75-150W. Scale by PAS level.
-        humanPowerW = 50 + (pedalAssistLevel * 20); 
+      if (driveMode === 'pas') {
+        humanPowerW = 50 + (pedalAssistLevel * 25); 
       }
 
       const motorMechanicalPowerW = Math.max(0, totalMechanicalPowerW - humanPowerW);
       
       // Efficiency adjustments based on drive mode and throttle style
-      let efficiency = 0.8; // Baseline 80%
+      let efficiency = 0.75; // Real-world average motor/controller efficiency
       if (driveMode === 'throttle') {
-        if (throttleMode === 'eco') efficiency = 0.85; // Less heat waste, limited amp spikes
-        else if (throttleMode === 'sport') efficiency = 0.70; // High heat waste from aggressive acceleration
+        if (throttleMode === 'eco') efficiency = 0.82;
+        else if (throttleMode === 'sport') efficiency = 0.65; // High torque peaks are inefficient
       }
 
-      const electricalPowerW = Math.max(50, motorMechanicalPowerW / efficiency); 
-      return Math.min(electricalPowerW, motorWatts); 
+      const electricalPowerW = Math.max(30, motorMechanicalPowerW / efficiency); 
+      return Math.min(electricalPowerW, motorWatts * 1.2); // Allow short peaks
     };
 
     if (type === 'telemetry') {
@@ -124,7 +127,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       const currentSpeed = speedMph || 15;
-      const slope = elevationChangeFt ? (elevationChangeFt / 5280) : 0; // Rough slope over 1 mile
+      const slope = elevationChangeFt ? (elevationChangeFt / 5280) : 0;
       
       const burnRateW = calculateBurnRate(currentSpeed, slope, headwind);
       const remainingHours = currentWh / burnRateW;
@@ -133,6 +136,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({
         remainingMiles: Number(remainingMiles.toFixed(2)),
         burnRate: Number(burnRateW.toFixed(2)),
+        efficiencyWhMi: Number((burnRateW / currentSpeed).toFixed(1)),
         factors: {
           rollingRes: Number(rollingRes.toFixed(4)),
           headwind: Number(headwind.toFixed(1)),
@@ -146,7 +150,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(400).json({ error: 'MISSING_DURATION' });
       }
 
-      // Route calc based on avg speed and total elevation gain
       const avgSpeed = speedMph || 15;
       const totalSlope = (elevationChangeFt || 0) / (avgSpeed * (durationSeconds / 3600) * 5280);
       
@@ -155,17 +158,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const batteryPercentUsed = (energyWh / totalWh) * 100;
       const batteryPercentRemaining = Math.max(0, Math.round((batteryPercent || 100) - batteryPercentUsed));
 
-      // Simple voltage estimation logic based on discharge curve
+      // Voltage estimation
       const nominalVoltage = specs.voltage || 48;
-      const fullVoltage = nominalVoltage * 1.15; // e.g. 54.6 for 48V
-      const emptyVoltage = nominalVoltage * 0.85; // e.g. 39.0 for 48V
+      const fullVoltage = nominalVoltage * 1.16; 
+      const emptyVoltage = nominalVoltage * 0.83; 
       const endingVoltage = emptyVoltage + (batteryPercentRemaining / 100) * (fullVoltage - emptyVoltage);
 
       return res.status(200).json({
         batteryPercentRemaining,
         energyWh: Number(energyWh.toFixed(2)),
         burnRate: Number(burnRateW.toFixed(2)),
-        endingVoltage: Number(endingVoltage.toFixed(1))
+        efficiencyWhMi: Number((energyWh / (avgSpeed * durationSeconds / 3600)).toFixed(1)),
+        endingVoltage: Number(endingVoltage.toFixed(1)),
+        elevationGainFt: elevationChangeFt
       });
     }
 
