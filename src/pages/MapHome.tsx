@@ -965,15 +965,15 @@ function MapHome() {
             </div>
           )}
 
-          <div style={{ position: 'absolute', top: '1rem', right: '1rem', zIndex: 10, display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+          <div style={{ position: 'absolute', bottom: '5rem', left: '50%', transform: 'translateX(-50%)', zIndex: 10001, display: 'flex', flexDirection: 'row', gap: '0.8rem', background: 'rgba(0,0,0,0.5)', padding: '0.6rem 1rem', borderRadius: '40px', backdropFilter: 'blur(5px)', border: '1px solid rgba(255,255,255,0.1)' }}>
             <button 
               onClick={locateMe}
-              style={{ width: '45px', height: '45px', borderRadius: '50%', background: 'white', border: '1px solid #ccc', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 6px rgba(0,0,0,0.3)', cursor: 'pointer' }}
+              style={{ width: '50px', height: '50px', borderRadius: '50%', background: 'white', border: '1px solid #ccc', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.4)', cursor: 'pointer' }}
               title="Locate Me"
             >
-              <img src={redPin} alt="Locate" style={{ width: '30px', height: '30px', objectFit: 'contain' }} />
+              <img src={redPin} alt="Locate" style={{ width: '35px', height: '35px', objectFit: 'contain' }} />
             </button>
-            <button className="mobile-toggle-btn" onClick={() => setShowMobileMenu(!showMobileMenu)} style={{ width: '45px', height: '45px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>
+            <button className="mobile-toggle-btn" onClick={() => setShowMobileMenu(!showMobileMenu)} style={{ width: '50px', height: '50px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem', boxShadow: '0 4px 12px rgba(0,0,0,0.4)' }}>
               {showMobileMenu ? '🗺️' : '⚙️'}
             </button>
             <button onClick={() => searchPOIs('charging')} className="desktop-only" style={{ padding: '0.8rem 1.2rem', background: 'rgba(20,20,20,0.9)', color: 'white', border: '1px solid #333', borderRadius: '12px', fontWeight: 900 }}>⚡ Chargers</button>
