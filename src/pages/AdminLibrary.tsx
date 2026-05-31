@@ -196,9 +196,12 @@ const AdminLibrary: React.FC = () => {
       <NavBar user={user} onShowInstall={() => {}} onShowAuth={() => setShowAuthModal(true)} />
 
       <main style={{ padding: '2rem', maxWidth: '1000px', margin: '0 auto' }}>
-        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3rem' }}>
+        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3rem', flexWrap: 'wrap', gap: '1.5rem' }}>
           <div>
-            <h1 style={{ margin: 0, fontSize: '2rem', fontWeight: 900, color: '#ff6600' }}>GLOBAL LIBRARY</h1>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+              <h1 style={{ margin: 0, fontSize: '2rem', fontWeight: 900, color: '#ff6600' }}>GLOBAL LIBRARY</h1>
+              <span style={{ background: '#222', color: '#666', fontSize: '0.6rem', padding: '2px 8px', borderRadius: '10px', border: '1px solid #333' }}>v{__APP_VERSION__}</span>
+            </div>
             <p style={{ color: '#888', fontWeight: 'bold' }}>Catalog Management (Admin Only)</p>
           </div>
           <div style={{ display: 'flex', gap: '1rem' }}>
