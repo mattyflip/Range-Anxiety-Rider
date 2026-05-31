@@ -222,24 +222,30 @@ const AdminLibrary: React.FC = () => {
         </header>
 
         <section style={{ background: '#1a1a1a', borderRadius: '24px', border: '1px solid #333', overflow: 'hidden' }}>
-           <div style={{ padding: '1.5rem', borderBottom: '1px solid #333', display: 'flex', gap: '1rem' }}>
-              <input 
-                type="text" 
-                placeholder="Filter catalog..." 
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                style={{ flex: 1, background: '#111', border: '1px solid #333', borderRadius: '10px', padding: '0.8rem', color: 'white' }}
-              />
-              <select 
-                value={typeFilter}
-                onChange={e => setTypeFilter(e.target.value)}
-                style={{ background: '#111', border: '1px solid #333', borderRadius: '10px', padding: '0.8rem', color: 'white' }}
-              >
-                <option>All Types</option>
-                <option>Standard</option>
-                <option>Pedal</option>
-                <option>Emoto</option>
-              </select>
+           <div style={{ padding: '1.5rem', borderBottom: '1px solid #333', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+              <div style={{ flex: 1, minWidth: '250px' }}>
+                <label style={{ display: 'block', color: '#666', fontSize: '0.65rem', marginBottom: '0.5rem', textTransform: 'uppercase', fontWeight: 'bold' }}>Search Catalog</label>
+                <input 
+                  type="text" 
+                  placeholder="Model name, brand, or motor..." 
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  style={{ width: '100%', background: '#111', border: '1px solid #333', borderRadius: '10px', padding: '0.8rem', color: 'white' }}
+                />
+              </div>
+              <div style={{ width: '150px' }}>
+                <label style={{ display: 'block', color: '#666', fontSize: '0.65rem', marginBottom: '0.5rem', textTransform: 'uppercase', fontWeight: 'bold' }}>Filter Type</label>
+                <select 
+                  value={typeFilter}
+                  onChange={e => setTypeFilter(e.target.value)}
+                  style={{ width: '100%', background: '#111', border: '1px solid #333', borderRadius: '10px', padding: '0.8rem', color: 'white' }}
+                >
+                  <option>All Types</option>
+                  <option>Standard</option>
+                  <option>Pedal</option>
+                  <option>Emoto</option>
+                </select>
+              </div>
            </div>
 
            <div style={{ display: 'flex', flexDirection: 'column' }}>
