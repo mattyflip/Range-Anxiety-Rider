@@ -131,10 +131,28 @@ const AdminLibrary: React.FC = () => {
     setShowModal(true);
   };
 
+  const handleDuplicate = (bike: SavedBike) => {
+    setEditingBike(null); // Ensure it's treated as a new entry
+    setForm({
+      name: `${bike.name} (Copy)`,
+      type: (bike as any).type || 'standard',
+      voltage: bike.specs.voltage?.toString() || '48',
+      capacityAh: bike.specs.capacityAh?.toString() || '15',
+      motorWatts: bike.specs.motorWatts?.toString() || '750',
+      bikeWeightLbs: bike.specs.bikeWeightLbs?.toString() || '65',
+      tirePSI: bike.specs.tirePSI?.toString() || '30',
+      tireType: bike.specs.tireType || 'all-terrain',
+      controllerType: bike.specs.controllerType || '',
+      driveMode: bike.specs.driveMode || 'both'
+    });
+    setShowModal(true);
+  };
+
   const handleSaveBike = async () => {
     if (!form.name.trim()) return;
     setIsSaving(true);
     try {
+      // Use the existing ID if editing, otherwise generate a new one from the name
       const bikeId = editingBike?.id || form.name.toLowerCase().replace(/[^a-z0-9]/g, '-');
       const bikeRef = doc(db, "global_bikes", bikeId);
       
@@ -238,6 +256,12 @@ const AdminLibrary: React.FC = () => {
                      </div>
                      <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center' }}>
                         <button 
+                          onClick={() => handleDuplicate(bike)}
+                          style={{ background: 'rgba(255,102,0,0.1)', border: '1px solid rgba(255,102,0,0.2)', color: '#ff6600', padding: '0.5rem 1rem', borderRadius: '8px', fontSize: '0.7rem', fontWeight: 'bold', cursor: 'pointer' }}
+                        >
+                          DUPLICATE
+                        </button>
+                        <button 
                           onClick={() => openEditModal(bike)}
                           style={{ background: '#222', border: '1px solid #333', color: '#888', padding: '0.5rem 1rem', borderRadius: '8px', fontSize: '0.7rem', fontWeight: 'bold', cursor: 'pointer' }}
                         >
@@ -246,6 +270,7 @@ const AdminLibrary: React.FC = () => {
                         <button 
                           onClick={() => bike.id && handleDeleteBike(bike.id)}
                           style={{ background: 'none', border: 'none', color: '#ff4444', padding: '0.5rem', cursor: 'pointer', fontSize: '1rem' }}
+                          title="Delete Model"
                         >
                           🗑️
                         </button>
