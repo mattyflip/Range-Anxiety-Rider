@@ -1,19 +1,41 @@
 import axios from 'axios';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-// SECURITY FIX #3 (continued): Same origin restriction applied to weather API.
-import { setCorsHeaders } from './_cors';
+const ALLOWED_ORIGINS = [
+  'https://rangeanxietyrider.com',
+  'https://www.rangeanxietyrider.com',
+];
+
+const LOCALHOST_REGEX = /^http:\/\/localhost(:\d+)?$/;
+const IP_REGEX = /^http:\/\/127\.0\.0\.1(:\d+)?$/;
+
+function setCorsHeadersLocal(req: VercelRequest, res: VercelResponse): boolean {
+  const origin = req.headers.origin;
+  if (origin && typeof origin === 'string') {
+    const isAllowed = ALLOWED_ORIGINS.includes(origin) || LOCALHOST_REGEX.test(origin) || IP_REGEX.test(origin);
+    if (isAllowed) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Vary', 'Origin');
+    }
+  }
+  res.setHeader('Access-Control-Allow-Methods', 'POST,GET,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return true;
+  }
+  return false;
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
-    if (setCorsHeaders(req, res)) return;
+    if (setCorsHeadersLocal(req, res)) return;
 
     const lat = req.query.lat as string;
     const lon = req.query.lng as string;
     const API_KEY = process.env.OPENWEATHER_API_KEY;
 
     if (!API_KEY) {
-      console.error('Missing OPENWEATHER_API_KEY');
       return res.status(500).json({ error: 'SERVER_CONFIG_ERROR', message: 'Missing API Key' });
     }
 
@@ -37,7 +59,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       description: response.data.weather[0].description
     });
   } catch (error: any) {
-    console.error('Weather API error:', error.message);
     return res.status(error.response?.status || 500).json({ 
       error: 'Failed to fetch weather data',
       details: error.message 
