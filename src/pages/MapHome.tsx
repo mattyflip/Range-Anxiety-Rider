@@ -595,8 +595,26 @@ function MapHome() {
         const speedMph = distanceMiles / (realisticDurationSeconds / 3600);
 
         const [eRes, wRes] = await Promise.all([
-          fetch('/api/elevation', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: encodedPolyline }) }).then(r => r.json()),
-          fetch(`/api/weather?lat=${route.legs[0].startLocation.latLng.latitude}&lng=${route.legs[0].startLocation.latLng.longitude}`).then(r => r.json())
+          fetch('/api/elevation', { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' }, 
+            body: JSON.stringify({ path: encodedPolyline }) 
+          }).then(async r => {
+            if (!r.ok) {
+              const text = await r.text();
+              console.error(`Elevation API failed (${r.status}):`, text.substring(0, 100));
+              return { gain: 0, loss: 0 };
+            }
+            return r.json();
+          }),
+          fetch(`/api/weather?lat=${route.legs[0].startLocation.latLng.latitude}&lng=${route.legs[0].startLocation.latLng.longitude}`).then(async r => {
+            if (!r.ok) {
+              const text = await r.text();
+              console.error(`Weather API failed (${r.status}):`, text.substring(0, 100));
+              return { wind_speed: 0, wind_degree: 0 };
+            }
+            return r.json();
+          })
         ]);
 
         const elevationGainFt = eRes.gain || 0;
@@ -618,7 +636,14 @@ function MapHome() {
             durationSeconds: realisticDurationSeconds, speedMph: speedMph, elevationChangeFt: elevationGainFt,
             windMph: windSpeed, windDirDeg: wRes.wind_degree || 0, headingDeg: heading, driveMode, pedalAssistLevel
           })
-        }).then(r => r.json());
+        }).then(async r => {
+          if (!r.ok) {
+            const text = await r.text();
+            console.error(`Calculation API failed (${r.status}):`, text.substring(0, 100));
+            return { batteryPercentRemaining: 0, energyWh: 0 };
+          }
+          return r.json();
+        });
 
         return {
           originalRoute: route,
