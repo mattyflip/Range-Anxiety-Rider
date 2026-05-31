@@ -16,11 +16,10 @@ import AdvancedMarker from '../features/map/AdvancedMarker'
 import orangePin from '../assets/orange-pin.png'
 import { createNotification } from '../utils/notifications'
 import { STATE_COORDINATES } from '../utils/ebikeLaws'
-import { STANDARD_BIKES, PEDAL_EBIKES_US_UK_CA, E_MOTOS_GLOBAL } from '../utils/bikeLibrary'
-import type { SavedBike } from '../utils/bikeLibrary'
 import SEO from '../shared/ui/SEO'
-import type { Bike, LiveUnit, Organization } from '../types';
+import type { Bike, LiveUnit, Organization, SavedBike } from '../types';
 import { useUserData } from '../hooks/useUserData';
+import { useBikeLibrary } from '../hooks/useBikeLibrary';
 
 const LIBRARIES: ("places" | "geometry" | "marker")[] = ["places", "geometry", "marker"];
 
@@ -88,6 +87,7 @@ const center = { lat: 40.7128, lng: -74.0060 };
 function MapHome() {
   const { isLoaded } = useJsApiLoader({ id: 'google-map-script', googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "", libraries: LIBRARIES });
   const { user, userData, loading: authLoading } = useUserData();
+  const { bikes: globalBikes } = useBikeLibrary();
   const [authInitialized, setAuthInitialized] = useState(false);
 
   // Sync authInitialized with hook loading
@@ -763,7 +763,7 @@ function MapHome() {
     } catch (e) { }
   };
 
-  const filteredBikes = [...STANDARD_BIKES, ...PEDAL_EBIKES_US_UK_CA, ...E_MOTOS_GLOBAL, ...savedBikes].filter(b => b.name.toLowerCase().includes(bikeSearchQuery.toLowerCase()));
+  const filteredBikes = [...globalBikes, ...savedBikes].filter(b => b.name.toLowerCase().includes(bikeSearchQuery.toLowerCase()));
   const isRenting = userRole === 'rider' && !!selectedBikeId;
 
   // Dynamic Mobile Label Logic
