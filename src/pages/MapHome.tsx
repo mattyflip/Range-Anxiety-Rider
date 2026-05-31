@@ -20,7 +20,7 @@ import SEO from '../shared/ui/SEO'
 import type { Bike, LiveUnit, Organization, SavedBike } from '../types';
 import { useUserData } from '../hooks/useUserData';
 import { useBikeLibrary } from '../hooks/useBikeLibrary';
-import { calculateRangePolygon } from '../utils/physics';
+import { calculateRangePolygon, calculateBurnRate, calculateHeadwind } from '../utils/physics';
 
 const LIBRARIES: ("places" | "geometry" | "marker")[] = ["places", "geometry", "marker"];
 
@@ -700,6 +700,62 @@ function MapHome() {
           const elevationGainFt = eRes.gain || 0;
           const windSpeed = wRes.wind_speed || 0;
 
+          // --- SEGMENTED BATTERY SIMULATION (Death Point Detection) ---
+          let deathPoint: google.maps.LatLngLiteral | undefined = undefined;
+          const decodedPath = decode(encodedPolyline).map(([lat, lng]) => ({ lat, lng }));
+          
+          if (decodedPath.length > 1) {
+            const totalWh = (Number(specs.voltage) || 48) * (Number(specs.capacityAh) || 15);
+            let remainingWh = totalWh * ((startBattery || 100) / 100);
+            const physicsSpecs = mapToPhysicsSpecs(specs);
+
+            // Elevation samples from API (80 samples)
+            const elevSamples = eRes.results || [];
+            
+            for (let i = 0; i < decodedPath.length - 1; i++) {
+              const p1 = decodedPath[i];
+              const p2 = decodedPath[i + 1];
+              
+              const distMeters = google.maps.geometry.spherical.computeDistanceBetween(
+                new google.maps.LatLng(p1.lat, p1.lng),
+                new google.maps.LatLng(p2.lat, p2.lng)
+              );
+              const distMiles = distMeters * 0.000621371;
+              const heading = google.maps.geometry.spherical.computeHeading(
+                new google.maps.LatLng(p1.lat, p1.lng),
+                new google.maps.LatLng(p2.lat, p2.lng)
+              );
+
+              // Interpolate elevation for this segment from the 80 samples
+              const sampleIdx = Math.floor((i / decodedPath.length) * elevSamples.length);
+              const nextSampleIdx = Math.min(sampleIdx + 1, elevSamples.length - 1);
+              const elev1 = elevSamples[sampleIdx]?.elevation || 0;
+              const elev2 = elevSamples[nextSampleIdx]?.elevation || 0;
+              const slope = (elev2 - elev1) / Math.max(1, distMeters);
+
+              const headwind = calculateHeadwind(windSpeed, wRes.wind_degree || 0, heading);
+              
+              const burnRateW = calculateBurnRate({
+                speedMph: speedMph,
+                slope,
+                headwindMph: headwind,
+                riderWeightLbs: riderWeight || 180,
+                pedalAssistLevel,
+                driveMode,
+                throttleMode,
+                specs: physicsSpecs
+              });
+
+              const energyUsedWh = burnRateW * (distMiles / speedMph);
+              remainingWh -= energyUsedWh;
+
+              if (remainingWh <= 0 && !deathPoint) {
+                deathPoint = { lat: p2.lat, lng: p2.lng };
+                break; 
+              }
+            }
+          }
+
           let heading = 0;
           if (window.google?.maps?.geometry?.spherical) {
             const start = new google.maps.LatLng(route.legs[0].startLocation.latLng.latitude, route.legs[0].startLocation.latLng.longitude);
@@ -733,6 +789,7 @@ function MapHome() {
               batteryPercentRemaining: calcRes.batteryPercentRemaining || 0,
               endingVoltage: calcRes.endingVoltage,
               recommendedSpeedMph: speedMph,
+              deathPoint,
               windConditions: { speed: windSpeed, direction: wRes.wind_degree || 0, headwindComponent: 0 }
             }
           };
@@ -1054,10 +1111,22 @@ function MapHome() {
           <button onClick={handleCalculate} style={{ width: '100%', padding: '1rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold', marginTop: '1rem' }}>UPDATE ROUTE</button>
 
           {metrics && (
-            <div className="card metrics-card" style={{ marginTop: '1.5rem', borderLeft: '4px solid #ff6600', padding: '1.5rem', background: '#1a1a1a', borderRadius: '16px' }}>
-              <div style={{ color: '#ff6600', fontWeight: 800, fontSize: '0.8rem', textTransform: 'uppercase' }}>Estimated Metrics ({metrics.label || 'Optimal Route'})</div>
-              <div style={{ fontSize: '1.8rem', fontWeight: 900, color: 'white' }}>Battery Left: {metrics.batteryPercentRemaining.toFixed(1)}%</div>
-              <div style={{ color: '#888', fontSize: '0.9rem', marginBottom: '1.5rem' }}>Est. End Voltage: {metrics.endingVoltage?.toFixed(1)}V</div>
+            <div className="card metrics-card" style={{ marginTop: '1.5rem', borderLeft: metrics.deathPoint ? '4px solid #ff4444' : '4px solid #ff6600', padding: '1.5rem', background: '#1a1a1a', borderRadius: '16px' }}>
+              <div style={{ color: metrics.deathPoint ? '#ff4444' : '#ff6600', fontWeight: 800, fontSize: '0.8rem', textTransform: 'uppercase' }}>
+                {metrics.deathPoint ? '⚠️ INSUFFICIENT ENERGY' : `Estimated Metrics (${metrics.label || 'Optimal Route'})`}
+              </div>
+              
+              {metrics.deathPoint ? (
+                <div style={{ marginTop: '0.5rem' }}>
+                  <div style={{ fontSize: '1.8rem', fontWeight: 900, color: '#ff4444' }}>Battery Dies Early</div>
+                  <p style={{ color: '#888', fontSize: '0.75rem', lineHeight: '1.4', margin: '0.5rem 0 1.5rem 0' }}>The physics engine predicts you will run out of power at the location marked 🪫 on the map.</p>
+                </div>
+              ) : (
+                <>
+                  <div style={{ fontSize: '1.8rem', fontWeight: 900, color: 'white' }}>Battery Left: {metrics.batteryPercentRemaining.toFixed(1)}%</div>
+                  <div style={{ color: '#888', fontSize: '0.9rem', marginBottom: '1.5rem' }}>Est. End Voltage: {metrics.endingVoltage?.toFixed(1)}V</div>
+                </>
+              )}
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '12px', marginBottom: '1.5rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#666' }}>Travel Time:</span><span style={{ fontWeight: 'bold', color: 'white' }}>{Math.floor(metrics.durationMin/60)}h {Math.round(metrics.durationMin%60)}m</span></div>
@@ -1126,6 +1195,18 @@ function MapHome() {
                   zIndex: 1
                 }}
               />
+            )}
+
+            {/* Dead Battery Marker */}
+            {metrics?.deathPoint && (
+              <AdvancedMarker position={metrics.deathPoint} title="Battery Depleted">
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <div style={{ background: '#ff4444', color: 'white', padding: '4px 10px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 'bold', border: '2px solid white', marginBottom: '4px', boxShadow: '0 4px 10px rgba(0,0,0,0.5)' }}>
+                    STRANDED HERE
+                  </div>
+                  <div style={{ background: 'white', width: '35px', height: '35px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem', border: '3px solid #ff4444', boxShadow: '0 4px 10px rgba(0,0,0,0.3)' }}>🪫</div>
+                </div>
+              </AdvancedMarker>
             )}
 
             {/* Robust Route Rendering with Polyline */}
