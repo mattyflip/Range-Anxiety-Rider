@@ -110,6 +110,7 @@ function MapHome() {
   const [startVoltage, setStartVoltage] = useState<number | ''>(54.6);
   
   const [riderWeight, setRiderWeight] = useState<number | ''>(180);
+  const [targetSpeed, setTargetSpeed] = useState<number>(18);
   const [driveMode, setDriveMode] = useState<'throttle' | 'pas'>('throttle');
   const [pedalAssistLevel, setPedalAssistLevel] = useState<number>(3);
   const [throttleMode, setThrottleMode] = useState<'eco' | 'normal' | 'sport'>('normal');
@@ -565,7 +566,7 @@ function MapHome() {
          const initialPoints = calculateRangePolygon(
            originCoords,
            wind,
-           { specs: mapToPhysicsSpecs(specs), riderWeightLbs: riderWeight || 180, throttleMode, speedMph: 15, slope: 0, headwindMph: 0, driveMode, pedalAssistLevel },
+           { specs: mapToPhysicsSpecs(specs), riderWeightLbs: riderWeight || 180, throttleMode, speedMph: targetSpeed, slope: 0, headwindMph: 0, driveMode, pedalAssistLevel },
            isRoundTrip
          );
 
@@ -601,13 +602,13 @@ function MapHome() {
 
          setMetrics({
             distanceMiles: avgDist,
-            durationMin: (avgDist / 15) * 60,
+            durationMin: (avgDist / targetSpeed) * 60,
             elevationGainFeet: 0,
             elevationLossFeet: 0,
             estimatedWh: 0,
             efficiencyWhMi: 0,
             batteryPercentRemaining: 0,
-            recommendedSpeedMph: 15,
+            recommendedSpeedMph: targetSpeed,
             label: isRoundTrip ? "Est. Return Zone" : "Est. Range Zone",
             windConditions: { speed: wind.speed, direction: wind.direction, headwindComponent: 0 }
          } as RouteMetrics);
@@ -675,13 +676,11 @@ function MapHome() {
         try {
           const encodedPolyline = route.polyline.encodedPolyline;
           const totalDistanceMeters = route.distanceMeters || 0;
-          const totalDurationSeconds = parseInt(route.duration) || 0;
           const distanceMiles = totalDistanceMeters * 0.000621371;
           
-          // E-Bike speed adjustment
-          const speedMultiplier = (Number(specs.motorWatts) || 0) > 1000 ? 1.8 : 1.2;
-          const realisticDurationSeconds = totalDurationSeconds / speedMultiplier;
-          const speedMph = distanceMiles / (realisticDurationSeconds / 3600);
+          // Use user's target speed for realistic pace
+          const speedMph = targetSpeed;
+          const realisticDurationSeconds = (distanceMiles / speedMph) * 3600;
 
           const [eRes, wRes] = await Promise.all([
             fetch('/api/elevation', { 
@@ -1004,6 +1003,13 @@ function MapHome() {
                 <option value="road">Road</option>
                 <option value="knobby">Knobby</option>
               </select>
+            </section>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem', marginTop: '1rem' }}>
+            <section className="form-group"><label>Target Average Speed (mph)</label>
+              <input type="range" min="5" max="60" value={targetSpeed} onChange={e => { setTargetSpeed(parseInt(e.target.value)); markDirty(); }} style={{ width: '100%' }} />
+              <div style={{ textAlign: 'center', color: '#ff6600', fontWeight: 'bold' }}>{targetSpeed} MPH</div>
             </section>
           </div>
 
