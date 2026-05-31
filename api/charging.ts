@@ -9,24 +9,10 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
  */
 
 // SECURITY FIX #3 (continued): Same origin restriction applied to charging API.
-const ALLOWED_ORIGINS = [
-  'https://rangeanxietyrider.com',
-  'https://www.rangeanxietyrider.com',
-];
+import { setCorsHeaders } from './_utils/cors';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Set restricted CORS headers
-  const origin = req.headers.origin as string | undefined;
-  if (origin && ALLOWED_ORIGINS.includes(origin)) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-    res.setHeader('Vary', 'Origin');
-  }
-  res.setHeader('Access-Control-Allow-Methods', 'POST,GET,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
+  if (setCorsHeaders(req, res)) return;
 
   const OCM_API_KEY = process.env.OPENCHARGEMAP_API_KEY;
 

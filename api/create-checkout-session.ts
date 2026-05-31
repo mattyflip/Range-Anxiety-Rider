@@ -2,6 +2,7 @@ import { VercelRequest, VercelResponse } from '@vercel/node';
 import Stripe from 'stripe';
 import { getApps, initializeApp, cert, ServiceAccount } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
+import { setCorsHeaders } from './_utils/cors';
 
 const serviceAccount: ServiceAccount = {
   projectId: process.env.VITE_FIREBASE_PROJECT_ID,
@@ -16,7 +17,7 @@ if (!getApps().length) {
 }
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
-  apiVersion: '2025-01-27.acacia' as any,
+  apiVersion: '2026-04-22.dahlia',
 });
 
 // SECURITY: Explicit whitelist of valid tiers and their server-defined prices.
@@ -46,6 +47,8 @@ const TIER_CONFIG: Record<string, { unit_amount: number; product_name: string; p
 };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (setCorsHeaders(req, res)) return;
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }

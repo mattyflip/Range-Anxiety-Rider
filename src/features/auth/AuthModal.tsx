@@ -97,6 +97,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
             role,
             ageAtSignup: age,
             isPro: false, 
+            isAdmin: false,
             createdAt: serverTimestamp(),
             uid: userCredential.user.uid
           });

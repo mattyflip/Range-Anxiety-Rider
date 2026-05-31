@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { db, auth } from '../../firebase'
 import { signOut } from 'firebase/auth'
-import { collection, query, where, onSnapshot, doc, getDoc, updateDoc } from 'firebase/firestore'
+import { collection, query, where, onSnapshot, doc, updateDoc } from 'firebase/firestore'
+
+import { useUserData } from '../../hooks/useUserData'
 
 interface NavBarProps {
   user: any;
@@ -10,17 +12,14 @@ interface NavBarProps {
   onShowAuth: () => void;
 }
 
-const NavBar: React.FC<NavBarProps> = ({ user, onShowInstall, onShowAuth }) => {
+const NavBar: React.FC<NavBarProps> = ({ user: providedUser, onShowInstall, onShowAuth }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [unreadCount, setUnreadCount] = useState(0);
-  const [userData, setUserData] = useState<any>(null);
+  const { user, userData } = useUserData(providedUser);
 
   useEffect(() => {
     if (!user) return;
-    getDoc(doc(db, "users", user.uid)).then(snap => {
-      if (snap.exists()) setUserData(snap.data());
-    }).catch(e => console.error("NavBar user fetch failed", e));
 
     const q = query(
       collection(db, `users/${user.uid}/notifications`),
@@ -36,13 +35,12 @@ const NavBar: React.FC<NavBarProps> = ({ user, onShowInstall, onShowAuth }) => {
     return () => unsubscribe();
   }, [user]);
 
-  const isSuperAdmin = user?.email?.toLowerCase() === 'mattyfliptv@gmail.com';
+  const isAdmin = userData?.isAdmin || false;
 
   const toggleRole = async () => {
-    if (!user || !isSuperAdmin) return;
+    if (!user || !isAdmin) return;
     const newRole = userData?.role === 'fleet' ? 'rider' : 'fleet';
     await updateDoc(doc(db, "users", user.uid), { role: newRole });
-    setUserData({ ...userData, role: newRole });
     navigate(newRole === 'fleet' ? '/fleet' : '/map');
   };
 
@@ -116,7 +114,7 @@ const NavBar: React.FC<NavBarProps> = ({ user, onShowInstall, onShowAuth }) => {
       <div className="logo-container" style={{ display: 'flex', alignItems: 'center' }}>
         <Link to={user ? (isFleet ? "/fleet" : "/map") : "/"} style={{ display: 'flex', alignItems: 'center' }}>
           <img src="/app-icon.png" alt="Logo" style={{ height: '2.5rem', width: 'auto' }} />
-          <span style={{ display: 'none' }}>v1.0.0-final-sync</span>
+          <span style={{ display: 'none' }}>v{__APP_VERSION__}</span>
         </Link>
       </div>
 
@@ -133,7 +131,7 @@ const NavBar: React.FC<NavBarProps> = ({ user, onShowInstall, onShowAuth }) => {
         >
           {renderNavLinks()}
           
-          {isSuperAdmin && (
+          {isAdmin && (
             <button 
               onClick={toggleRole}
               style={{ 

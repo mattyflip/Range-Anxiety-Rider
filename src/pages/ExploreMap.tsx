@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { GoogleMap, useJsApiLoader, Polyline } from '@react-google-maps/api';
-import { auth, db } from '../firebase';
-import { doc, getDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '../firebase';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
 import NavBar from '../shared/ui/NavBar';
 import AuthModal from '../features/auth/AuthModal';
@@ -11,13 +11,13 @@ import InstallTutorial from '../shared/ui/InstallTutorial';
 import SEO from '../shared/ui/SEO';
 import AdvancedMarker from '../features/map/AdvancedMarker';
 
-const LIBRARIES: ("places" | "geometry")[] = ["places", "geometry"];
+import { useUserData } from '../hooks/useUserData';
+
+const LIBRARIES: ("places" | "geometry" | "marker")[] = ["places", "geometry", "marker"];
 
 const ExploreMap: React.FC = () => {
   const navigate = useNavigate();
-  const [user, setUser] = useState<any>(null);
-  const [userData, setUserData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const { user, userData, loading: authLoading } = useUserData();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showInstallTutorial, setShowInstallTutorial] = useState(false);
   
@@ -32,6 +32,9 @@ const ExploreMap: React.FC = () => {
   const [lastMovementTime, setLastMovementTime] = useState<number>(Date.now());
   const [currentSpeed, setCurrentSpeed] = useState(0);
   
+  // UI Notification state
+  const [notification, setNotification] = useState<{ message: string; type: 'info' | 'warning' } | null>(null);
+
   const watchId = useRef<number | null>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
 
@@ -42,28 +45,13 @@ const ExploreMap: React.FC = () => {
   });
 
   useEffect(() => {
-    const unsub = auth.onAuthStateChanged(async (u) => {
-      setUser(u);
-      if (u) {
-        const snap = await getDoc(doc(db, "users", u.uid));
-        if (snap.exists()) {
-          setUserData(snap.data());
-        }
-      }
-      setLoading(false);
-    });
-
-    if (navigator.geolocation) {
+    if (navigator.geolocation && !isTracking && path.length === 0) {
       navigator.geolocation.getCurrentPosition((pos) => {
         const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        if (!isTracking && path.length === 0) {
-          setPath([loc]);
-        }
+        setPath([loc]);
       });
     }
-
-    return () => unsub();
-  }, []);
+  }, [isTracking, path.length]);
 
   useEffect(() => {
     if (!isTracking) return;
@@ -72,7 +60,7 @@ const ExploreMap: React.FC = () => {
       const idleTime = (now - lastMovementTime) / 1000 / 60;
       if (idleTime >= 15) {
         stopTracking();
-        alert("Your ride has been paused due to 15 minutes of inactivity.");
+        setNotification({ message: "Your ride has been paused due to 15 minutes of inactivity.", type: 'warning' });
       }
     }, 60000);
     return () => clearInterval(interval);
@@ -80,7 +68,7 @@ const ExploreMap: React.FC = () => {
 
   const startTracking = () => {
     if (!navigator.geolocation) {
-      alert("Geolocation is not supported by your browser.");
+      setNotification({ message: "Geolocation is not supported by your browser.", type: 'warning' });
       return;
     }
     setIsTracking(true);
@@ -138,10 +126,14 @@ const ExploreMap: React.FC = () => {
   };
 
   const saveRide = async () => {
-    if (path.length < 2) { alert("Not enough data."); return; }
+    if (path.length < 2) { 
+      setNotification({ message: "Not enough ride data to save.", type: 'info' });
+      return; 
+    }
     const rideName = window.prompt("Name your ride:", `Ride on ${new Date().toLocaleDateString()}`);
     if (!rideName) return;
     try {
+      if (!user) return;
       await addDoc(collection(db, `users/${user.uid}/recorded_routes`), {
         name: rideName,
         path,
@@ -149,9 +141,11 @@ const ExploreMap: React.FC = () => {
         durationMin: startTime ? Math.round((Date.now() - startTime) / 60000) : 0,
         createdAt: serverTimestamp()
       });
-      alert("Ride saved!");
-      navigate('/shop-profile');
-    } catch (e) { alert("Failed to save."); }
+      setNotification({ message: "Ride saved successfully!", type: 'info' });
+      setTimeout(() => navigate('/profile/me'), 1500);
+    } catch (e) { 
+      setNotification({ message: "Failed to save ride. Please try again.", type: 'warning' });
+    }
   };
 
   const checkoutExploreTier = async () => {
@@ -168,13 +162,13 @@ const ExploreMap: React.FC = () => {
       });
       const data = await res.json();
       if (data.url) window.location.href = data.url;
-      else alert(`Checkout failed: ${data.error || 'Please try again.'}`);
-    } catch (e: any) { alert(`Checkout failed: ${e.message || 'Unknown error'}`); }
+      else setNotification({ message: `Checkout failed: ${data.error || 'Please try again.'}`, type: 'warning' });
+    } catch (e: any) { setNotification({ message: `Checkout failed: ${e.message || 'Unknown error'}`, type: 'warning' }); }
   };
 
-  if (loading) return <div style={{ minHeight: '100vh', background: '#121212' }} />;
+  if (authLoading) return <div style={{ minHeight: '100vh', background: '#121212' }} />;
 
-  const canExplore = userData?.isShopTier || userData?.isExploreTier || (userData?.canHostGroupRide && new Date(userData.groupRideExpiresAt?.seconds * 1000) > new Date());
+  const canExplore = userData?.isShopTier || userData?.isExploreTier || (userData?.canHostGroupRide && userData.groupRideExpiresAt && new Date(userData.groupRideExpiresAt.seconds * 1000) > new Date());
 
   if (!canExplore) {
     return (
@@ -212,8 +206,19 @@ const ExploreMap: React.FC = () => {
             options={{ mapId: import.meta.env.VITE_GOOGLE_MAP_ID || 'DEMO_MAP_ID', disableDefaultUI: true }}
           >
             {path.length > 1 && <Polyline path={path} options={{ strokeColor: '#ff6600', strokeOpacity: 1, strokeWeight: 5 }} />}
-            {path.length > 0 && <AdvancedMarker position={path[path.length - 1]} icon={{ url: '/app-icon.png', scaledSize: { width: 32, height: 32 } }} />}
+            {path.length > 0 && (
+              <AdvancedMarker position={path[path.length - 1]}>
+                 <img src="/app-icon.png" style={{ width: '32px', height: '32px' }} />
+              </AdvancedMarker>
+            )}
           </GoogleMap>
+        )}
+
+        {notification && (
+          <div style={{ position: 'fixed', top: '5.5rem', left: '50%', transform: 'translateX(-50%)', zIndex: 10000, background: notification.type === 'warning' ? '#ff4444' : '#34a853', color: 'white', padding: '1rem 2rem', borderRadius: '12px', fontWeight: 'bold', boxShadow: '0 4px 15px rgba(0,0,0,0.4)', textAlign: 'center', minWidth: '300px' }}>
+            {notification.message}
+            <button onClick={() => setNotification(null)} style={{ marginLeft: '1rem', background: 'none', border: 'none', color: 'white', fontWeight: 'bold', cursor: 'pointer' }}>✕</button>
+          </div>
         )}
 
         <div style={{ position: 'absolute', top: '1rem', left: '1rem', right: '1rem', pointerEvents: 'none' }}>

@@ -1,8 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom'
-import { useState, useEffect } from 'react'
-import { auth } from './firebase'
-import { onAuthStateChanged, type User } from 'firebase/auth'
-import MapHome from './pages/MapHome'
+import { useUserData } from './hooks/useUserData'
 import FleetDashboard from './pages/FleetDashboard'
 import Profile from './pages/Profile'
 import ShopProfile from './pages/ShopProfile'
@@ -15,19 +12,12 @@ import Notifications from './pages/Notifications'
 import FAQ from './pages/FAQ'
 import ExploreMap from './pages/ExploreMap'
 import Rent from './pages/Rent'
+import MapHome from './pages/MapHome'
 
 // Protected Route Component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)
+  const { user, loading } = useUserData()
   const location = useLocation()
-
-  useEffect(() => {
-    return onAuthStateChanged(auth, (u) => {
-      setUser(u)
-      setLoading(false)
-    })
-  }, [])
 
   if (loading) return <div style={{ background: '#121212', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ff6600' }}>Loading...</div>
 
@@ -41,29 +31,12 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 // Redirect authenticated users away from landing page
 const AuthRedirect = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null)
-  const [role, setRole] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    return onAuthStateChanged(auth, async (u) => {
-      setUser(u)
-      if (u) {
-        const { getDoc, doc } = await import('firebase/firestore');
-        const { db } = await import('./firebase');
-        const snap = await getDoc(doc(db, "users", u.uid));
-        if (snap.exists()) {
-          setRole(snap.data().role);
-        }
-      }
-      setLoading(false)
-    })
-  }, [])
+  const { user, userData, loading } = useUserData()
 
   if (loading) return null
 
   if (user) {
-    return <Navigate to={role === 'fleet' ? "/fleet" : "/map"} replace />
+    return <Navigate to={userData?.role === 'fleet' ? "/fleet" : "/map"} replace />
   }
 
   return <>{children}</>
@@ -71,30 +44,16 @@ const AuthRedirect = ({ children }: { children: React.ReactNode }) => {
 
 // Role-Based Route Component
 const RoleRoute = ({ children, requiredRole }: { children: React.ReactNode, requiredRole: string }) => {
-  const [user, setUser] = useState<User | null>(null)
-  const [role, setRole] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    return onAuthStateChanged(auth, async (u) => {
-      setUser(u)
-      if (u) {
-        const { getDoc, doc } = await import('firebase/firestore');
-        const { db } = await import('./firebase');
-        const snap = await getDoc(doc(db, "users", u.uid));
-        if (snap.exists()) {
-          setRole(snap.data().role);
-        }
-      }
-      setLoading(false)
-    })
-  }, [])
+  const { user, userData, loading } = useUserData()
 
   if (loading) return <div style={{ background: '#121212', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ff6600' }}>Verifying Role...</div>
 
   if (!user) return <Navigate to="/" replace />
   
-  if (role !== requiredRole && user.email !== 'mattyfliptv@gmail.com') {
+  const isAdmin = userData?.isAdmin || false;
+  const role = userData?.role;
+
+  if (role !== requiredRole && !isAdmin) {
     return <Navigate to="/map" replace />
   }
 

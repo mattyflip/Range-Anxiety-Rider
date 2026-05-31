@@ -1,22 +1,22 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { auth, db } from '../firebase'
-import { onAuthStateChanged, deleteUser, signOut } from 'firebase/auth'
-import { doc, updateDoc, deleteDoc, onSnapshot, setDoc, getDoc } from 'firebase/firestore'
+import { db, auth } from '../firebase'
+import { doc, updateDoc, deleteDoc, setDoc, getDoc } from 'firebase/firestore'
+import { deleteUser, signOut } from 'firebase/auth'
 import { useJsApiLoader, GoogleMap } from '@react-google-maps/api'
 import NavBar from '../shared/ui/NavBar'
 import ModernAutocomplete from '../features/map/ModernAutocomplete'
 import AdvancedMarker from '../features/map/AdvancedMarker'
 import SEO from '../shared/ui/SEO'
+import type { Organization } from '../types';
+import { useUserData } from '../hooks/useUserData';
 
 const LIBRARIES: ("places" | "geometry")[] = ["places", "geometry"];
 
 const ShopProfile: React.FC = () => {
   const navigate = useNavigate();
   const { isLoaded } = useJsApiLoader({ id: 'google-map-script', googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "", libraries: LIBRARIES });
-  const [user, setUser] = useState<any>(null);
-  const [userData, setUserData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const { user, userData, loading: authLoading } = useUserData();
 
   // Shop Profile states
   const [shopName, setShopName] = useState('');
@@ -32,34 +32,22 @@ const ShopProfile: React.FC = () => {
   const [shopTierExpiresAt, setShopTierExpiresAt] = useState<Date | null>(null);
 
   useEffect(() => {
-    const unsubAuth = onAuthStateChanged(auth, (u) => {
-      if (u) {
-        setUser(u);
-        const userDocRef = doc(db, "users", u.uid);
-        const unsubSnap = onSnapshot(userDocRef, (snap) => {
-          if (snap.exists()) {
-            const data = snap.data();
-            setUserData(data);
-            setIsShopTier(data.isShopTier || false);
-            if (data.shopTierExpiresAt?.toDate) {
-              setShopTierExpiresAt(data.shopTierExpiresAt.toDate());
-            }
-          }
-          setLoading(false);
-        });
-        return () => unsubSnap();
-      } else {
-        navigate('/');
+    if (authLoading) return;
+    if (!user) { navigate('/'); return; }
+
+    if (userData) {
+      setIsShopTier(userData.isShopTier || false);
+      if (userData.shopTierExpiresAt?.toDate) {
+        setShopTierExpiresAt(userData.shopTierExpiresAt.toDate());
       }
-    });
-    return () => unsubAuth();
-  }, [navigate]);
+    }
+  }, [user, userData, authLoading, navigate]);
 
   useEffect(() => {
     if (userData?.orgId && userData?.role === 'fleet') {
       getDoc(doc(db, "organizations", userData.orgId)).then(snap => {
         if (snap.exists()) {
-          const d = snap.data();
+          const d = snap.data() as Organization;
           setShopName(d.name || '');
           setShopBio(d.bio || '');
           setShopAddress(d.address || '');
@@ -108,7 +96,7 @@ const ShopProfile: React.FC = () => {
     } finally { setIsUpdating(false); }
   };
 
-  if (loading) return <div style={{ color: 'white', padding: '2rem', textAlign: 'center' }}>Loading Shop Profile...</div>;
+  if (authLoading) return <div style={{ color: 'white', padding: '2rem', textAlign: 'center' }}>Loading Shop Profile...</div>;
 
   const isFleet = userData?.role === 'fleet';
 
@@ -180,7 +168,6 @@ const ShopProfile: React.FC = () => {
                         <AdvancedMarker 
                           position={{ lat: shopLat, lng: shopLng }} 
                           title="Shop HQ"
-                          icon={{ path: google.maps.SymbolPath.BACKWARD_CLOSED_ARROW, fillColor: '#ff6600', fillOpacity: 1, scale: 8, strokeColor: 'white', strokeWeight: 2 }}
                         />
                       </GoogleMap>
                     </div>
@@ -226,7 +213,7 @@ const ShopProfile: React.FC = () => {
 
         <section style={{ marginTop: '4rem', paddingTop: '2rem', borderTop: '1px solid #222', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
            <button onClick={() => signOut(auth).then(() => navigate('/'))} style={{ width: '100%', padding: '1rem', background: '#222', color: 'white', border: '1px solid #333', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer' }}>Sign Out</button>
-           <button onClick={async () => { if(window.confirm("Delete account?")) { await deleteDoc(doc(db, "users", user.uid)); await deleteUser(user); navigate('/'); } }} style={{ width: '100%', padding: '1rem', background: 'transparent', color: '#666', border: 'none', fontSize: '0.8rem', cursor: 'pointer' }}>Delete Account</button>
+           <button onClick={async () => { if(user && window.confirm("Delete account?")) { await deleteDoc(doc(db, "users", user.uid)); await deleteUser(user); navigate('/'); } }} style={{ width: '100%', padding: '1rem', background: 'transparent', color: '#666', border: 'none', fontSize: '0.8rem', cursor: 'pointer' }}>Delete Account</button>
         </section>
       </main>
     </div>

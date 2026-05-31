@@ -1,11 +1,7 @@
 import axios from 'axios';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import polylineCodec from '@mapbox/polyline';
-
-const ALLOWED_ORIGINS = [
-  'https://rangeanxietyrider.com',
-  'https://www.rangeanxietyrider.com',
-];
+import { setCorsHeaders } from './_utils/cors';
 
 /**
  * Simplifies a polyline to stay within safe URL limits for the Google Elevation API.
@@ -25,21 +21,8 @@ function simplifyPolyline(encoded: string, maxLen: number = 2000): string {
   }
 }
 
-function setCorsHeaders(req: VercelRequest, res: VercelResponse): boolean {
-  const origin = req.headers.origin as string | undefined;
-  if (origin && (ALLOWED_ORIGINS.includes(origin) || origin.includes('localhost') || origin.includes('127.0.0.1'))) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-    res.setHeader('Vary', 'Origin');
-  }
-  res.setHeader('Access-Control-Allow-Methods', 'POST,GET,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  return req.method === 'OPTIONS';
-}
-
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (setCorsHeaders(req, res)) {
-    return res.status(200).end();
-  }
+  if (setCorsHeaders(req, res)) return;
 
   const apiKey = process.env.GOOGLE_MAPS_BACKEND_KEY || process.env.VITE_GOOGLE_MAPS_API_KEY;
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { db, auth } from '../firebase'
+import { db } from '../firebase'
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, updateDoc } from 'firebase/firestore'
 import { useNavigate, Link } from 'react-router-dom'
 import NavBar from '../shared/ui/NavBar'
@@ -8,6 +8,8 @@ import AuthModal from '../features/auth/AuthModal'
 import UniversalSearch from '../features/map/UniversalSearch'
 import AdBanner from '../shared/ui/AdBanner'
 import SEO from '../shared/ui/SEO'
+
+import { useUserData } from '../hooks/useUserData';
 
 interface Community {
   id: string;
@@ -19,10 +21,9 @@ interface Community {
 }
 
 const ForumHub: React.FC = () => {
+  const { user, userData, loading: authLoading } = useUserData();
   const [communities, setCommunities] = useState<Community[]>([]);
   const [loading, setLoading] = useState(true);
-  const [authLoading, setAuthLoading] = useState(true);
-  const [user, setUser] = useState<any>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newCommName, setNewCommName] = useState('');
   const [newCommDesc, setNewCommDesc] = useState('');
@@ -30,7 +31,7 @@ const ForumHub: React.FC = () => {
   const [showInstallTutorial, setShowInstallTutorial] = useState(false);
   const navigate = useNavigate();
 
-  const isAdmin = user?.email?.toLowerCase() === 'mattyfliptv@gmail.com';
+  const isAdmin = userData?.isAdmin || false;
 
   // Admin states
   const [adminEditingComm, setAdminEditingComm] = useState<Community | null>(null);
@@ -38,18 +39,11 @@ const ForumHub: React.FC = () => {
   const [adminCommDesc, setAdminCommDesc] = useState('');
 
   useEffect(() => {
-    const unsub = auth.onAuthStateChanged(async u => {
-      setUser(u);
-      if (u) {
-        // Logged in
-      } else {
-        // Prompt for account creation if guest
-        setShowAuthModal(true);
-      }
-      setAuthLoading(false);
-    });
-    return () => unsub();
-  }, []);
+    if (!authLoading && !user) {
+      // Prompt for account creation if guest
+      setShowAuthModal(true);
+    }
+  }, [user, authLoading]);
 
   useEffect(() => {
     const q = query(collection(db, "communities"), orderBy("createdAt", "desc"));
@@ -63,13 +57,14 @@ const ForumHub: React.FC = () => {
   }, []);
 
   const handleCreateCommunity = async () => {
-    if (!user || !newCommName.trim()) return;
+    if (!user || !userData || !newCommName.trim()) return;
 
     try {
       const commRef = await addDoc(collection(db, "communities"), {
         name: newCommName.toLowerCase().replace(/\s+/g, '-'),
         description: newCommDesc,
         creatorId: user.uid,
+        creatorUsername: userData.username || user.email?.split('@')[0],
         memberCount: 1,
         createdAt: serverTimestamp()
       });

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { db, auth } from '../firebase'
+import { db } from '../firebase'
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, getDoc, doc, updateDoc, increment, deleteDoc, arrayUnion, arrayRemove } from 'firebase/firestore'
 import { useParams, Link } from 'react-router-dom'
 import NavBar from '../shared/ui/NavBar'
@@ -7,34 +7,26 @@ import InstallTutorial from '../shared/ui/InstallTutorial'
 import AuthModal from '../features/auth/AuthModal'
 import { createNotification } from '../utils/notifications'
 import SEO from '../shared/ui/SEO'
-
 import ShareButton from '../features/social/ShareButton'
-
-interface ForumComment {
-  id: string;
-  authorId: string;
-  authorUsername: string;
-  authorProfilePic?: string;
-  text: string;
-  parentId?: string | null;
-  createdAt: any;
-}
+import type { ForumComment, Thread, Community } from '../types';
+import { useUserData } from '../hooks/useUserData';
 
 const ThreadView: React.FC = () => {
   const { communityId, threadId } = useParams<{ communityId: string, threadId: string }>();
-  const [thread, setThread] = useState<any>(null);
-  const [communityData, setCommunityData] = useState<any>(null);
+  const { user, userData, loading: authLoading } = useUserData();
+  const [thread, setThread] = useState<Thread | null>(null);
+  const [communityData, setCommunityData] = useState<Community | null>(null);
   const [comments, setComments] = useState<ForumComment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<any>(null);
 
-  const isAdmin = user?.email?.toLowerCase() === 'mattyfliptv@gmail.com';
+  const isAdmin = userData?.isAdmin || false;
 
   const promptForModerationReason = (action: string) => {
     const reason = window.prompt(`Reason for ${action}:`, "Violates community guidelines");
     return reason;
   };
   
+  const [newComment, setNewComment] = useState('');
   const [replyText, setReplyText] = useState('');
   const [activeReplyId, setActiveReplyId] = useState<string | null>(null);
   
@@ -50,17 +42,12 @@ const ThreadView: React.FC = () => {
   const [adminThreadBody, setAdminThreadBody] = useState('');
 
   useEffect(() => {
-    const unsub = auth.onAuthStateChanged(u => setUser(u));
-    return () => unsub();
-  }, []);
-
-  useEffect(() => {
     if (!communityId || !threadId) return;
 
     // Fetch Community Metadata
     const commRef = doc(db, "communities", communityId);
     getDoc(commRef).then(snap => {
-      if (snap.exists()) setCommunityData(snap.data());
+      if (snap.exists()) setCommunityData({ id: snap.id, ...snap.data() } as Community);
     });
 
     // Fetch Thread Details
@@ -68,7 +55,7 @@ const ThreadView: React.FC = () => {
     const unsubThread = onSnapshot(threadRef, (snap) => {
       if (snap.exists()) {
         const data = snap.data();
-        setThread({ id: snap.id, ...data });
+        setThread({ id: snap.id, ...data } as Thread);
         setAdminThreadTitle(data.title);
         setAdminThreadBody(data.body || '');
       }
@@ -90,8 +77,98 @@ const ThreadView: React.FC = () => {
     return () => { unsubThread(); unsubComments(); };
   }, [communityId, threadId]);
 
+  const handleSubmitComment = async (parentId: string | null = null) => {
+    if (!user || !userData || !communityId || !threadId) {
+      setShowAuthModal(true);
+      return;
+    }
+
+    const text = parentId ? replyText : newComment;
+    if (!text.trim()) return;
+
+    try {
+      await addDoc(collection(db, `communities/${communityId}/threads/${threadId}/comments`), {
+        authorId: user.uid,
+        authorUsername: userData.username || "Rider",
+        authorProfilePic: userData.profilePic || "",
+        authorIsAdmin: userData.isAdmin || false,
+        text: text,
+        parentId: parentId,
+        score: 0,
+        upvotedBy: [],
+        downvotedBy: [],
+        createdAt: serverTimestamp()
+      });
+
+      await updateDoc(doc(db, `communities/${communityId}/threads`, threadId), {
+        commentCount: increment(1)
+      });
+
+      if (parentId) {
+        setReplyText('');
+        setActiveReplyId(null);
+      } else {
+        setNewComment('');
+      }
+
+      // Notify thread author
+      if (thread && thread.authorId !== user?.uid) {
+        await createNotification(
+          thread.authorId,
+          user?.uid || 'guest',
+          userData?.username || "Rider",
+          'comment',
+          threadId,
+          `replied to your thread: "${thread.title}"`
+        );
+      }
+    } catch (e) {
+      console.error("Comment failed", e);
+    }
+  };
+
+  const handleVote = async (targetId: string, isThread: boolean, incrementVal: number) => {
+    if (!user || !communityId || !threadId) {
+      setShowAuthModal(true);
+      return;
+    }
+
+    const docRef = isThread 
+      ? doc(db, `communities/${communityId}/threads`, threadId)
+      : doc(db, `communities/${communityId}/threads/${threadId}/comments`, targetId);
+
+    const userId = user.uid;
+    const target = isThread ? thread : comments.find(c => c.id === targetId);
+    if (!target) return;
+
+    const hasUpvoted = target.upvotedBy?.includes(userId);
+    const hasDownvoted = target.downvotedBy?.includes(userId);
+
+    try {
+      if (incrementVal === 1) {
+        if (hasUpvoted) {
+          await updateDoc(docRef, { score: increment(-1), upvotedBy: arrayRemove(userId) });
+        } else if (hasDownvoted) {
+          await updateDoc(docRef, { score: increment(2), downvotedBy: arrayRemove(userId), upvotedBy: arrayUnion(userId) });
+        } else {
+          await updateDoc(docRef, { score: increment(1), upvotedBy: arrayUnion(userId) });
+        }
+      } else {
+        if (hasDownvoted) {
+          await updateDoc(docRef, { score: increment(1), downvotedBy: arrayRemove(userId) });
+        } else if (hasUpvoted) {
+          await updateDoc(docRef, { score: increment(-2), upvotedBy: arrayRemove(userId), downvotedBy: arrayUnion(userId) });
+        } else {
+          await updateDoc(docRef, { score: increment(-1), downvotedBy: arrayUnion(userId) });
+        }
+      }
+    } catch (e) {
+      console.error("Vote failed", e);
+    }
+  };
+
   const handleDeleteComment = async (comment: ForumComment) => {
-    if (!isAdmin || !communityId || !threadId) return;
+    if (!isAdmin || !communityId || !threadId || !user) return;
     const reason = promptForModerationReason("comment deletion");
     if (reason === null) return;
 
@@ -116,7 +193,7 @@ const ThreadView: React.FC = () => {
   };
 
   const handleSaveAdminEdit = async () => {
-    if (!isAdmin || !adminEditingComment || !communityId || !threadId) return;
+    if (!isAdmin || !adminEditingComment || !communityId || !threadId || !user) return;
     const reason = promptForModerationReason("edit");
     if (reason === null) return;
 
@@ -141,7 +218,7 @@ const ThreadView: React.FC = () => {
   };
 
   const handleSaveThreadAdminEdit = async () => {
-    if (!isAdmin || !communityId || !threadId) return;
+    if (!isAdmin || !communityId || !threadId || !user || !thread) return;
     const reason = promptForModerationReason("thread edit");
     if (reason === null) return;
 
@@ -166,405 +243,197 @@ const ThreadView: React.FC = () => {
     }
   };
 
-  const handleSubmitComment = async (parentId: string | null = null) => {
-    if (!replyText.trim() || !user || !communityId || !threadId || !thread) return;
+  const renderComments = (parentId: string | null = null, depth: number = 0) => {
+    const filtered = comments.filter(c => c.parentId === parentId);
+    if (filtered.length === 0) return null;
 
-    try {
-      const userSnap = await getDoc(doc(db, "users", user.uid));
-      const userData = userSnap.exists() ? userSnap.data() : {};
+    return (
+      <div style={{ marginLeft: depth > 0 ? '1.5rem' : 0, borderLeft: depth > 0 ? '1px solid #333' : 'none', paddingLeft: depth > 0 ? '1rem' : 0 }}>
+        {filtered.map(comment => (
+          <div key={comment.id} style={{ marginTop: '1.5rem' }}>
+             <div style={{ display: 'flex', gap: '0.8rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2rem' }}>
+                   <button onClick={() => handleVote(comment.id, false, 1)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8rem' }}>🔋</button>
+                   <span style={{ color: '#888', fontSize: '0.75rem', fontWeight: 'bold' }}>{comment.score || 0}</span>
+                   <button onClick={() => handleVote(comment.id, false, -1)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8rem' }}>🪫</button>
+                </div>
+                <div style={{ flex: 1 }}>
+                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.4rem' }}>
+                      <Link to={`/profile/${comment.authorUsername.replace(/\s+/g, '_')}`} style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#333', overflow: 'hidden' }}>
+                        {comment.authorProfilePic ? <img src={comment.authorProfilePic} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : '🚲'}
+                      </Link>
+                      <Link to={`/profile/${comment.authorUsername.replace(/\s+/g, '_')}`} style={{ color: '#ff6600', textDecoration: 'none', fontWeight: 'bold', fontSize: '0.85rem' }}>{comment.authorUsername}</Link>
+                      {comment.authorIsAdmin && <span style={{ background: '#ff0000', color: 'white', fontSize: '0.45rem', padding: '1px 2px', borderRadius: '2px', fontWeight: 900 }}>ADMIN</span>}
+                      <span style={{ color: '#444', fontSize: '0.7rem' }}>{comment.createdAt?.toDate().toLocaleString()}</span>
+                   </div>
+                   <p style={{ color: '#ccc', margin: 0, fontSize: '0.95rem', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>{comment.text}</p>
+                   
+                   <div style={{ display: 'flex', gap: '1rem', marginTop: '0.6rem' }}>
+                      <button onClick={() => setActiveReplyId(activeReplyId === comment.id ? null : comment.id)} style={{ background: 'none', border: 'none', color: '#666', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer' }}>Reply</button>
+                      {isAdmin && (
+                        <>
+                          <button onClick={() => { setAdminEditingComment(comment); setAdminEditValue(comment.text); }} style={{ background: 'none', border: 'none', color: '#ffcc00', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer' }}>Edit</button>
+                          <button onClick={() => handleDeleteComment(comment)} style={{ background: 'none', border: 'none', color: '#ff4444', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer' }}>Delete</button>
+                        </>
+                      )}
+                   </div>
 
-      await addDoc(collection(db, `communities/${communityId}/threads/${threadId}/comments`), {
-        authorId: user.uid,
-        authorUsername: userData.username || user.email?.split('@')[0] || "Rider",
-        authorProfilePic: userData.profilePic || "",
-        text: replyText,
-        parentId,
-        createdAt: serverTimestamp()
-      });
-
-      // Notify thread author
-      if (thread.authorId !== user.uid) {
-        await createNotification(
-          thread.authorId,
-          user.uid,
-          userData.username || "Rider",
-          'comment',
-          threadId,
-          replyText
-        );
-      }
-
-      // Update comment count on thread
-      await updateDoc(doc(db, `communities/${communityId}/threads`, threadId), {
-        commentCount: increment(1)
-      });
-
-      setReplyText('');
-      setActiveReplyId(null);
-    } catch (e) {
-      console.error("Comment failed", e);
-    }
-  };
-
-  const handleDeleteThread = async () => {
-    if (!isAdmin || !thread || !communityId) return;
-    const reason = promptForModerationReason("thread deletion");
-    if (reason === null) return;
-
-    try {
-      await deleteDoc(doc(db, `communities/${communityId}/threads`, thread.id));
-      await createNotification(
-        thread.authorId,
-        user.uid,
-        "System Admin",
-        'moderation',
-        'deleted_thread',
-        `Your thread was removed by a moderator. Reason: ${reason}`
-      );
-      alert("Thread deleted by Admin.");
-      window.location.href = `/forum/c/${communityId}`;
-    } catch (e) { console.error("Delete failed", e); }
-  };
-
-  const handleVote = async (incrementVal: number) => {
-    if (!user || !communityId || !threadId || !thread) {
-      setShowAuthModal(true);
-      return;
-    }
-
-    const upvotedBy = thread.upvotedBy || [];
-    const downvotedBy = thread.downvotedBy || [];
-    const userId = user.uid;
-
-    const hasUpvoted = upvotedBy.includes(userId);
-    const hasDownvoted = downvotedBy.includes(userId);
-
-    const threadRef = doc(db, `communities/${communityId}/threads`, threadId);
-    
-    try {
-      if (incrementVal === 1) {
-        if (!hasUpvoted && thread.authorId !== user.uid) {
-           const userSnap = await getDoc(doc(db, "users", user.uid));
-           const userData = userSnap.exists() ? userSnap.data() : {};
-           await createNotification(thread.authorId, user.uid, userData.username || "Rider", 'upvote', threadId);
-        }
-
-        if (hasUpvoted) {
-          await updateDoc(threadRef, {
-            score: increment(-1),
-            upvotedBy: arrayRemove(userId)
-          });
-        } else if (hasDownvoted) {
-          await updateDoc(threadRef, {
-            score: increment(2),
-            downvotedBy: arrayRemove(userId),
-            upvotedBy: arrayUnion(userId)
-          });
-        } else {
-          await updateDoc(threadRef, {
-            score: increment(1),
-            upvotedBy: arrayUnion(userId)
-          });
-        }
-      } else {
-        if (hasDownvoted) {
-          await updateDoc(threadRef, {
-            score: increment(1),
-            downvotedBy: arrayRemove(userId)
-          });
-        } else if (hasUpvoted) {
-          await updateDoc(threadRef, {
-            score: increment(-2),
-            upvotedBy: arrayRemove(userId),
-            downvotedBy: arrayUnion(userId)
-          });
-        } else {
-          await updateDoc(threadRef, {
-            score: increment(-1),
-            downvotedBy: arrayUnion(userId)
-          });
-        }
-      }
-    } catch (e) {
-      console.error("Vote failed", e);
-    }
-  };
-
-  const renderComments = (parentId: string | null = null, depth = 0) => {
-    return comments
-      .filter(c => c.parentId === parentId)
-      .map(comment => (
-        <div key={comment.id} style={{ marginLeft: depth > 0 ? '1.5rem' : '0', marginTop: '1.5rem', borderLeft: depth > 0 ? '1px solid #333' : 'none', paddingLeft: depth > 0 ? '1rem' : '0' }}>
-          <div style={{ display: 'flex', gap: '0.8rem' }}>
-            <Link to={`/profile/${comment.authorUsername}`} style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#333', overflow: 'hidden', flexShrink: 0, display: 'block' }}>
-              {comment.authorProfilePic ? <img src={comment.authorProfilePic} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : '🚲'}
-            </Link>
-            <div style={{ flex: 1 }}>
-               <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: 'white', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                 <Link to={`/profile/${comment.authorUsername}`} style={{ color: 'white', textDecoration: 'none' }}>{comment.authorUsername}</Link> 
-                 {(comment.authorUsername === 'MattyFlip' || comment.authorUsername === 'mattyflip') && <span style={{ background: '#ff0000', color: 'white', fontSize: '0.45rem', padding: '1px 2px', borderRadius: '2px', fontWeight: 900 }}>ADMIN</span>}
-                 <span style={{ color: '#444', fontWeight: 'normal' }}>• {comment.createdAt?.toDate().toLocaleString()}</span>
-               </div>
-               <div style={{ color: '#ccc', fontSize: '0.95rem', marginTop: '0.4rem', lineHeight: '1.5' }}>{comment.text}</div>
-               
-               {user && (
-                 <button 
-                   onClick={() => setActiveReplyId(comment.id)}
-                   style={{ background: 'none', border: 'none', color: '#ff6600', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer', marginTop: '0.5rem', padding: 0 }}
-                 >
-                   Reply
-                 </button>
-               )}
-
-               {isAdmin && (
-                 <div style={{ display: 'flex', gap: '0.8rem', marginTop: '0.5rem' }}>
-                    <button 
-                      onClick={() => { setAdminEditingComment(comment); setAdminEditValue(comment.text); }}
-                      style={{ background: 'none', border: 'none', color: '#ffcc00', fontSize: '1rem', cursor: 'pointer', padding: 0 }}
-                      title="Edit Comment"
-                    >
-                      ✏️
-                    </button>
-                    <button 
-                      onClick={() => handleDeleteComment(comment)}
-                      style={{ background: 'none', border: 'none', color: '#ff4444', fontSize: '1rem', cursor: 'pointer', padding: 0 }}
-                      title="Delete Comment"
-                    >
-                      🗑️
-                    </button>
-                 </div>
-               )}
-
-               {activeReplyId === comment.id && (
-                 <div style={{ marginTop: '1rem' }}>
-                    <textarea 
-                      value={replyText}
-                      onChange={e => setReplyText(e.target.value)}
-                      placeholder={`Reply to ${comment.authorUsername}...`}
-                      style={{ width: '100%', background: '#121212', border: '1px solid #333', borderRadius: '8px', color: 'white', padding: '0.8rem', fontSize: '0.9rem', fontFamily: 'inherit' }}
-                    />
-                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-                       <button onClick={() => handleSubmitComment(comment.id)} style={{ background: '#ff6600', color: 'white', border: 'none', padding: '0.4rem 1rem', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer' }}>Post Reply</button>
-                       <button onClick={() => setActiveReplyId(null)} style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer', fontSize: '0.8rem' }}>Cancel</button>
-                    </div>
-                 </div>
-               )}
-            </div>
+                   {activeReplyId === comment.id && (
+                     <div style={{ marginTop: '1rem' }}>
+                        <textarea 
+                          value={replyText}
+                          onChange={e => setReplyText(e.target.value)}
+                          placeholder="Write a reply..."
+                          style={{ width: '100%', background: '#222', border: '1px solid #333', borderRadius: '12px', color: 'white', padding: '1rem', minHeight: '80px', fontFamily: 'inherit', outline: 'none' }}
+                        />
+                        <div style={{ display: 'flex', gap: '0.8rem', marginTop: '0.5rem' }}>
+                          <button onClick={() => handleSubmitComment(comment.id)} disabled={!replyText.trim()} style={{ background: '#ff6600', color: 'white', border: 'none', borderRadius: '8px', padding: '0.5rem 1.2rem', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem' }}>Post Reply</button>
+                          <button onClick={() => setActiveReplyId(null)} style={{ background: 'none', border: 'none', color: '#666', fontSize: '0.8rem', cursor: 'pointer' }}>Cancel</button>
+                        </div>
+                     </div>
+                   )}
+                </div>
+             </div>
+             {renderComments(comment.id, depth + 1)}
           </div>
-          {renderComments(comment.id, depth + 1)}
-        </div>
-      ));
+        ))}
+      </div>
+    );
   };
+
+  if (loading || authLoading) return <div style={{ minHeight: '100vh', background: '#121212' }} />;
+  if (!thread) return <div style={{ color: 'white', padding: '4rem', textAlign: 'center' }}>Thread not found.</div>;
 
   return (
     <div className="container" style={{ minHeight: '100vh', background: '#121212', overflowY: 'auto' }}>
       <SEO 
-        title={thread?.title} 
-        description={thread?.body ? (thread.body.length > 160 ? thread.body.substring(0, 157) + '...' : thread.body) : undefined}
-        type="article"
+        title={thread.title} 
+        description={thread.body?.substring(0, 160) || "Join the discussion on Range Anxiety."}
       />
-      <NavBar 
-        user={user} 
-        onShowInstall={() => setShowInstallTutorial(true)} 
-        onShowAuth={() => setShowAuthModal(true)}
-      />
+      <NavBar user={user} onShowInstall={() => setShowInstallTutorial(true)} onShowAuth={() => setShowAuthModal(true)} />
 
-      <main style={{ padding: '2rem', maxWidth: '900px', margin: '0 auto' }}>
-        <Link to={`/forum/c/${communityId}`} style={{ color: '#ff6600', textDecoration: 'none', fontSize: '0.85rem', fontWeight: 'bold', display: 'block', marginBottom: '1.5rem' }}>← Back to c/{communityData?.name || communityId}</Link>
-
-        {thread && (
-          <article style={{ background: '#1a1a1a', borderRadius: '24px', border: '1px solid #333', padding: '2rem', marginBottom: '2rem' }}>
-            <div style={{ fontSize: '0.65rem', color: '#444', textTransform: 'uppercase', fontWeight: 'bold', marginBottom: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-              Posted by <Link to={`/profile/${thread.authorUsername.replace(/\s+/g, '_')}`} style={{ color: '#888', textDecoration: 'none' }}>{thread.authorUsername}</Link> 
-              {(thread.authorUsername === 'MattyFlip' || thread.authorUsername === 'mattyflip') && <span style={{ background: '#ff0000', color: 'white', fontSize: '0.5rem', padding: '1px 3px', borderRadius: '2px', fontWeight: 900 }}>ADMIN</span>}
-              • {thread.createdAt?.toDate().toLocaleString()}
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <h1 style={{ color: 'white', margin: 0, fontSize: '1.5rem', lineHeight: '1.3' }}>{thread.title}</h1>
-              {isAdmin && (
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <button 
-                    onClick={() => setAdminEditingThread(true)}
-                    style={{ background: 'none', border: 'none', color: '#ffcc00', cursor: 'pointer', fontSize: '1.2rem', padding: '0.5rem' }}
-                    title="Edit Thread"
-                  >✏️</button>
-                  <button 
-                    onClick={handleDeleteThread}
-                    style={{ background: 'none', border: 'none', color: '#ff4444', cursor: 'pointer', fontSize: '1.2rem', padding: '0.5rem' }}
-                    title="Delete Thread as Moderator"
-                  >🗑️</button>
-                </div>
-              )}
-            </div>
-
-            {thread.body && (
-              <div style={{ color: '#ccc', fontSize: '1.1rem', lineHeight: '1.6', marginTop: '1.5rem', whiteSpace: 'pre-wrap' }}>
-                {thread.body}
+      <main style={{ padding: '2rem 1.5rem', maxWidth: '800px', margin: '0 auto' }}>
+        <Link to={`/forum/c/${communityId}`} style={{ color: '#888', textDecoration: 'none', fontSize: '0.8rem', fontWeight: 'bold', textTransform: 'uppercase' }}>← Back to c/{communityData?.name || communityId}</Link>
+        
+        <article style={{ marginTop: '2rem', background: '#1a1a1a', borderRadius: '24px', border: '1px solid #333', padding: '2rem' }}>
+           <div style={{ display: 'flex', gap: '1.5rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem', background: '#121212', padding: '0.8rem', borderRadius: '12px', height: 'fit-content' }}>
+                 <button onClick={() => handleVote(thread.id, true, 1)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem' }}>🔋</button>
+                 <span style={{ color: 'white', fontWeight: 900, fontSize: '1.1rem' }}>{thread.score}</span>
+                 <button onClick={() => handleVote(thread.id, true, -1)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem' }}>🪫</button>
               </div>
-            )}
+              <div style={{ flex: 1 }}>
+                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginBottom: '1rem' }}>
+                    <Link to={`/profile/${thread.authorUsername.replace(/\s+/g, '_')}`} style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#333', overflow: 'hidden' }}>
+                      {thread.authorProfilePic ? <img src={thread.authorProfilePic} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : '🚲'}
+                    </Link>
+                    <div style={{ fontSize: '0.8rem' }}>
+                      <Link to={`/profile/${thread.authorUsername.replace(/\s+/g, '_')}`} style={{ color: 'white', fontWeight: 'bold', textDecoration: 'none' }}>{thread.authorUsername}</Link>
+                      {thread?.authorIsAdmin && <span style={{ background: '#ff0000', color: 'white', fontSize: '0.5rem', padding: '1px 3px', borderRadius: '2px', fontWeight: 900, marginLeft: '0.4rem' }}>ADMIN</span>}
+                      <div style={{ color: '#555', marginTop: '2px' }}>{thread.createdAt?.toDate().toLocaleString()}</div>
+                    </div>
+                    {isAdmin && (
+                      <button onClick={() => setAdminEditingThread(true)} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#ffcc00', fontSize: '1.2rem', cursor: 'pointer' }}>✏️</button>
+                    )}
+                 </div>
+                 
+                 <h1 style={{ color: 'white', margin: '0 0 1.5rem 0', fontSize: '1.8rem', lineHeight: '1.2' }}>{thread.title}</h1>
+                 
+                 {thread.mediaUrl && (
+                   <div style={{ marginBottom: '1.5rem', borderRadius: '16px', overflow: 'hidden', border: '1px solid #333', background: '#000' }}>
+                      {thread.mediaType === 'video' ? (
+                        <video src={thread.mediaUrl} controls style={{ width: '100%', display: 'block' }} />
+                      ) : (
+                        <img src={thread.mediaUrl} style={{ width: '100%', display: 'block' }} />
+                      )}
+                   </div>
+                 )}
 
-            {thread.mediaUrl && (
-              <div style={{ marginTop: '2rem', borderRadius: '16px', overflow: 'hidden', border: '1px solid #333' }}>
-                {thread.mediaType === 'video' ? (
-                  <video 
-                    src={thread.mediaUrl} 
-                    controls 
-                    style={{ width: '100%', display: 'block', maxHeight: '500px', background: '#000' }} 
-                  />
-                ) : (
-                  <img 
-                    src={thread.mediaUrl} 
-                    alt="Thread Media" 
-                    style={{ width: '100%', display: 'block', maxHeight: '600px', objectFit: 'contain', background: '#000' }} 
-                  />
-                )}
+                 <p style={{ color: '#ccc', fontSize: '1.1rem', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>{thread.body}</p>
+                 
+                 <div style={{ marginTop: '2rem', display: 'flex', gap: '1rem' }}>
+                    <ShareButton 
+                      title={thread.title}
+                      text={thread.body}
+                      url={window.location.href}
+                    />
+                 </div>
               </div>
-            )}
+           </div>
+        </article>
 
-            <div style={{ marginTop: '2.5rem', borderTop: '1px solid #333', paddingTop: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-               <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', background: '#121212', padding: '0.4rem 1rem', borderRadius: '14px' }}>
-                  <button 
-                    onClick={() => handleVote(1)} 
-                    style={{ background: 'none', border: 'none', color: thread.upvotedBy?.includes(user?.uid) ? '#4ade80' : '#444', cursor: 'pointer', fontSize: '1.1rem', filter: thread.upvotedBy?.includes(user?.uid) ? 'none' : 'grayscale(100%)', padding: '0.2rem' }}
-                    title="Upvote"
-                  >🔋</button>
-                  <span style={{ color: 'white', fontWeight: 'bold', fontSize: '1rem' }}>{thread.score}</span>
-                  <button 
-                    onClick={() => handleVote(-1)} 
-                    style={{ background: 'none', border: 'none', color: thread.downvotedBy?.includes(user?.uid) ? '#f87171' : '#444', cursor: 'pointer', fontSize: '1.1rem', filter: thread.downvotedBy?.includes(user?.uid) ? 'none' : 'grayscale(100%)', padding: '0.2rem' }}
-                    title="Downvote"
-                  >🪫</button>
-
-                  <div style={{ width: '1px', height: '1rem', background: '#333', margin: '0 0.2rem' }} />
-
-                  <ShareButton 
-                    title={`Range Anxiety | ${thread.title}`}
-                    text={thread.body || ""}
-                    url={window.location.href}
-                    fontSize="1rem"
-                    color="#666"
-                  />
-               </div>
-               <div style={{ color: '#666', fontWeight: 'bold', fontSize: '0.85rem' }}>💬 {thread.commentCount}</div>
-            </div>
-          </article>
-        )}
-
-        <section>
-          <div style={{ background: '#1a1a1a', padding: '1.5rem', borderRadius: '20px', border: '1px solid #333' }}>
-            {user ? (
-              <>
-                <label style={{ color: '#ff6600', fontSize: '0.7rem', fontWeight: 'bold', textTransform: 'uppercase', display: 'block', marginBottom: '0.8rem' }}>Leave a comment</label>
+        <section style={{ marginTop: '3rem' }}>
+           <h3 style={{ color: 'white', marginBottom: '1.5rem' }}>{thread.commentCount} Comments</h3>
+           
+           {user ? (
+             <div style={{ marginBottom: '3rem' }}>
                 <textarea 
-                  value={activeReplyId === null ? replyText : ''}
-                  onChange={e => activeReplyId === null && setReplyText(e.target.value)}
-                  placeholder="Share your thoughts..."
-                  style={{ width: '100%', background: '#121212', border: '1px solid #333', borderRadius: '12px', color: 'white', padding: '1rem', minHeight: '100px', fontFamily: 'inherit' }}
+                  value={newComment}
+                  onChange={e => setNewComment(e.target.value)}
+                  placeholder="What are your thoughts?"
+                  style={{ width: '100%', background: '#1a1a1a', border: '1px solid #333', borderRadius: '16px', color: 'white', padding: '1.2rem', minHeight: '120px', fontFamily: 'inherit', outline: 'none' }}
                 />
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
-                   <button 
-                     onClick={() => handleSubmitComment(null)}
-                     disabled={activeReplyId !== null || !replyText.trim()}
-                     style={{ background: '#ff6600', color: 'white', border: 'none', padding: '0.6rem 2rem', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', opacity: (activeReplyId !== null || !replyText.trim()) ? 0.5 : 1 }}
-                   >
-                     Post Comment
-                   </button>
+                   <button onClick={() => handleSubmitComment()} disabled={!newComment.trim()} style={{ background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px', padding: '0.8rem 2rem', fontWeight: 'bold', cursor: 'pointer', opacity: !newComment.trim() ? 0.5 : 1 }}>Post Comment</button>
                 </div>
-              </>
-            ) : (
-              <div style={{ color: '#666', textAlign: 'center', padding: '1rem' }}>Sign in to join the discussion.</div>
-            )}
-          </div>
+             </div>
+           ) : (
+             <div style={{ padding: '2rem', background: '#1a1a1a', borderRadius: '16px', textAlign: 'center', border: '1px dashed #333', marginBottom: '3rem' }}>
+                <p style={{ color: '#666' }}>Sign in to join the discussion.</p>
+                <button onClick={() => setShowAuthModal(true)} style={{ background: '#ff6600', color: 'white', border: 'none', borderRadius: '8px', padding: '0.6rem 1.5rem', fontWeight: 'bold', cursor: 'pointer', marginTop: '0.5rem' }}>Log In</button>
+             </div>
+           )}
 
-          <div style={{ marginTop: '2rem' }}>
-            {loading ? (
-              <div style={{ color: '#666', textAlign: 'center' }}>Loading comments...</div>
-            ) : comments.length === 0 ? (
-              <div style={{ color: '#444', textAlign: 'center', padding: '2rem' }}>No comments yet.</div>
-            ) : (
-              renderComments(null)
-            )}
-          </div>
+           {renderComments()}
         </section>
       </main>
 
-      {showInstallTutorial && <InstallTutorial onClose={() => setShowInstallTutorial(false)} />}
-      {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
-
-      {/* Admin Edit Modal */}
+      {/* Admin Comment Edit Modal */}
       {adminEditingComment && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.9)', zIndex: 6000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
           <div style={{ background: '#1a1a1a', width: '100%', maxWidth: '450px', padding: '2rem', borderRadius: '24px', border: '1px solid #333' }}>
             <h2 style={{ color: 'white', marginTop: 0 }}>Admin Comment Edit</h2>
             <p style={{ color: '#ffcc00', fontSize: '0.8rem', fontWeight: 'bold' }}>MODERATION MODE</p>
-
             <textarea 
               value={adminEditValue}
               onChange={(e) => setAdminEditValue(e.target.value)}
               style={{ width: '100%', height: '150px', background: '#222', border: '1px solid #444', borderRadius: '12px', color: 'white', padding: '1rem', fontFamily: 'inherit', marginBottom: '1.5rem' }}
             />
-
             <div style={{ display: 'flex', gap: '1rem' }}>
-              <button 
-                onClick={() => setAdminEditingComment(null)}
-                style={{ flex: 1, padding: '1rem', background: '#333', color: 'white', border: 'none', borderRadius: '12px', cursor: 'pointer' }}
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={handleSaveAdminEdit}
-                style={{ flex: 2, padding: '1rem', background: '#ffcc00', color: '#000', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold' }}
-              >
-                Save Changes
-              </button>
+              <button onClick={() => setAdminEditingComment(null)} style={{ flex: 1, padding: '1rem', background: '#333', color: 'white', border: 'none', borderRadius: '12px', cursor: 'pointer' }}>Cancel</button>
+              <button onClick={handleSaveAdminEdit} style={{ flex: 2, padding: '1rem', background: '#ffcc00', color: '#000', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold' }}>Save Changes</button>
             </div>
           </div>
         </div>
       )}
+
       {/* Admin Thread Edit Modal */}
       {adminEditingThread && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.9)', zIndex: 6000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
           <div style={{ background: '#1a1a1a', width: '100%', maxWidth: '600px', padding: '2rem', borderRadius: '24px', border: '1px solid #333' }}>
             <h2 style={{ color: 'white', marginTop: 0 }}>Admin Thread Edit</h2>
             <p style={{ color: '#ffcc00', fontSize: '0.8rem', fontWeight: 'bold' }}>MODERATION MODE</p>
-
-            <div className="form-group" style={{ marginTop: '1.5rem' }}>
-              <label style={{ color: '#888', fontSize: '0.7rem', fontWeight: 'bold', textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>Title</label>
-              <input 
-                type="text"
-                value={adminThreadTitle}
-                onChange={(e) => setAdminThreadTitle(e.target.value)}
-                style={{ width: '100%', background: '#222', border: '1px solid #444', borderRadius: '12px', color: 'white', padding: '1rem', fontFamily: 'inherit', marginBottom: '1.5rem' }}
-              />
-            </div>
-
-            <div className="form-group">
-              <label style={{ color: '#888', fontSize: '0.7rem', fontWeight: 'bold', textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>Body</label>
-              <textarea 
-                value={adminThreadBody}
-                onChange={(e) => setAdminThreadBody(e.target.value)}
-                style={{ width: '100%', height: '250px', background: '#222', border: '1px solid #444', borderRadius: '12px', color: 'white', padding: '1rem', fontFamily: 'inherit', marginBottom: '1.5rem' }}
-              />
-            </div>
-
+            
+            <input 
+              value={adminThreadTitle}
+              onChange={(e) => setAdminThreadTitle(e.target.value)}
+              style={{ width: '100%', background: '#222', border: '1px solid #444', borderRadius: '12px', color: 'white', padding: '1rem', marginBottom: '1rem' }}
+            />
+            <textarea 
+              value={adminThreadBody}
+              onChange={(e) => setAdminThreadBody(e.target.value)}
+              style={{ width: '100%', height: '200px', background: '#222', border: '1px solid #444', borderRadius: '12px', color: 'white', padding: '1rem', fontFamily: 'inherit', marginBottom: '1.5rem' }}
+            />
             <div style={{ display: 'flex', gap: '1rem' }}>
-              <button 
-                onClick={() => setAdminEditingThread(false)}
-                style={{ flex: 1, padding: '1rem', background: '#333', color: 'white', border: 'none', borderRadius: '12px', cursor: 'pointer' }}
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={handleSaveThreadAdminEdit}
-                style={{ flex: 2, padding: '1rem', background: '#ffcc00', color: '#000', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold' }}
-              >
-                Save Changes
-              </button>
+              <button onClick={() => setAdminEditingThread(false)} style={{ flex: 1, padding: '1rem', background: '#333', color: 'white', border: 'none', borderRadius: '12px', cursor: 'pointer' }}>Cancel</button>
+              <button onClick={handleSaveThreadAdminEdit} style={{ flex: 2, padding: '1rem', background: '#ffcc00', color: '#000', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold' }}>Save Changes</button>
             </div>
           </div>
         </div>
       )}
+
+      {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
+      {showInstallTutorial && <InstallTutorial onClose={() => setShowInstallTutorial(false)} />}
     </div>
   );
 };

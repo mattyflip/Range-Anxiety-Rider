@@ -2,23 +2,10 @@ import axios from 'axios';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 // SECURITY FIX #3 (continued): Same origin restriction applied to weather API.
-const ALLOWED_ORIGINS = [
-  'https://rangeanxietyrider.com',
-  'https://www.rangeanxietyrider.com',
-];
+import { setCorsHeaders } from './_utils/cors';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Set restricted CORS headers
-  const origin = req.headers.origin as string | undefined;
-  if (origin && ALLOWED_ORIGINS.includes(origin)) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-    res.setHeader('Vary', 'Origin');
-  }
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
-
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
+  if (setCorsHeaders(req, res)) return;
 
   // Use the modern URL API instead of legacy parsing
   const url = new URL(req.url || '', `https://${req.headers.host}`);

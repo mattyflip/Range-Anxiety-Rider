@@ -2,10 +2,7 @@ import { VercelRequest, VercelResponse } from '@vercel/node';
 import axios from 'axios';
 import polylineCodec from '@mapbox/polyline';
 
-const ALLOWED_ORIGINS = [
-  'https://rangeanxietyrider.com',
-  'https://www.rangeanxietyrider.com',
-];
+import { setCorsHeaders } from './_utils/cors';
 
 /**
  * Simplifies a polyline by keeping every Nth point to stay under Google's 8192 char URL limit.
@@ -28,6 +25,8 @@ function simplifyPolyline(encoded: string, maxLen: number = 2000): string {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (setCorsHeaders(req, res)) return;
+
   const { polyline } = req.query;
   
   if (!polyline || typeof polyline !== 'string') {
@@ -52,11 +51,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       timeout: 8000
     });
     
-    const origin = req.headers.origin as string | undefined;
-    if (origin && ALLOWED_ORIGINS.includes(origin)) {
-      res.setHeader('Access-Control-Allow-Origin', origin);
-      res.setHeader('Vary', 'Origin');
-    }
     res.setHeader('Content-Type', 'image/png');
     res.setHeader('Cache-Control', 'public, max-age=86400');
     

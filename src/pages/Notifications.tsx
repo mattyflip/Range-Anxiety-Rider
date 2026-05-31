@@ -1,54 +1,44 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { db, auth } from '../firebase'
+import { db } from '../firebase'
 import { collection, query, orderBy, onSnapshot, updateDoc, doc, writeBatch } from 'firebase/firestore'
 import NavBar from '../shared/ui/NavBar'
 import InstallTutorial from '../shared/ui/InstallTutorial'
 import AuthModal from '../features/auth/AuthModal'
 
+import type { Notification } from '../types';
+import { useUserData } from '../hooks/useUserData';
+
 const Notifications: React.FC = () => {
   const navigate = useNavigate();
-  const [user, setUser] = useState<any>(null);
-  const [notifications, setNotifications] = useState<any[]>([]);
+  const { user, loading: authLoading } = useUserData();
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showInstallTutorial, setShowInstallTutorial] = useState(false);
 
   useEffect(() => {
-    const unsub = auth.onAuthStateChanged(u => {
-      setUser(u);
-      if (!u) {
-        setLoading(false);
-      }
-    });
-    return () => unsub();
-  }, []);
+    if (authLoading) return;
+    if (!user) { setLoading(false); return; }
 
-  useEffect(() => {
-    if (!user) return;
-    let isActive = true;
-
-    if(isActive && !loading) {
-       // use setTimeout to skip render sync loop
-       setTimeout(() => setLoading(true), 0);
-    }
     const q = query(
       collection(db, `users/${user.uid}/notifications`),
       orderBy('createdAt', 'desc')
     );
     const unsub = onSnapshot(q, (snap) => {
-      const notifs: any[] = [];
+      const notifs: Notification[] = [];
       snap.forEach(d => {
-        notifs.push({ id: d.id, ...d.data() });
+        notifs.push({ id: d.id, ...d.data() } as Notification);
       });
       setNotifications(notifs);
       setLoading(false);
     });
 
     return () => unsub();
-  }, [user]);
+  }, [user, authLoading]);
 
-  const handleNotificationClick = async (notif: any) => {
+  const handleNotificationClick = async (notif: Notification) => {
+    if (!user) return;
     // Mark as read
     try {
       await updateDoc(doc(db, `users/${user.uid}/notifications`, notif.id), { read: true });
@@ -63,6 +53,8 @@ const Notifications: React.FC = () => {
       navigate(`/profile/me`);
     } else if (notif.type === 'rental_request') {
       navigate('/fleet#appointments');
+    } else if (notif.type === 'rental_approved') {
+      navigate('/map');
     } else if (notif.type === 'fleet_alert') {
       navigate('/fleet#alerts');
     }
@@ -142,15 +134,15 @@ const Notifications: React.FC = () => {
                 <div style={{ flex: 1 }}>
                   <div style={{ color: 'white', fontSize: '1rem', lineHeight: '1.4' }}>
                     {n.type === 'rental_request' || n.type === 'rental_approved' || n.type === 'fleet_alert' ? (
-                      <span>{n.content}</span>
+                      <span>{n.text}</span>
                     ) : (
                       <>
-                        <span style={{ fontWeight: 'bold' }}>{n.senderUsername}</span>
+                        <span style={{ fontWeight: 'bold' }}>{n.fromName}</span>
                         {n.type === 'like' && ' liked your post'}
                         {n.type === 'comment' && ' commented on your post'}
                         {n.type === 'upvote' && ' upvoted your thread'}
                         {n.type === 'review' && ' left you a rider review'}
-                        {n.type === 'moderation' && ` moderated your content: ${n.content}`}
+                        {n.type === 'moderation' && ` moderated your content: ${n.text}`}
                       </>
                     )}
                   </div>

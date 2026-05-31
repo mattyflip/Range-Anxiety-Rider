@@ -1,36 +1,35 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { auth, db, storage } from '../firebase'
-import { onAuthStateChanged } from 'firebase/auth'
-import type { User } from 'firebase/auth'
-import { doc, getDoc, collection, onSnapshot, query, updateDoc, setDoc, deleteDoc, getDocs, where } from 'firebase/firestore'
+import { db, storage } from '../firebase'
+import { doc, collection, onSnapshot, query, updateDoc, setDoc, deleteDoc, getDocs, where } from 'firebase/firestore'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { sendEmail } from '../utils/email'
 import NavBar from '../shared/ui/NavBar'
 import SEO from '../shared/ui/SEO'
+import type { Bike, LiveUnit, Notification } from '../types';
+import { useUserData } from '../hooks/useUserData';
 
 const FleetDashboard = () => {
   const navigate = useNavigate();
-  const [user, setUser] = useState<User | null>(null);
-  const [userData, setUserData] = useState<any>(null);
+  const { user, userData, loading: authLoading } = useUserData();
   const [userRole, setUserRole] = useState<'rider' | 'fleet'>('rider');
   const [loading, setLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   
-  const [fleetBikes, setFleetBikes] = useState<any[]>([]);
-  const [liveUnits, setLiveUnits] = useState<any[]>([]);
-  const [alerts, setAlerts] = useState<any[]>([]);
+  const [fleetBikes, setFleetBikes] = useState<Bike[]>([]);
+  const [liveUnits, setLiveUnits] = useState<LiveUnit[]>([]);
+  const [alerts, setAlerts] = useState<Notification[]>([]);
   const [rentalRequests, setRentalRequests] = useState<any[]>([]);
   
   // Direct Assignment State
   const [showDirectAssignModal, setShowDirectAssignModal] = useState(false);
   const [targetRiderEmail, setTargetRiderEmail] = useState('');
-  const [bikeToAssign, setBikeToAssign] = useState<any>(null);
+  const [bikeToAssign, setBikeToAssign] = useState<Bike | null>(null);
   const [isAssigning, setIsAssigning] = useState(false);
 
   // Bike Edit Modal State
   const [showBikeModal, setShowShowBikeModal] = useState(false);
-  const [editingBike, setEditingBike] = useState<any>(null);
+  const [editingBike, setEditingBike] = useState<Bike | null>(null);
   const [bikeForm, setBikeForm] = useState({
     unitId: '',
     voltage: '48',
@@ -49,28 +48,25 @@ const FleetDashboard = () => {
 
   // Auth & Org Initialization
   useEffect(() => {
-    return onAuthStateChanged(auth, async (u) => {
-      if (u) {
-        setUser(u);
-        const snap = await getDoc(doc(db, "users", u.uid));
-        if (snap.exists()) {
-          const d = snap.data();
-          setUserData(d);
-          const isAdmin = u.email?.toLowerCase() === 'mattyfliptv@gmail.com';
-          const role = isAdmin ? 'fleet' : (d.role || 'rider');
-          setUserRole(role);
-          
-          // Auto-setup org for new fleet users
-          if (role === 'fleet' && !d.orgId) {
-            const newOrgId = 'org_' + u.uid.substring(0, 8);
-            await updateDoc(doc(db, "users", u.uid), { orgId: newOrgId });
-            setUserData({ ...d, orgId: newOrgId });
-          }
-        }
-      } else { navigate('/'); }
-      setLoading(false);
-    });
-  }, [navigate]);
+    if (authLoading) return;
+    if (!user) { navigate('/'); return; }
+
+    const d = userData;
+    if (d) {
+      const isAdmin = d.isAdmin === true;
+      const role = isAdmin ? 'fleet' : (d.role || 'rider');
+      setUserRole(role);
+      
+      // Auto-setup org for new fleet users
+      if (role === 'fleet' && !d.orgId) {
+        const newOrgId = 'org_' + user.uid.substring(0, 8);
+        updateDoc(doc(db, "users", user.uid), { orgId: newOrgId }).then(() => {
+           // userData is already synced via hook
+        });
+      }
+    }
+    setLoading(false);
+  }, [user, userData, authLoading, navigate]);
 
   // Fleet Listeners
   useEffect(() => {
@@ -78,17 +74,17 @@ const FleetDashboard = () => {
 
     const qBikes = query(collection(db, `organizations/${userData.orgId}/bikes`));
     const unsubBikes = onSnapshot(qBikes, (snap) => {
-      setFleetBikes(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      setFleetBikes(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Bike)));
     });
 
     const qLive = query(collection(db, `organizations/${userData.orgId}/live_units`));
     const unsubLive = onSnapshot(qLive, (snap) => {
-      setLiveUnits(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      setLiveUnits(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as LiveUnit)));
     });
 
     const qAlerts = query(collection(db, `users/${user?.uid}/notifications`), where('type', '==', 'fleet_alert'), where('read', '==', false));
     const unsubAlerts = onSnapshot(qAlerts, (snap) => {
-      const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+      const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Notification));
       setAlerts(data.sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
     });
 
@@ -164,7 +160,7 @@ const FleetDashboard = () => {
     } catch (e) { console.error(e); }
   };
 
-  const handleReturnBike = async (bike: any) => {
+  const handleReturnBike = async (bike: Bike) => {
     if (!userData?.orgId) return;
     try {
       // 1. Update bike status in master list
@@ -269,7 +265,7 @@ const FleetDashboard = () => {
     } finally { setIsAssigning(false); }
   };
 
-  const handleUpdateBattery = async (bike: any, percent: number) => {
+  const handleUpdateBattery = async (bike: Bike, percent: number) => {
     if (!userData?.orgId) return;
     try {
       // Update Master Bike Doc
@@ -338,7 +334,7 @@ const FleetDashboard = () => {
     } catch (e) { console.error(e); }
   };
 
-  const openEditModal = (bike: any) => {
+  const openEditModal = (bike: Bike) => {
     setEditingBike(bike);
     setBikeForm({
       unitId: bike.unitId,
@@ -441,8 +437,8 @@ const FleetDashboard = () => {
                     <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
                        <span style={{ fontSize: '1.5rem' }}>🚨</span>
                        <div>
-                          <div style={{ fontWeight: 'bold', color: 'white' }}>{alert.content}</div>
-                          <div style={{ fontSize: '0.7rem', color: '#888' }}>Rider: {alert.senderUsername} • {new Date(alert.createdAt?.seconds * 1000).toLocaleTimeString()}</div>
+                          <div style={{ fontWeight: 'bold', color: 'white' }}>{alert.text}</div>
+                          <div style={{ fontSize: '0.7rem', color: '#888' }}>Rider: {alert.fromName} • {new Date(alert.createdAt?.seconds * 1000).toLocaleTimeString()}</div>
                        </div>
                     </div>
                     <button 
@@ -467,7 +463,7 @@ const FleetDashboard = () => {
         {/* Appointments Section */}
         {rentalRequests.length > 0 && (
           <div id="appointments" style={{ marginBottom: '3rem' }}>
-            <h2 style={{ fontSize: '1.2rem', color: '#34a853', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <h2 style={{ fontSize: '1.2rem', color: '#34a853', marginBottom: '1.5rem', display: 'center', alignItems: 'center', gap: '0.5rem' }}>
               🗓️ APPOINTMENTS & BOOKING REQUESTS ({rentalRequests.length})
             </h2>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '1rem' }}>
@@ -517,7 +513,7 @@ const FleetDashboard = () => {
                        </button>
                        <button 
                          onClick={async () => {
-                           if(window.confirm("Reject this request?")) {
+                           if(userData?.orgId && window.confirm("Reject this request?")) {
                              await updateDoc(doc(db, `organizations/${userData.orgId}/rental_requests`, req.id), { status: 'rejected' });
                            }
                          }}
@@ -568,7 +564,7 @@ const FleetDashboard = () => {
                             />
                             <span style={{ color: '#888', fontWeight: 'bold' }}>%</span>
                             <div style={{ flex: 1, height: '8px', background: '#222', borderRadius: '4px', overflow: 'hidden' }}>
-                               <div style={{ width: `${b.specs.currentBatteryPercent}%`, height: '100%', background: b.specs.currentBatteryPercent < 30 ? '#ff4444' : '#34a853' }} />
+                               <div style={{ width: `${b.specs.currentBatteryPercent}%`, height: '100%', background: (b.specs.currentBatteryPercent || 0) < 30 ? '#ff4444' : '#34a853' }} />
                             </div>
                          </div>
                       </div>
@@ -612,7 +608,7 @@ const FleetDashboard = () => {
                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
                             <div style={{ background: '#1a1a1a', padding: '0.5rem', borderRadius: '8px' }}>
                                <div style={{ color: '#555', fontSize: '0.55rem', fontWeight: 'bold' }}>BATTERY</div>
-                               <div style={{ color: (live?.battery || b.specs.currentBatteryPercent) < 30 ? '#ff4444' : 'white', fontWeight: 900 }}>{live?.battery || b.specs.currentBatteryPercent}%</div>
+                               <div style={{ color: (live?.battery || b.specs.currentBatteryPercent || 0) < 30 ? '#ff4444' : 'white', fontWeight: 900 }}>{live?.battery || b.specs.currentBatteryPercent}%</div>
                             </div>
                             <div style={{ background: '#1a1a1a', padding: '0.5rem', borderRadius: '8px' }}>
                                <div style={{ color: '#555', fontSize: '0.55rem', fontWeight: 'bold' }}>EST. RANGE</div>

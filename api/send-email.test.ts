@@ -30,6 +30,8 @@ describe('api/send-email', () => {
     const res: any = {};
     res.status = vi.fn().mockReturnValue(res);
     res.json = vi.fn().mockReturnValue(res);
+    res.setHeader = vi.fn().mockReturnValue(res);
+    res.end = vi.fn().mockReturnValue(res);
     return res;
   };
 
@@ -38,7 +40,7 @@ describe('api/send-email', () => {
   });
 
   it('should return 405 if method is not POST', async () => {
-    const req: any = { method: 'GET' };
+    const req: any = { method: 'GET', headers: { origin: 'http://localhost:3000' } };
     const res = mockRes();
     await handler(req, res);
     expect(res.status).toHaveBeenCalledWith(405);

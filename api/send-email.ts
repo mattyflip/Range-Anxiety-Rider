@@ -2,6 +2,7 @@ import { VercelRequest, VercelResponse } from '@vercel/node';
 import { Resend } from 'resend';
 import { getApps, initializeApp, cert, ServiceAccount } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
+import { setCorsHeaders } from './_utils/cors';
 
 const serviceAccount: ServiceAccount = {
   projectId: process.env.VITE_FIREBASE_PROJECT_ID,
@@ -18,6 +19,8 @@ if (!getApps().length) {
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (setCorsHeaders(req, res)) return;
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }

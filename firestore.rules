@@ -20,8 +20,7 @@ service cloud.firestore {
     
     function isAdmin() { 
       return isSignedIn() && 
-             request.auth.token != null && 
-             request.auth.token.get('admin', false) == true; 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
     }
     
     function isOwner(userId) { 
@@ -29,13 +28,12 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      // SECURITY FIX #5: Removed 'list' permission for all signed-in users.
-      // 'list' on the entire /users collection lets anyone enumerate all user documents
-      // (emails, org IDs, subscription status, etc.). Use targeted 'get' lookups instead.
+      // SECURITY FIX: Users can't make themselves admin. 
+      // Only an existing admin can set isAdmin to true, or it must be set via Firebase Console.
       allow get: if isSignedIn();
       allow list: if isAdmin();
-      allow create: if isSignedIn();
-      allow update: if isOwner(userId) || isAdmin();
+      allow create: if isSignedIn() && (!request.resource.data.keys().hasAny(['isAdmin']) || request.resource.data.isAdmin == false);
+      allow update: if (isOwner(userId) && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['isAdmin']))) || isAdmin();
       allow delete: if isAdmin();
       
       match /followers/{followerId} {

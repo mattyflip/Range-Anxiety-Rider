@@ -1,11 +1,9 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { GoogleMap, useJsApiLoader, Polyline, InfoWindowF, Autocomplete } from '@react-google-maps/api'
 import { toPng } from 'html-to-image'
 import { decode } from '@googlemaps/polyline-codec'
-import { auth, db, storage } from '../firebase'
-import { onAuthStateChanged } from 'firebase/auth'
-import type { User } from 'firebase/auth'
-import { doc, getDoc, collection, addDoc, serverTimestamp, updateDoc, query, onSnapshot, setDoc, arrayUnion, type DocumentSnapshot } from 'firebase/firestore'
+import { db, storage } from '../firebase'
+import { doc, getDoc, collection, addDoc, serverTimestamp, updateDoc, query, onSnapshot, setDoc, arrayUnion } from 'firebase/firestore'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import TermsOfService from '../features/legal/TermsOfService'
 import PrivacyPolicy from '../features/legal/PrivacyPolicy'
@@ -21,6 +19,8 @@ import { STATE_COORDINATES } from '../utils/ebikeLaws'
 import { STANDARD_BIKES, PEDAL_EBIKES_US_UK_CA, E_MOTOS_GLOBAL } from '../utils/bikeLibrary'
 import type { SavedBike } from '../utils/bikeLibrary'
 import SEO from '../shared/ui/SEO'
+import type { Bike, LiveUnit, Organization } from '../types';
+import { useUserData } from '../hooks/useUserData';
 
 const LIBRARIES: ("places" | "geometry" | "marker")[] = ["places", "geometry", "marker"];
 
@@ -87,14 +87,20 @@ const center = { lat: 40.7128, lng: -74.0060 };
 
 function MapHome() {
   const { isLoaded } = useJsApiLoader({ id: 'google-map-script', googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "", libraries: LIBRARIES });
+  const { user, userData, loading: authLoading } = useUserData();
+  const [authInitialized, setAuthInitialized] = useState(false);
+
+  // Sync authInitialized with hook loading
+  useEffect(() => {
+    if (!authLoading) setAuthInitialized(true);
+  }, [authLoading]);
+
   const mapRef = useRef<google.maps.Map | null>(null);
   const shareCardRef = useRef<HTMLDivElement>(null);
-  const metricsCardRef = useRef<HTMLDivElement>(null);
 
   const [unitSystem, setUnitSystem] = useState<'imperial' | 'metric'>('imperial');
   const [specs, setSpecs] = useState<BikeSpecs>({ voltage: 48, capacityAh: 15, motorWatts: 750, bikeWeightLbs: 65 });
   
-  const [trip, setTrip] = useState<TripDetails>({ origin: '', destination: '', waypoints: [] });
   const [isRoundTrip, setIsRoundTrip] = useState(false);
   
   const [batteryInputMode, setBatteryInputMode] = useState<'percent' | 'voltage'>('percent'); 
@@ -109,13 +115,10 @@ function MapHome() {
   const [response, setResponse] = useState<google.maps.DirectionsResult | null>(null);
   const [selectedRouteIndex] = useState(0);
   const [metrics, setMetrics] = useState<RouteMetrics | null>(null);
-  const [, setIsLoading] = useState(false);
   const [pois, setPois] = useState<POI[]>([]);
   const [selectedPoi, setSelectedPoi] = useState<POI | null>(null);
   
   const [showSharePreview, setShowSharePreview] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
-  const [userData, setUserData] = useState<any>(null);
   const [userRole, setUserRole] = useState<'rider' | 'fleet'>('rider');
   const [isPro, setIsPro] = useState(false);
   const [isExploreTier, setIsExploreTier] = useState(false);
@@ -130,7 +133,6 @@ function MapHome() {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showInstallTutorial, setShowInstallTutorial] = useState(false);
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
-  const [authInitialized, setAuthInitialized] = useState(false);
   const [mapSnapshot, setMapSnapshot] = useState<string | null>(null);
   const [settingsDirty, setSettingsDirty] = useState(true);
   const [userLocation, setUserLocation] = useState<google.maps.LatLngLiteral | null>(null);
@@ -138,17 +140,28 @@ function MapHome() {
   const [showRouteReplay, setShowRouteReplay] = useState(false);
 
   // --- FLEET / B2B SPECIFIC STATE ---
-  const [liveUnits, setLiveUnits] = useState<any[]>([]);
-  const [shopBikes, setShopBikes] = useState<any[]>([]);
+  const [liveUnits, setLiveUnits] = useState<LiveUnit[]>([]);
+  const [shopBikes, setShopBikes] = useState<Bike[]>([]);
   const [selectedBikeId, setSelectedBikeId] = useState<string>('');
   const [shopLocation, setShopLocation] = useState<google.maps.LatLngLiteral | null>(null);
   const [orgOwnerId, setOrgOwnerId] = useState<string | null>(null);
   const lastAlertTime = useRef<{ [key: string]: number }>({});
-  // ----------------------------------
-
-  // Reorderable locations state
+  
+  // Reorderable locations state - The SINGLE source of truth for the trip
   const [locations, setLocations] = useState<string[]>(['', '', '', '', '']);
   const autocompleteRefs = useRef<(google.maps.places.Autocomplete | null)[]>([]);
+
+  // Derived Trip Details
+  const trip = useMemo<TripDetails>(() => {
+    const filtered = locations.filter(l => l.trim() !== '');
+    if (filtered.length === 0) return { origin: '', destination: '', waypoints: [] };
+    if (filtered.length === 1) return { origin: filtered[0], destination: '', waypoints: [] };
+    return {
+      origin: filtered[0],
+      destination: filtered[filtered.length - 1],
+      waypoints: filtered.slice(1, filtered.length - 1)
+    };
+  }, [locations]);
 
   const onAutocompleteLoad = (index: number, autocomplete: google.maps.places.Autocomplete) => {
     autocompleteRefs.current[index] = autocomplete;
@@ -163,30 +176,10 @@ function MapHome() {
     }
   };
 
-  const syncLocationsToStates = (locs: string[]) => {
-    const filtered = locs.filter(l => l.trim() !== '');
-    if (filtered.length === 0) {
-      setTrip({ origin: '', destination: '', waypoints: [] });
-      return;
-    }
-    
-    if (filtered.length === 1) {
-      setTrip(p => ({ ...p, origin: filtered[0], destination: '', waypoints: [] }));
-      return;
-    }
-
-    const origin = filtered[0];
-    const destination = filtered[filtered.length - 1];
-    const waypoints = filtered.slice(1, filtered.length - 1);
-
-    setTrip({ origin, destination, waypoints });
-  };
-
   const updateLocation = (index: number, value: string) => {
     const newLocs = [...locations];
     newLocs[index] = value;
     setLocations(newLocs);
-    syncLocationsToStates(newLocs);
     markDirty();
   };
 
@@ -202,91 +195,77 @@ function MapHome() {
 
   // 1. Auth & Data Initialization
   useEffect(() => {
-    let unsubUser: (() => void) | null = null;
     let unsubLive: (() => void) | null = null;
     let unsubBikes: (() => void) | null = null;
     let unsubOrg: (() => void) | null = null;
 
-    const unsubAuth = onAuthStateChanged(auth, async (u) => {
-      setAuthInitialized(true);
-      if (u) {
-        setUser(u);
-        if (unsubUser) unsubUser();
-        if (unsubLive) unsubLive();
-        if (unsubBikes) unsubBikes();
-        if (unsubOrg) unsubOrg();
+    if (user && userData) {
+        const d = userData;
+        setIsPro(d.isPro || false);
+        setIsExploreTier(d.isExploreTier || false);
+        if (d.bikes) setSavedBikes(d.bikes);
 
-        const userDocRef = doc(db, "users", u.uid);
-        unsubUser = onSnapshot(userDocRef, (snap: DocumentSnapshot) => {
-          if (snap.exists()) {
-            const d = snap.data();
-            setUserData(d);
-            setIsPro(d.isPro || false);
-            setIsExploreTier(d.isExploreTier || false);
-            if (d.bikes) setSavedBikes(d.bikes);
-
-            const isAdmin = u.email?.toLowerCase() === 'mattyfliptv@gmail.com';
-            const role = d.role || (isAdmin ? 'fleet' : 'rider');
-            setUserRole(role);
-            
-            if (d.orgId) {
-              unsubOrg = onSnapshot(doc(db, "organizations", d.orgId), (oSnap) => {
-                if (oSnap.exists()) {
-                  const oData = oSnap.data();
-                  setOrgOwnerId(oData.ownerId);
-                  if (oData.location?.lat && oData.location?.lng) {
-                    setShopLocation({ lat: oData.location.lat, lng: oData.location.lng });
-                  }
-                }
-              });
-
-              unsubBikes = onSnapshot(query(collection(db, `organizations/${d.orgId}/bikes`)), (s) => {
-                 const bikes = s.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
-                 setShopBikes(bikes);
-                 if (role === 'rider') {
-                   const assigned = bikes.find(b => b.currentRiderId === u.uid && b.status === 'rented');
-                   if (assigned) {
-                     setSelectedBikeId(assigned.id);
-                     if (assigned.specs && !settingsDirty) {
-                       setSpecs({
-                         voltage: assigned.specs.voltage || 48,
-                         capacityAh: assigned.specs.capacityAh || 15,
-                         motorWatts: assigned.specs.motorWatts || 750,
-                         bikeWeightLbs: assigned.specs.bikeWeightLbs || 65,
-                         tirePSI: assigned.specs.tirePSI || 30,
-                         tireType: assigned.specs.tireType || 'all-terrain'
-                       });
-                       setStartBattery(assigned.specs.currentBatteryPercent || 100);
-                     }
-                   } else {
-                     setSelectedBikeId('');
-                   }
-                 } else if (bikes.length > 0 && !selectedBikeId) {
-                   setSelectedBikeId(bikes[0].id);
-                 }
-              });
-
-              if (role === 'fleet') {
-                unsubLive = onSnapshot(query(collection(db, `organizations/${d.orgId}/live_units`)), (s) => {
-                  setLiveUnits(s.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-                });
+        const isAdmin = d.isAdmin === true;
+        const role = d.role || (isAdmin ? 'fleet' : 'rider');
+        setUserRole(role);
+        
+        if (d.orgId) {
+          unsubOrg = onSnapshot(doc(db, "organizations", d.orgId), (oSnap) => {
+            if (oSnap.exists()) {
+              const oData = oSnap.data() as Organization;
+              setOrgOwnerId(oData.ownerId);
+              if (oData.location?.lat && oData.location?.lng) {
+                setShopLocation({ lat: oData.location.lat, lng: oData.location.lng });
               }
             }
+          });
+
+          unsubBikes = onSnapshot(query(collection(db, `organizations/${d.orgId}/bikes`)), (s) => {
+             const bikes = s.docs.map(doc => ({ id: doc.id, ...doc.data() } as Bike));
+             setShopBikes(bikes);
+             if (role === 'rider') {
+               const assigned = bikes.find(b => b.currentRiderId === user.uid && b.status === 'rented');
+               if (assigned) {
+                 setSelectedBikeId(assigned.id);
+                 if (assigned.specs && !settingsDirty) {
+                   setSpecs({
+                     voltage: assigned.specs.voltage || 48,
+                     capacityAh: assigned.specs.capacityAh || 15,
+                     motorWatts: assigned.specs.motorWatts || 750,
+                     bikeWeightLbs: assigned.specs.bikeWeightLbs || 65,
+                     tirePSI: assigned.specs.tirePSI || 30,
+                     tireType: (assigned.specs.tireType as any) || 'all-terrain'
+                   });
+                   setStartBattery(assigned.specs.currentBatteryPercent || 100);
+                 }
+               } else {
+                 setSelectedBikeId('');
+               }
+             } else if (bikes.length > 0 && !selectedBikeId) {
+               setSelectedBikeId(bikes[0].id);
+             }
+          });
+
+          if (role === 'fleet') {
+            unsubLive = onSnapshot(query(collection(db, `organizations/${d.orgId}/live_units`)), (s) => {
+              setLiveUnits(s.docs.map(doc => ({ id: doc.id, ...doc.data() } as LiveUnit)));
+            });
           }
-          setLoading(false);
-        });
+        }
+        setLoading(false);
 
         const savedRideId = localStorage.getItem('active_ride_id');
         if (savedRideId && !activeRide) {
-          const rideSnap = await getDoc(doc(db, "group_rides", savedRideId));
-          if (rideSnap.exists() && rideSnap.data().status === 'active') {
-            setActiveRide({ id: rideSnap.id, ...rideSnap.data() } as any);
-          } else {
-            localStorage.removeItem('active_ride_id');
-          }
+          getDoc(doc(db, "group_rides", savedRideId)).then(rideSnap => {
+            if (rideSnap.exists() && rideSnap.data()?.status === 'active') {
+              setActiveRide({ id: rideSnap.id, ...rideSnap.data() } as GroupRide);
+            } else {
+              localStorage.removeItem('active_ride_id');
+            }
+          });
         }
-      } else {
-        setUserData(null); setIsPro(false); setIsExploreTier(false);
+    } else if (!authLoading && !user) {
+        setIsPro(false); setIsExploreTier(false);
         localStorage.removeItem('active_ride_id');
         const local = localStorage.getItem('ebike-saved-bikes');
         if (local) {
@@ -296,17 +275,14 @@ function MapHome() {
           } catch { }
         }
         setLoading(false);
-      }
-    });
+    }
 
     return () => {
-      unsubAuth();
-      if (unsubUser) unsubUser();
       if (unsubLive) unsubLive();
       if (unsubBikes) unsubBikes();
       if (unsubOrg) unsubOrg();
     };
-  }, []);
+  }, [user, userData, authLoading]);
 
   useEffect(() => {
     if (userRole === 'fleet' && mapRef.current && (shopLocation || liveUnits.length > 0)) {
@@ -351,7 +327,6 @@ function MapHome() {
       try {
         const data = JSON.parse(raw);
         if (data.isRecorded && Array.isArray(data.path)) {
-           setTrip({ origin: 'Recorded Ride Start', destination: 'Recorded Ride End', waypoints: [] });
            setLocations(['Recorded Ride Start', 'Recorded Ride End', '', '', '']);
            setPois([]);
            localStorage.removeItem('ebike_load_route');
@@ -360,11 +335,9 @@ function MapHome() {
               mapRef.current.setZoom(14);
            }
         } else if (data && typeof data.origin === 'string' && data.origin.trim()) {
-          setTrip({ origin: data.origin, destination: data.destination, waypoints: data.waypoints });
           const wps = data.waypoints?.filter((w: any) => typeof w === 'string') || [];
           setLocations([data.origin, data.destination, wps[0] || '', wps[1] || '', wps[2] || '']);
           if (typeof data.isRoundTrip === 'boolean') setIsRoundTrip(data.isRoundTrip);
-          setIsLoading(true);
           setResponse(null);
           setMetrics(null);
           setPois([]);
@@ -462,7 +435,7 @@ function MapHome() {
       }
     }, null, { enableHighAccuracy: true });
     return () => navigator.geolocation.clearWatch(watchId);
-  }, [user, userData, selectedBikeId, shopBikes, activeRide, orgOwnerId]);
+  }, [user, userData, selectedBikeId, shopBikes, activeRide, orgOwnerId, riderWeight, driveMode, pedalAssistLevel, throttleMode]);
 
   const speak = (text: string) => {
     if ('speechSynthesis' in window) {
@@ -550,21 +523,19 @@ function MapHome() {
        const destination = nonAt[0];
        const newLocs = [origin, destination, '', '', ''];
        setLocations(newLocs);
-       setTrip({ origin, destination, waypoints: [] });
        currentOrigin = origin; currentDest = destination;
     } else if (!locations[0].trim() && userLocation) {
        const origin = `${userLocation.lat.toFixed(6)}, ${userLocation.lng.toFixed(6)}`;
        const newLocs = [...locations];
        newLocs[0] = origin;
        setLocations(newLocs);
-       syncLocationsToStates(newLocs);
        currentOrigin = origin;
     }
     if (!currentOrigin || !currentDest) {
        if (!userLocation) alert("Please enter both start and end points, or enable location services.");
        return;
     }
-    setIsLoading(true); setResponse(null); setMetrics(null); setPois([]); setSettingsDirty(false); 
+    setResponse(null); setMetrics(null); setPois([]); setSettingsDirty(false); 
     setShowMobileMenu(false); // Automated switch to map view for mobile users
 
     try {
@@ -592,7 +563,7 @@ function MapHome() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-Goog-Api-Key': import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
+          'X-Goog-Api-Key': import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',
           'X-Goog-FieldMask': 'routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline,routes.legs'
         },
         body: JSON.stringify(body)
@@ -704,8 +675,6 @@ function MapHome() {
     } catch (e: any) {
       console.error("Route calculation failed:", e);
       alert("Could not calculate route. Please try different locations.");
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -763,7 +732,6 @@ function MapHome() {
 
   const shareToCommunity = async () => {
     if (!shareCardRef.current || !metrics || !user || !mapSnapshot) return;
-    setIsLoading(true);
     try {
       shareCardRef.current.style.opacity = '1';
       await new Promise(r => setTimeout(r, 1500));
@@ -774,24 +742,25 @@ function MapHome() {
       await uploadBytes(imageRef, blob);
       const url = await getDownloadURL(imageRef);
       await addDoc(collection(db, "posts"), { 
-        authorId: user.uid, authorUsername: userData?.username || 'Rider', authorProfilePic: userData?.profilePic || '', imageUrl: url, 
+        authorId: user.uid, authorUsername: userData?.username || 'Rider', authorProfilePic: userData?.profilePic || '', 
+        authorIsAdmin: userData?.isAdmin || false,
+        imageUrl: url, 
         caption: `Rode ${metrics.distanceMiles.toFixed(1)} miles!`, likes: [], commentsEnabled: true, createdAt: serverTimestamp(),
         tripData: { origin: trip.origin, destination: trip.destination, waypoints: trip.waypoints, isRoundTrip }
       });
-      alert("Shared!"); setIsLoading(false); setShowSharePreview(false);
-    } catch (e) { setIsLoading(false); }
+      alert("Shared!"); setShowSharePreview(false);
+    } catch (e) { }
   };
 
   const downloadShareCard = async () => {
     if (!shareCardRef.current || !metrics || !mapSnapshot) return;
     try {
-      setIsLoading(true); shareCardRef.current.style.opacity = '1';
+      shareCardRef.current.style.opacity = '1';
       await new Promise(r => setTimeout(r, 1500));
       const dataUrl = await toPng(shareCardRef.current, { backgroundColor: "#121212", pixelRatio: 2 });
       shareCardRef.current.style.opacity = '0';
       const link = document.createElement('a'); link.download = `trip.png`; link.href = dataUrl; link.click();
-      setIsLoading(false);
-    } catch (e) { setIsLoading(false); }
+    } catch (e) { }
   };
 
   const filteredBikes = [...STANDARD_BIKES, ...PEDAL_EBIKES_US_UK_CA, ...E_MOTOS_GLOBAL, ...savedBikes].filter(b => b.name.toLowerCase().includes(bikeSearchQuery.toLowerCase()));
@@ -962,7 +931,7 @@ function MapHome() {
           <button onClick={handleCalculate} style={{ width: '100%', padding: '1rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold', marginTop: '1rem' }}>UPDATE ROUTE</button>
 
           {metrics && (
-            <div ref={metricsCardRef} className="card metrics-card" style={{ marginTop: '1.5rem', borderLeft: '4px solid #ff6600', padding: '1.5rem', background: '#1a1a1a', borderRadius: '16px' }}>
+            <div className="card metrics-card" style={{ marginTop: '1.5rem', borderLeft: '4px solid #ff6600', padding: '1.5rem', background: '#1a1a1a', borderRadius: '16px' }}>
               <div style={{ color: '#ff6600', fontWeight: 800, fontSize: '0.8rem', textTransform: 'uppercase' }}>Estimated Metrics ({metrics.label || 'Optimal Route'})</div>
               <div style={{ fontSize: '1.8rem', fontWeight: 900, color: 'white' }}>Battery Left: {metrics.batteryPercentRemaining.toFixed(1)}%</div>
               <div style={{ color: '#888', fontSize: '0.9rem', marginBottom: '1.5rem' }}>Est. End Voltage: {metrics.endingVoltage?.toFixed(1)}V</div>

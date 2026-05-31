@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { db, auth, storage } from '../firebase'
+import { db, storage } from '../firebase'
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, getDoc, doc, updateDoc, increment, deleteDoc, arrayUnion, arrayRemove } from 'firebase/firestore'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { useParams, Link } from 'react-router-dom'
@@ -9,30 +9,17 @@ import AuthModal from '../features/auth/AuthModal'
 import { createNotification } from '../utils/notifications'
 import SEO from '../shared/ui/SEO'
 
-interface Thread {
-  id: string;
-  authorId: string;
-  authorUsername: string;
-  title: string;
-  body: string;
-  mediaUrl?: string;
-  mediaType?: 'image' | 'video';
-  score: number;
-  commentCount: number;
-  upvotedBy: string[];
-  downvotedBy: string[];
-  createdAt: any;
-}
+import type { Thread, Community } from '../types';
+import { useUserData } from '../hooks/useUserData';
 
 const CommunityView: React.FC = () => {
   const { communityId } = useParams<{ communityId: string }>();
+  const { user, userData } = useUserData();
   const [threads, setThreads] = useState<Thread[]>([]);
-  const [communityData, setCommunityData] = useState<any>(null);
+  const [communityData, setCommunityData] = useState<Community | null>(null);
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<any>(null);
-  const [userData, setUserData] = useState<any>(null);
 
-  const isAdmin = user?.email?.toLowerCase() === 'mattyfliptv@gmail.com';
+  const isAdmin = userData?.isAdmin || false;
 
   const promptForModerationReason = (action: string) => {
     const reason = window.prompt(`Reason for ${action}:`, "Violates community guidelines");
@@ -49,23 +36,12 @@ const CommunityView: React.FC = () => {
   const [showInstallTutorial, setShowInstallTutorial] = useState(false);
 
   useEffect(() => {
-    const unsubAuth = auth.onAuthStateChanged(async (u) => {
-      setUser(u);
-      if (u) {
-        const snap = await getDoc(doc(db, "users", u.uid));
-        if (snap.exists()) setUserData(snap.data());
-      }
-    });
-    return () => unsubAuth();
-  }, []);
-
-  useEffect(() => {
     if (!communityId) return;
 
     // Fetch Community Metadata
     const commRef = doc(db, "communities", communityId);
     getDoc(commRef).then(snap => {
-      if (snap.exists()) setCommunityData(snap.data());
+      if (snap.exists()) setCommunityData({ id: snap.id, ...snap.data() } as Community);
     });
 
     const q = query(
@@ -103,6 +79,8 @@ const CommunityView: React.FC = () => {
       await addDoc(collection(db, `communities/${communityId}/threads`), {
         authorId: user.uid,
         authorUsername: userData.username || user.email?.split('@')[0],
+        authorProfilePic: userData.profilePic || "",
+        authorIsAdmin: userData.isAdmin || false,
         title: newTitle,
         body: newBody,
         mediaUrl,
@@ -140,7 +118,11 @@ const CommunityView: React.FC = () => {
     try {
       if (incrementVal === 1) {
         if (!hasUpvoted && thread.authorId !== user.uid) {
-           await createNotification(thread.authorId, user.uid, userData?.username || "Rider", 'upvote', thread.id);
+           await createNotification(
+             thread.authorId,
+             user?.uid || 'guest',
+             userData?.username || "Rider",
+             'upvote', thread.id);
         }
 
         if (hasUpvoted) {
@@ -173,7 +155,7 @@ const CommunityView: React.FC = () => {
       await deleteDoc(doc(db, `communities/${communityId}/threads`, thread.id));
       await createNotification(
         thread.authorId,
-        user.uid,
+        user?.uid || 'guest',
         "System Admin",
         'moderation',
         'deleted_thread',
@@ -235,14 +217,14 @@ const CommunityView: React.FC = () => {
             {threads.map(thread => (
               <div key={thread.id} style={{ background: '#1a1a1a', borderRadius: '20px', border: '1px solid #333', padding: '1rem', display: 'flex', gap: '1.2rem' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.1rem', background: '#121212', padding: '0.4rem 0.6rem', borderRadius: '8px', height: 'fit-content' }}>
-                   <button onClick={() => handleVote(thread, 1)} style={{ background: 'none', border: 'none', color: thread.upvotedBy?.includes(user?.uid) ? '#4ade80' : '#444', cursor: 'pointer', fontSize: '1rem' }}>🔋</button>
+                   <button onClick={() => handleVote(thread, 1)} style={{ background: 'none', border: 'none', color: (user && thread.upvotedBy?.includes(user.uid)) ? '#4ade80' : '#444', cursor: 'pointer', fontSize: '1rem' }}>🔋</button>
                    <span style={{ color: 'white', fontWeight: 'bold', fontSize: '0.8rem' }}>{thread.score}</span>
-                   <button onClick={() => handleVote(thread, -1)} style={{ background: 'none', border: 'none', color: thread.downvotedBy?.includes(user?.uid) ? '#f87171' : '#444', cursor: 'pointer', fontSize: '1rem' }}>🪫</button>
+                   <button onClick={() => handleVote(thread, -1)} style={{ background: 'none', border: 'none', color: (user && thread.downvotedBy?.includes(user.uid)) ? '#f87171' : '#444', cursor: 'pointer', fontSize: '1rem' }}>🪫</button>
                 </div>
                 <div style={{ flex: 1 }}>
                    <div style={{ fontSize: '0.6rem', color: '#555', textTransform: 'uppercase', fontWeight: 'bold', marginBottom: '0.3rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                      Posted by <Link to={`/profile/${thread.authorUsername.replace(/\s+/g, '_')}`} style={{ color: '#777', textDecoration: 'none' }}>{thread.authorUsername}</Link>
-                     {(thread.authorUsername === 'MattyFlip' || thread.authorUsername === 'mattyflip') && <span style={{ background: '#ff0000', color: 'white', fontSize: '0.45rem', padding: '1px 2px', borderRadius: '2px', fontWeight: 900 }}>ADMIN</span>}
+                     {thread.authorIsAdmin && <span style={{ background: '#ff0000', color: 'white', fontSize: '0.45rem', padding: '1px 2px', borderRadius: '2px', fontWeight: 900 }}>ADMIN</span>}
                    </div>
                    <Link to={`/forum/c/${communityId}/t/${thread.id}`} style={{ textDecoration: 'none' }}><h2 style={{ color: 'white', margin: '0 0 0.4rem 0', fontSize: '1.1rem', lineHeight: '1.3' }}>{thread.title}</h2></Link>
                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>

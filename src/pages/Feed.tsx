@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
-import { db, auth, storage } from '../firebase'
-import { onAuthStateChanged } from 'firebase/auth'
-import { collection, query, orderBy, onSnapshot, getDoc, doc, deleteDoc, updateDoc, addDoc } from 'firebase/firestore';
+import { db, storage } from '../firebase'
+import { collection, query, orderBy, onSnapshot, doc, deleteDoc, updateDoc, addDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { serverTimestamp } from 'firebase/firestore'
 import NavBar from '../shared/ui/NavBar'
@@ -17,23 +16,13 @@ import { createNotification } from '../utils/notifications'
 import SEO from '../shared/ui/SEO'
 import ShareButton from '../features/social/ShareButton'
 
-interface Post {
-  id: string;
-  authorId: string;
-  authorUsername: string;
-  authorProfilePic?: string;
-  imageUrl: string;
-  caption: string;
-  likes: string[];
-  commentCount?: number;
-  commentsEnabled?: boolean;
-  createdAt: any;
-  tripData?: any;
-}
+import type { Post } from '../types';
+import { useUserData } from '../hooks/useUserData';
 
 const Feed: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, userData, loading: authLoading } = useUserData();
 
   const handleLoadRoute = (post: Post) => {
     if (!post.tripData) return;
@@ -44,13 +33,10 @@ const Feed: React.FC = () => {
 
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
-  const [authLoading, setAuthLoading] = useState(true);
-  const [user, setUser] = useState<any>(null);
-  const [userData, setUserData] = useState<any>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showInstallTutorial, setShowInstallTutorial] = useState(false);
 
-  const isAdmin = user?.email?.toLowerCase() === 'mattyfliptv@gmail.com';
+  const isAdmin = userData?.isAdmin || false;
 
   const [showCreatePost, setShowCreatePost] = useState(false);
   const [newCaption, setNewCaption] = useState('');
@@ -77,30 +63,11 @@ const Feed: React.FC = () => {
   const [showCropper, setShowCropper] = useState(false);
 
   useEffect(() => {
-    if (user?.uid) {
-      // empty or real function if you need
-    } else if (!authLoading) {
-      setLoading(false);
+    if (!authLoading && !user) {
+      // Prompt guests to sign up
+      setShowAuthModal(true);
     }
   }, [user, authLoading]);
-
-  useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (u) => {
-      setUser(u);
-      setAuthLoading(false);
-      if (u) {
-        const snap = await getDoc(doc(db, "users", u.uid));
-        if (snap.exists()) {
-          const data = snap.data();
-          setUserData(data);
-        }
-      } else {
-        // Prompt guests to sign up
-        setShowAuthModal(true);
-      }
-    });
-    return () => unsub();
-  }, []);
 
   // Calculate derived state directly dynamically to prevent cascading render
   const selectedFullPostState = (() => {
@@ -187,6 +154,7 @@ const Feed: React.FC = () => {
         authorId: user.uid,
         authorUsername: userData.username || user.email?.split('@')[0],
         authorProfilePic: userData.profilePic || "",
+        authorIsAdmin: userData.isAdmin || false,
         imageUrl,
         caption: newCaption,
         likes: [],
@@ -208,7 +176,7 @@ const Feed: React.FC = () => {
   };
 
   const handleDeletePost = async (post: Post) => {
-    if (!isAdmin) return;
+    if (!isAdmin || !user) return;
     const reason = promptForModerationReason("deletion");
     if (reason === null) return; 
 
@@ -229,7 +197,7 @@ const Feed: React.FC = () => {
   };
 
   const handleSaveAdminEdit = async () => {
-    if (!isAdmin || !adminEditingPost) return;
+    if (!isAdmin || !adminEditingPost || !user) return;
     const reason = promptForModerationReason("edit");
     if (reason === null) return;
 
@@ -298,7 +266,7 @@ const Feed: React.FC = () => {
                   <div style={{ flex: 1 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                       <Link to={`/profile/${post.authorUsername.replace(/\s+/g, '_')}`} style={{ fontWeight: 'bold', color: 'white', fontSize: '0.9rem', textDecoration: 'none' }}>{post.authorUsername}</Link>
-                      {(post.authorUsername === 'MattyFlip' || post.authorUsername === 'mattyflip') && <span style={{ background: '#ff0000', color: 'white', fontSize: '0.55rem', padding: '1px 4px', borderRadius: '3px', fontWeight: 900 }}>ADMIN</span>}
+                      {post.authorIsAdmin && <span style={{ background: '#ff0000', color: 'white', fontSize: '0.55rem', padding: '1px 4px', borderRadius: '3px', fontWeight: 900 }}>ADMIN</span>}
                     </div>
                     <div style={{ color: '#666', fontSize: '0.7rem' }}>{post.createdAt?.toDate().toLocaleString()}</div>
                   </div>
