@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { GoogleMap, useJsApiLoader, Polyline, InfoWindowF, Autocomplete } from '@react-google-maps/api'
+import { GoogleMap, useJsApiLoader, Polyline, InfoWindowF, Autocomplete, Polygon } from '@react-google-maps/api'
 import { toPng } from 'html-to-image'
 import { decode } from '@googlemaps/polyline-codec'
 import { db, storage } from '../firebase'
@@ -20,6 +20,7 @@ import SEO from '../shared/ui/SEO'
 import type { Bike, LiveUnit, Organization, SavedBike } from '../types';
 import { useUserData } from '../hooks/useUserData';
 import { useBikeLibrary } from '../hooks/useBikeLibrary';
+import { calculateRangePolygon } from '../utils/physics';
 
 const LIBRARIES: ("places" | "geometry" | "marker")[] = ["places", "geometry", "marker"];
 
@@ -47,6 +48,7 @@ interface BikeSpecs {
   driveMode?: 'throttle_only' | 'pas_only' | 'both';
   currentBatteryPercent?: number;
   controllerType?: string;
+  controllerAmps?: number;
 }
 
 interface TripDetails {
@@ -138,6 +140,9 @@ function MapHome() {
   const [userLocation, setUserLocation] = useState<google.maps.LatLngLiteral | null>(null);
   const [loading, setLoading] = useState(true);
   const [showRouteReplay, setShowRouteReplay] = useState(false);
+
+  // Range Polygon State
+  const [rangePolygonPoints, setRangePolygonPoints] = useState<google.maps.LatLngLiteral[] | null>(null);
 
   // --- FLEET / B2B SPECIFIC STATE ---
   const [liveUnits, setLiveUnits] = useState<LiveUnit[]>([]);
@@ -490,6 +495,18 @@ function MapHome() {
 
   const markDirty = () => { if (!settingsDirty) setSettingsDirty(true); };
   
+  const mapToPhysicsSpecs = (s: BikeSpecs): any => ({
+    voltage: Number(s.voltage) || 48,
+    capacityAh: Number(s.capacityAh) || 15,
+    motorWatts: Number(s.motorWatts) || 750,
+    bikeWeightLbs: Number(s.bikeWeightLbs) || 65,
+    tirePSI: Number(s.tirePSI) || 30,
+    tireType: s.tireType || 'all-terrain',
+    controllerAmps: s.controllerAmps,
+    controllerType: s.controllerType,
+    currentBatteryPercent: s.currentBatteryPercent || (typeof startBattery === 'number' ? startBattery : 100)
+  });
+
   const getBatteryLevels = (v: number) => {
     if (v >= 72) return { min: 60, max: 84 };
     if (v >= 60) return { min: 50, max: 70 };
@@ -515,28 +532,101 @@ function MapHome() {
 
   const handleCalculate = async () => { 
     let currentOrigin = trip.origin;
-    let currentDest = trip.destination;
-    const nonAt = locations.filter(l => l.trim() !== '');
-    if (nonAt.length === 0) { alert("Please enter a destination."); return; }
-    if (nonAt.length === 1 && userLocation) {
-       const origin = `${userLocation.lat.toFixed(6)}, ${userLocation.lng.toFixed(6)}`;
-       const destination = nonAt[0];
-       const newLocs = [origin, destination, '', '', ''];
-       setLocations(newLocs);
-       currentOrigin = origin; currentDest = destination;
-    } else if (!locations[0].trim() && userLocation) {
-       const origin = `${userLocation.lat.toFixed(6)}, ${userLocation.lng.toFixed(6)}`;
-       const newLocs = [...locations];
-       newLocs[0] = origin;
-       setLocations(newLocs);
-       currentOrigin = origin;
+    const currentDest = trip.destination;
+    
+    // Determine actual origin
+    if (!currentOrigin && userLocation) {
+       currentOrigin = `${userLocation.lat.toFixed(6)}, ${userLocation.lng.toFixed(6)}`;
     }
-    if (!currentOrigin || !currentDest) {
-       if (!userLocation) alert("Please enter both start and end points, or enable location services.");
+
+    if (!currentOrigin) {
+       alert("Please enable location services or enter a starting point.");
        return;
     }
-    setResponse(null); setMetrics(null); setPois([]); setSettingsDirty(false); 
-    setShowMobileMenu(false); // Automated switch to map view for mobile users
+
+    setResponse(null); 
+    setMetrics(null); 
+    setPois([]); 
+    setSettingsDirty(false); 
+    setShowMobileMenu(false);
+
+    // --- RANGE POLYGON LOGIC (No Destination Entered) ---
+    if (!currentDest.trim()) {
+       const originCoords = currentOrigin.includes(',') 
+         ? { lat: parseFloat(currentOrigin.split(',')[0]), lng: parseFloat(currentOrigin.split(',')[1]) }
+         : userLocation || center;
+
+       try {
+         // 1. Fetch Local Weather for Wind
+         const wRes = await fetch(`/api/weather?lat=${originCoords.lat}&lng=${originCoords.lng}`).then(r => r.json());
+         const wind = { speed: wRes.wind_speed || 0, direction: wRes.wind_degree || 0 };
+
+         // 2. Generate Initial Physics-Aware Points
+         const initialPoints = calculateRangePolygon(
+           originCoords,
+           wind,
+           { specs: mapToPhysicsSpecs(specs), riderWeightLbs: riderWeight || 180, throttleMode, speedMph: 15, slope: 0, headwindMph: 0, driveMode, pedalAssistLevel },
+           isRoundTrip
+         );
+
+         // 3. Landmass Validation (Sample Elevation)
+         const elevator = new google.maps.ElevationService();
+         const elevationRes = await elevator.getElevationForLocations({
+           locations: initialPoints.map(p => new google.maps.LatLng(p.lat, p.lng))
+         });
+
+         // 4. Filter/Pull back points in "Oceans" (Elevation <= 0)
+         const validatedPoints = initialPoints.map((p, i) => {
+           const elev = elevationRes.results[i]?.elevation || 0;
+           if (elev <= 0) {
+             // Ocean detected! Pull back 70% towards origin to avoid showing range over deep water
+             return {
+               lat: p.lat * 0.3 + originCoords.lat * 0.7,
+               lng: p.lng * 0.3 + originCoords.lng * 0.7
+             };
+           }
+           return p;
+         });
+
+         setRangePolygonPoints(validatedPoints);
+         
+         // Set metrics based on average radius
+         const avgDist = validatedPoints.reduce((acc, p) => {
+            const d = google.maps.geometry.spherical.computeDistanceBetween(
+              new google.maps.LatLng(originCoords.lat, originCoords.lng),
+              new google.maps.LatLng(p.lat, p.lng)
+            );
+            return acc + d;
+         }, 0) / validatedPoints.length / 1609.34;
+
+         setMetrics({
+            distanceMiles: avgDist,
+            durationMin: (avgDist / 15) * 60,
+            elevationGainFeet: 0,
+            elevationLossFeet: 0,
+            estimatedWh: 0,
+            efficiencyWhMi: 0,
+            batteryPercentRemaining: 0,
+            recommendedSpeedMph: 15,
+            label: isRoundTrip ? "Est. Return Zone" : "Est. Range Zone",
+            windConditions: { speed: wind.speed, direction: wind.direction, headwindComponent: 0 }
+         } as RouteMetrics);
+
+         if (mapRef.current) {
+            mapRef.current.panTo(originCoords);
+            const bounds = new google.maps.LatLngBounds();
+            validatedPoints.forEach(p => bounds.extend(p));
+            mapRef.current.fitBounds(bounds, { top: 50, right: 50, bottom: 50, left: 350 });
+         }
+       } catch (err) {
+         console.error("Polygon generation failed:", err);
+         alert("Could not generate range polygon. Check your connection.");
+       }
+       return;
+    }
+
+    // --- STANDARD ROUTE CALCULATION ---
+    setRangePolygonPoints(null);
 
     try {
       // Modern Google Routes API with Multi-Route support
@@ -1017,6 +1107,21 @@ function MapHome() {
             onLoad={onMapLoad}
             options={{ mapId: import.meta.env.VITE_GOOGLE_MAP_ID || 'DEMO_MAP_ID', disableDefaultUI: true }}
           >
+            {rangePolygonPoints && (
+              <Polygon
+                paths={rangePolygonPoints}
+                options={{
+                  strokeColor: '#ff6600',
+                  strokeOpacity: 0.8,
+                  strokeWeight: 2,
+                  fillColor: '#ff6600',
+                  fillOpacity: 0.35,
+                  clickable: false,
+                  zIndex: 1
+                }}
+              />
+            )}
+
             {/* Robust Route Rendering with Polyline */}
             {response && response.routes[0]?.overview_path && (
               <>
