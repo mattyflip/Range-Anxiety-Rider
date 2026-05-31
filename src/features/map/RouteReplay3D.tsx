@@ -13,17 +13,20 @@ interface RouteReplay3DProps {
 const RouteReplay3D: React.FC<RouteReplay3DProps> = ({ 
   polyline, 
   onClose, 
-  maptilerKey = 'get_your_own_key' // Default or placeholder
+  maptilerKey 
 }) => {
   const mapRef = useRef<MapRef>(null);
   const [routeData] = useState(() => polylineToGeoJSON(polyline));
   const [isAnimating, setIsAnimating] = useState(false);
 
   // MapTiler Satellite + Terrain
-  const styleUrl = `https://api.maptiler.com/maps/hybrid/style.json?key=${maptilerKey}`;
+  const isKeyValid = maptilerKey && maptilerKey !== 'get_your_own_key';
+  const styleUrl = isKeyValid 
+    ? `https://api.maptiler.com/maps/hybrid/style.json?key=${maptilerKey}`
+    : '';
 
   useEffect(() => {
-    if (!routeData || !mapRef.current) return;
+    if (!routeData || !mapRef.current || !isKeyValid) return;
 
     // Center map on the start of the route
     const firstCoord = routeData.geometry.coordinates[0];
@@ -95,6 +98,14 @@ const RouteReplay3D: React.FC<RouteReplay3DProps> = ({
       </header>
 
       <div style={{ flex: 1, position: 'relative' }}>
+        {!isKeyValid && (
+          <div style={{ position: 'absolute', inset: 0, zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.8)', color: 'white', textAlign: 'center', padding: '2rem' }}>
+             <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🔑</div>
+             <h3 style={{ margin: 0 }}>MapTiler API Key Required</h3>
+             <p style={{ color: '#888', maxWidth: '300px', margin: '1rem 0' }}>The 3D Replay feature requires a MapTiler API Key. Add <code>VITE_MAPTILER_KEY</code> to your environment variables.</p>
+             <button onClick={onClose} style={{ padding: '0.8rem 2rem', background: '#ff6600', border: 'none', borderRadius: '8px', color: 'white', fontWeight: 'bold', cursor: 'pointer' }}>GO BACK</button>
+          </div>
+        )}
         <Map
           ref={mapRef}
           mapStyle={styleUrl}
@@ -105,15 +116,17 @@ const RouteReplay3D: React.FC<RouteReplay3DProps> = ({
             pitch: 60
           }}
           maxPitch={85}
-          terrain={{ source: 'terrainSource', exaggeration: 1.5 }}
+          terrain={isKeyValid ? { source: 'terrainSource', exaggeration: 1.5 } : undefined}
         >
           {/* 3D Terrain Source */}
-          <Source
-            id="terrainSource"
-            type="raster-dem"
-            url={`https://api.maptiler.com/tiles/terrain-rgb-v2/tiles.json?key=${maptilerKey}`}
-            tileSize={256}
-          />
+          {isKeyValid && (
+            <Source
+              id="terrainSource"
+              type="raster-dem"
+              url={`https://api.maptiler.com/tiles/terrain-rgb-v2/tiles.json?key=${maptilerKey}`}
+              tileSize={256}
+            />
+          )}
           
           {/* Route Line */}
           {routeData && (

@@ -581,89 +581,84 @@ function MapHome() {
       }
 
       // Process ALL returned routes through the physics engine to find the most efficient one
-      const analyzedRoutes = await Promise.all(routesData.routes.map(async (route: any) => {
-        const encodedPolyline = route.polyline.encodedPolyline;
-        const totalDistanceMeters = route.distanceMeters || 0;
-        const totalDurationSeconds = parseInt(route.duration) || 0;
-        const distanceMiles = totalDistanceMeters * 0.000621371;
-        
-        // E-Bike speed adjustment: Surrons/Talarias ride much faster than standard bikes.
-        // Google's bicycle duration is very slow (~10-12mph). 
-        // We apply a multiplier (1.5x - 2x) for high-power bikes to get a realistic Wh/mi.
-        const speedMultiplier = (Number(specs.motorWatts) || 0) > 1000 ? 1.8 : 1.2;
-        const realisticDurationSeconds = totalDurationSeconds / speedMultiplier;
-        const speedMph = distanceMiles / (realisticDurationSeconds / 3600);
+      const analyzedRoutes = (await Promise.all(routesData.routes.map(async (route: any) => {
+        try {
+          const encodedPolyline = route.polyline.encodedPolyline;
+          const totalDistanceMeters = route.distanceMeters || 0;
+          const totalDurationSeconds = parseInt(route.duration) || 0;
+          const distanceMiles = totalDistanceMeters * 0.000621371;
+          
+          // E-Bike speed adjustment
+          const speedMultiplier = (Number(specs.motorWatts) || 0) > 1000 ? 1.8 : 1.2;
+          const realisticDurationSeconds = totalDurationSeconds / speedMultiplier;
+          const speedMph = distanceMiles / (realisticDurationSeconds / 3600);
 
-        const [eRes, wRes] = await Promise.all([
-          fetch('/api/elevation', { 
-            method: 'POST', 
-            headers: { 'Content-Type': 'application/json' }, 
-            body: JSON.stringify({ path: encodedPolyline }) 
+          const [eRes, wRes] = await Promise.all([
+            fetch('/api/elevation', { 
+              method: 'POST', 
+              headers: { 'Content-Type': 'application/json' }, 
+              body: JSON.stringify({ path: encodedPolyline }) 
+            }).then(async r => {
+              if (!r.ok) return { gain: 0, loss: 0 };
+              return r.json();
+            }),
+            fetch(`/api/weather?lat=${route.legs[0].startLocation.latLng.latitude}&lng=${route.legs[0].startLocation.latLng.longitude}`).then(async r => {
+              if (!r.ok) return { wind_speed: 0, wind_degree: 0 };
+              return r.json();
+            })
+          ]);
+
+          const elevationGainFt = eRes.gain || 0;
+          const windSpeed = wRes.wind_speed || 0;
+
+          let heading = 0;
+          if (window.google?.maps?.geometry?.spherical) {
+            const start = new google.maps.LatLng(route.legs[0].startLocation.latLng.latitude, route.legs[0].startLocation.latLng.longitude);
+            const end = new google.maps.LatLng(route.legs[0].endLocation.latLng.latitude, route.legs[0].endLocation.latLng.longitude);
+            heading = google.maps.geometry.spherical.computeHeading(start, end);
+          }
+
+          const calcRes = await fetch('/api/calculate-range', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type: 'route',
+              specs, riderWeightLbs: riderWeight, throttleMode, batteryPercent: startBattery,
+              durationSeconds: realisticDurationSeconds, speedMph: speedMph, elevationChangeFt: elevationGainFt,
+              windMph: windSpeed, windDirDeg: wRes.wind_degree || 0, headingDeg: heading, driveMode, pedalAssistLevel
+            })
           }).then(async r => {
-            if (!r.ok) {
-              const text = await r.text();
-              console.error(`Elevation API failed (${r.status}):`, text.substring(0, 100));
-              return { gain: 0, loss: 0 };
-            }
+            if (!r.ok) return { batteryPercentRemaining: 0, energyWh: 0 };
             return r.json();
-          }),
-          fetch(`/api/weather?lat=${route.legs[0].startLocation.latLng.latitude}&lng=${route.legs[0].startLocation.latLng.longitude}`).then(async r => {
-            if (!r.ok) {
-              const text = await r.text();
-              console.error(`Weather API failed (${r.status}):`, text.substring(0, 100));
-              return { wind_speed: 0, wind_degree: 0 };
+          });
+
+          return {
+            originalRoute: route,
+            metrics: {
+              distanceMiles,
+              durationMin: realisticDurationSeconds / 60,
+              elevationGainFeet: elevationGainFt,
+              elevationLossFeet: eRes.loss || 0,
+              estimatedWh: calcRes.energyWh || 0,
+              efficiencyWhMi: calcRes.efficiencyWhMi || 0,
+              batteryPercentRemaining: calcRes.batteryPercentRemaining || 0,
+              endingVoltage: calcRes.endingVoltage,
+              recommendedSpeedMph: speedMph,
+              windConditions: { speed: windSpeed, direction: wRes.wind_degree || 0, headwindComponent: 0 }
             }
-            return r.json();
-          })
-        ]);
-
-        const elevationGainFt = eRes.gain || 0;
-        const windSpeed = wRes.wind_speed || 0;
-
-        let heading = 0;
-        if (window.google?.maps?.geometry?.spherical) {
-          const start = new google.maps.LatLng(route.legs[0].startLocation.latLng.latitude, route.legs[0].startLocation.latLng.longitude);
-          const end = new google.maps.LatLng(route.legs[0].endLocation.latLng.latitude, route.legs[0].endLocation.latLng.longitude);
-          heading = google.maps.geometry.spherical.computeHeading(start, end);
+          };
+        } catch (err) {
+          console.error("Single route analysis failed:", err);
+          return null;
         }
+      }))).filter(r => r !== null);
 
-        const calcRes = await fetch('/api/calculate-range', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            type: 'route',
-            specs, riderWeightLbs: riderWeight, throttleMode, batteryPercent: startBattery,
-            durationSeconds: realisticDurationSeconds, speedMph: speedMph, elevationChangeFt: elevationGainFt,
-            windMph: windSpeed, windDirDeg: wRes.wind_degree || 0, headingDeg: heading, driveMode, pedalAssistLevel
-          })
-        }).then(async r => {
-          if (!r.ok) {
-            const text = await r.text();
-            console.error(`Calculation API failed (${r.status}):`, text.substring(0, 100));
-            return { batteryPercentRemaining: 0, energyWh: 0 };
-          }
-          return r.json();
-        });
-
-        return {
-          originalRoute: route,
-          metrics: {
-            distanceMiles,
-            durationMin: realisticDurationSeconds / 60,
-            elevationGainFeet: elevationGainFt,
-            elevationLossFeet: eRes.loss || 0,
-            estimatedWh: calcRes.energyWh || 0,
-            efficiencyWhMi: calcRes.efficiencyWhMi || 0,
-            batteryPercentRemaining: calcRes.batteryPercentRemaining || 0,
-            endingVoltage: calcRes.endingVoltage,
-            recommendedSpeedMph: speedMph,
-            windConditions: { speed: windSpeed, direction: wRes.wind_degree || 0, headwindComponent: 0 }
-          }
-        };
-      }));
+      if (analyzedRoutes.length === 0) {
+        throw new Error("Failed to analyze any of the suggested routes.");
+      }
 
       // Sort routes: 1. Most Battery Left, 2. Shortest Distance
-      analyzedRoutes.sort((a, b) => {
+      analyzedRoutes.sort((a: any, b: any) => {
         if (b.metrics.batteryPercentRemaining !== a.metrics.batteryPercentRemaining) {
           return b.metrics.batteryPercentRemaining - a.metrics.batteryPercentRemaining;
         }
@@ -677,7 +672,14 @@ function MapHome() {
 
       const topRoute = analyzedRoutes[0];
       const encodedPolyline = topRoute.originalRoute.polyline.encodedPolyline;
-      const decodedPath = decode(encodedPolyline).map(([lat, lng]) => ({ lat, lng }));
+      
+      let decodedPath: any[] = [];
+      try {
+        decodedPath = decode(encodedPolyline).map(([lat, lng]) => ({ lat, lng }));
+      } catch (e) {
+        console.error("Polyline decoding failed for top route:", e);
+        throw new Error("Could not display route. Try a different path.");
+      }
       
       const mockResult: any = {
         request: { travelMode: 'BICYCLING' },

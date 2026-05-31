@@ -7,8 +7,11 @@ import { decode } from '@googlemaps/polyline-codec';
  * @returns A GeoJSON Feature object.
  */
 export const polylineToGeoJSON = (polyline: string) => {
+  if (!polyline || typeof polyline !== 'string') return null;
   try {
     const coords = decode(polyline);
+    if (!coords || coords.length === 0) return null;
+    
     // Google polyline returns [lat, lng], GeoJSON requires [lng, lat]
     const geoJSONCoords = coords.map(([lat, lng]) => [lng, lat]);
 
