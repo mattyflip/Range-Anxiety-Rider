@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-import { setCorsHeaders } from './_cors';
-import { calculateBurnRate, calculateHeadwind, estimateVoltage, getRollingResCoefficient, PHYSICS_CONSTANTS } from './_physics';
+import { setCorsHeaders } from './_cors.js';
+import { calculateBurnRate, calculateHeadwind, estimateVoltage, getRollingResCoefficient, PHYSICS_CONSTANTS } from './_physics.js';
 
 /**
  * Proprietary Range Calculation Engine

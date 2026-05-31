@@ -1,7 +1,7 @@
 import axios from 'axios';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import polylineCodec from '@mapbox/polyline';
-import { setCorsHeaders } from './_cors';
+import { setCorsHeaders } from './_cors.js';
 
 /**
  * Simplifies a polyline to stay within safe URL limits for the Google Elevation API.
