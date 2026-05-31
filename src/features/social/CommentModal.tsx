@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { db } from '../../firebase'
-import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, getDoc, doc, updateDoc, increment } from 'firebase/firestore'
+import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, updateDoc, increment } from 'firebase/firestore'
 import { createNotification } from '../../utils/notifications'
+import { useUserData } from '../../hooks/useUserData';
 
 interface Comment {
   id: string;
@@ -19,7 +20,8 @@ interface CommentModalProps {
   user: any;
 }
 
-const CommentModal: React.FC<CommentModalProps> = ({ postId, postAuthorId, onClose, user }) => {
+const CommentModal: React.FC<CommentModalProps> = ({ postId, postAuthorId, onClose, user: providedUser }) => {
+  const { user, userData } = useUserData(providedUser);
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [loading, setLoading] = useState(true);
@@ -43,12 +45,9 @@ const CommentModal: React.FC<CommentModalProps> = ({ postId, postAuthorId, onClo
   }, [postId]);
 
   const handleSubmitComment = async () => {
-    if (!newComment.trim() || !user) return;
+    if (!newComment.trim() || !user || !userData) return;
 
     try {
-      const userSnap = await getDoc(doc(db, "users", user.uid));
-      const userData = userSnap.exists() ? userSnap.data() : {};
-      
       await addDoc(collection(db, `posts/${postId}/comments`), {
         authorId: user.uid,
         authorUsername: userData.username || user.email?.split('@')[0] || "Rider",

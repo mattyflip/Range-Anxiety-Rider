@@ -1,5 +1,23 @@
 import { Timestamp } from 'firebase/firestore';
 
+export interface BikeSpecs {
+  voltage: number | '';
+  capacityAh: number | '';
+  motorWatts: number | '';
+  bikeWeightLbs: number | '';
+  tirePSI?: number | '';
+  tireType?: 'road' | 'knobby';
+  driveMode?: 'throttle_only' | 'pas_only' | 'both';
+  currentBatteryPercent?: number;
+  controllerType?: string;
+}
+
+export interface SavedBike {
+  id?: string;
+  name: string;
+  specs: BikeSpecs;
+}
+
 /**
  * User Profile model stored in /users/{uid}
  */
@@ -25,7 +43,8 @@ export interface UserProfile {
   homeRegion?: string;
   birthday?: string;
   riderWeight?: number;
-  bikes?: any[]; 
+  phone?: string;
+  bikes?: SavedBike[]; 
   activeRental?: {
     shopId: string;
     bikeId: string;

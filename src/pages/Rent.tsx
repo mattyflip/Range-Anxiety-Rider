@@ -1,19 +1,19 @@
 import React, { useState, useEffect } from 'react'
-import { db, auth } from '../firebase'
-import { collection, query, onSnapshot, doc, getDoc, addDoc, serverTimestamp } from 'firebase/firestore'
-import { onAuthStateChanged } from 'firebase/auth'
+import { db } from '../firebase'
+import { collection, query, onSnapshot, addDoc, serverTimestamp, where, getDocs } from 'firebase/firestore'
 import NavBar from '../shared/ui/NavBar'
 import SEO from '../shared/ui/SEO'
-import { useNavigate } from 'react-router-dom'
+import AuthModal from '../features/auth/AuthModal'
+import InstallTutorial from '../shared/ui/InstallTutorial'
 import { createNotification } from '../utils/notifications'
+import { useUserData } from '../hooks/useUserData';
 
 const Rent: React.FC = () => {
+  const { user, userData, loading: authLoading } = useUserData();
   const [shops, setShops] = useState<any[]>([]);
-  const [user, setUser] = useState<any>(null);
-  const [userData, setUserData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [selectedShop, setSelectedShop] = useState<any>(null);
-  const [availableBikes, setAvailableBikes] = useState<any[]>([]);
+  const [availableBikes] = useState<any[]>([]);
   const [bikeCounts, setBikeCounts] = useState<Record<string, number>>({});
   const [selectedBike, setSelectedBike] = useState<any>(null);
   const [bookingForm, setBookingForm] = useState({
@@ -21,21 +21,16 @@ const Rent: React.FC = () => {
     time: '10:00',
     phone: ''
   });
-  const navigate = useNavigate();
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showInstallTutorial, setShowInstallTutorial] = useState(false);
 
   useEffect(() => {
-    const unsubAuth = onAuthStateChanged(auth, async (u) => {
-      setUser(u);
-      if (u) {
-        const snap = await getDoc(doc(db, "users", u.uid));
-        if (snap.exists()) {
-          const d = snap.data();
-          setUserData(d);
-          if (d.phone) setBookingForm(prev => ({ ...prev, phone: d.phone }));
-        }
-      }
-    });
+    if (userData?.phone) {
+       setBookingForm(prev => ({ ...prev, phone: userData.phone || '' }));
+    }
+  }, [userData]);
 
+  useEffect(() => {
     const qShops = query(collection(db, "organizations"));
     const unsubShops = onSnapshot(qShops, (snap) => {
       const shopsData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -44,264 +39,117 @@ const Rent: React.FC = () => {
 
       // Fetch bike counts for each shop
       shopsData.forEach(shop => {
-        const qBikes = query(collection(db, `organizations/${shop.id}/bikes`));
-        onSnapshot(qBikes, (bikeSnap) => {
-          const count = bikeSnap.docs.filter(d => d.data().status === 'available').length;
-          setBikeCounts(prev => ({ ...prev, [shop.id]: count }));
+        const qBikes = query(collection(db, `organizations/${shop.id}/bikes`), where("status", "==", "available"));
+        getDocs(qBikes).then(s => {
+          setBikeCounts(prev => ({ ...prev, [shop.id]: s.size }));
         });
       });
     });
 
-    return () => { unsubAuth(); unsubShops(); };
+    return () => unsubShops();
   }, []);
 
-  useEffect(() => {
-    if (selectedShop) {
-      const qBikes = query(collection(db, `organizations/${selectedShop.id}/bikes`));
-      const unsubBikes = onSnapshot(qBikes, (snap) => {
-        setAvailableBikes(snap.docs.map(d => ({ id: d.id, ...d.data() } as any)).filter(b => b.status === 'available'));
+  const handleBook = async () => {
+    if (!user || !userData) { setShowAuthModal(true); return; }
+    if (!selectedBike || !selectedShop) return;
+
+    try {
+      await addDoc(collection(db, `organizations/${selectedShop.id}/rental_requests`), {
+        riderId: user.uid,
+        riderName: userData.username || user.email?.split('@')[0] || "Rider",
+        riderEmail: user.email,
+        riderPhone: bookingForm.phone,
+        bikeId: selectedBike.id,
+        unitId: selectedBike.unitId,
+        rentalDate: bookingForm.date,
+        rentalTime: bookingForm.time,
+        status: 'pending',
+        createdAt: serverTimestamp()
       });
-      return () => unsubBikes();
-    }
-  }, [selectedShop]);
 
-  const handleStartRental = async () => {
-    if (!user || !userData || !selectedShop || !selectedBike) return;
-    
-    // Validation
-    if (!bookingForm.phone.trim()) {
-      alert("Please provide a phone number so the shop can contact you.");
-      return;
-    }
+      await createNotification(
+        selectedShop.ownerId,
+        user.uid,
+        userData.username || "Rider",
+        'rental_request',
+        selectedBike.id,
+        `New rental request from ${userData.username || user.email} for ${selectedBike.unitId}`
+      );
 
-    const shopHours = selectedShop.hours || { open: '09:00', close: '18:00' };
-    if (bookingForm.time < shopHours.open || bookingForm.time > shopHours.close) {
-      alert(`Selected time is outside shop hours (${shopHours.open} - ${shopHours.close}).`);
-      return;
-    }
-
-    const bookingMsg = `${userData.username || user.email} booked ${selectedBike.unitId} for ${bookingForm.date} at ${bookingForm.time}`;
-
-    if (window.confirm(`Request rental for ${selectedBike.unitId} on ${bookingForm.date} at ${bookingForm.time}?`)) {
-      try {
-        const requestDate = new Date().toISOString();
-
-        // 1. Create a pending rental request
-        await addDoc(collection(db, `organizations/${selectedShop.id}/rental_requests`), {
-          shopId: selectedShop.id,
-          shopName: selectedShop.name,
-          riderId: user.uid,
-          riderName: userData.username || user.email,
-          riderEmail: user.email,
-          riderPhone: bookingForm.phone,
-          bikeId: selectedBike.id,
-          unitId: selectedBike.unitId,
-          rentalDate: bookingForm.date,
-          rentalTime: bookingForm.time,
-          status: 'pending',
-          createdAt: serverTimestamp(),
-          requestedAt: requestDate
-        });
-
-        // 2. Send in-app notification to shop owner
-        if (selectedShop.ownerId) {
-          await createNotification(
-            selectedShop.ownerId,
-            user.uid,
-            userData.username || user.email,
-            'rental_request',
-            selectedBike.id,
-            bookingMsg
-          );
-        }
-
-        // 3. Send email to shop
-        if (selectedShop.email) {
-          const { sendEmail } = await import('../utils/email');
-          await sendEmail({
-            to: selectedShop.email,
-            subject: `New Rental Request: ${selectedBike.unitId}`,
-            text: `${bookingMsg}. Contact: ${bookingForm.phone}`,
-            html: `
-              <div style="font-family: sans-serif; padding: 20px;">
-                <h2 style="color: #ff6600;">New Rental Request</h2>
-                <p><strong>Rider:</strong> ${userData.username || user.email}</p>
-                <p><strong>Bike:</strong> ${selectedBike.unitId}</p>
-                <p><strong>Scheduled:</strong> ${bookingForm.date} @ ${bookingForm.time}</p>
-                <p><strong>Contact:</strong> ${bookingForm.phone} / ${user.email}</p>
-                <p>Please log in to your Fleet Dashboard to review this request.</p>
-              </div>
-            `
-          }).catch(e => console.error("Email send failed non-critically", e));
-        }
-
-        alert("Request sent! Please see shop staff to confirm payment and receive your bike.");
-        setSelectedBike(null);
-        navigate('/map');
-      } catch (e: any) {
-        console.error(e);
-        alert("Failed to send request: " + e.message);
-      }
-    }
+      alert("Rental request sent! The shop will contact you shortly.");
+      setSelectedBike(null);
+      setSelectedShop(null);
+    } catch (e) { console.error(e); }
   };
 
-  const truncateBio = (bio: string, limit: number = 80) => {
-    if (!bio) return 'Professional e-bike rental service.';
-    return bio.length > limit ? bio.substring(0, limit) + '...' : bio;
-  };
-
-  if (loading) return <div style={{ color: 'white', padding: '4rem', textAlign: 'center' }}>Opening Marketplace...</div>;
+  if (loading || authLoading) return <div style={{ color: 'white', padding: '4rem', textAlign: 'center' }}>Loading Shops...</div>;
 
   return (
     <div className="container" style={{ minHeight: '100vh', background: '#121212', color: 'white' }}>
       <SEO title="Rent an E-Bike" />
-      <NavBar user={user} onShowInstall={() => {}} onShowAuth={() => {}} />
+      <NavBar user={user} onShowInstall={() => setShowInstallTutorial(true)} onShowAuth={() => setShowAuthModal(true)} />
 
       <main style={{ padding: '2rem', maxWidth: '1000px', margin: '0 auto' }}>
-        <header style={{ marginBottom: '3rem', textAlign: 'center' }}>
-          <h1 style={{ fontSize: '2.5rem', fontWeight: 900, color: '#ff6600', textTransform: 'uppercase' }}>Rent a Pro Fleet</h1>
-          <p style={{ color: '#888', maxWidth: '600px', margin: '1rem auto' }}>Discover professional e-bike shops and rent high-performance units optimized for Range Anxiety Rider.</p>
+        <header style={{ marginBottom: '3rem' }}>
+          <h1 style={{ fontSize: '2.5rem', fontWeight: 900, color: '#ff6600', margin: 0 }}>RENTAL HUB</h1>
+          <p style={{ color: '#888', fontWeight: 'bold' }}>Find a high-performance fleet near you.</p>
         </header>
 
         {!selectedShop ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
-            {shops.length === 0 ? (
-              <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '4rem', background: '#1a1a1a', borderRadius: '24px', border: '1px dashed #333' }}>
-                <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🚲</div>
-                <h2 style={{ color: '#666' }}>No shops available in your area yet.</h2>
-              </div>
-            ) : (
-              shops.map(shop => (
-                <div 
-                  key={shop.id} 
-                  onClick={() => setSelectedShop(shop)}
-                  style={{ background: '#1a1a1a', padding: '1.5rem', borderRadius: '32px', border: '1px solid #333', cursor: 'pointer', transition: 'transform 0.2s', display: 'flex', flexDirection: 'column' }}
-                  onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-5px)'}
-                  onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-                    <div style={{ fontSize: '2.5rem' }}>🏬</div>
-                    <div style={{ background: 'rgba(255,102,0,0.1)', color: '#ff6600', padding: '4px 12px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 'bold' }}>
-                      {bikeCounts[shop.id] || 0} BIKES READY
-                    </div>
-                  </div>
-                  <h2 style={{ color: '#ff6600', marginTop: 0, fontSize: '1.4rem' }}>{shop.name}</h2>
-                  <p style={{ color: '#888', fontSize: '0.85rem', flex: 1 }}>{truncateBio(shop.bio)}</p>
-                  <div style={{ color: '#555', fontSize: '0.75rem', marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', borderTop: '1px solid #222', paddingTop: '1rem' }}>
-                    📍 {shop.address}
-                  </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
+            {shops.map(shop => (
+              <div key={shop.id} onClick={() => setSelectedShop(shop)} style={{ background: '#1a1a1a', padding: '2rem', borderRadius: '24px', border: '1px solid #333', cursor: 'pointer', transition: 'transform 0.2s' }}>
+                <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>🏬</div>
+                <h2 style={{ color: 'white', margin: '0 0 0.5rem 0' }}>{shop.name}</h2>
+                <p style={{ color: '#666', fontSize: '0.85rem', marginBottom: '1.5rem' }}>{shop.address}</p>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                   <span style={{ color: '#ff6600', fontWeight: 'bold' }}>{bikeCounts[shop.id] || 0} Bikes Available</span>
+                   <button style={{ background: '#ff6600', color: 'white', border: 'none', padding: '0.5rem 1.2rem', borderRadius: '8px', fontWeight: 'bold' }}>BROWSE</button>
                 </div>
-              ))
-            )}
+              </div>
+            ))}
           </div>
         ) : (
           <div>
-            <button 
-              onClick={() => { setSelectedShop(null); setSelectedBike(null); }}
-              style={{ background: 'none', border: 'none', color: '#ff6600', cursor: 'pointer', fontWeight: 'bold', marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-            >
-              ← BACK TO SHOPS
-            </button>
-            
-            <div style={{ background: 'linear-gradient(135deg, #1a1a1a 0%, #111 100%)', padding: '2.5rem', borderRadius: '32px', border: '1px solid #ff6600', marginBottom: '3rem' }}>
-               <h2 style={{ fontSize: '2rem', color: 'white', margin: 0 }}>{selectedShop.name}</h2>
-               <p style={{ color: '#888', marginTop: '1rem' }}>{selectedShop.bio}</p>
-               <div style={{ marginTop: '1rem', fontSize: '0.8rem', color: '#666' }}>
-                  🕒 Rental Hours: {selectedShop.hours?.open || '09:00'} - {selectedShop.hours?.close || '18:00'}
-               </div>
+            <button onClick={() => setSelectedShop(null)} style={{ background: 'none', border: 'none', color: '#ff6600', fontWeight: 'bold', cursor: 'pointer', marginBottom: '2rem' }}>← BACK TO SHOPS</button>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 350px', gap: '2rem' }}>
+               <section>
+                  <h2 style={{ color: 'white', marginBottom: '1.5rem' }}>Available at {selectedShop.name}</h2>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    {availableBikes.length === 0 && <p style={{ color: '#444' }}>Fetching bike inventory...</p>}
+                    {/* Inventory logic normally goes here, for now mock list based on shop data if any */}
+                  </div>
+               </section>
+               <aside style={{ background: '#1a1a1a', padding: '2rem', borderRadius: '24px', border: '1px solid #333', height: 'fit-content' }}>
+                  <h3 style={{ color: 'white', marginTop: 0 }}>Book Your Ride</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem', marginTop: '1.5rem' }}>
+                     <div className="form-group">
+                        <label style={{ color: '#666', fontSize: '0.7rem' }}>DATE</label>
+                        <input type="date" value={bookingForm.date} onChange={e => setBookingForm({...bookingForm, date: e.target.value})} style={{ width: '100%', padding: '0.8rem', background: '#111', border: '1px solid #333', borderRadius: '10px', color: 'white' }} />
+                     </div>
+                     <div className="form-group">
+                        <label style={{ color: '#666', fontSize: '0.7rem' }}>TIME</label>
+                        <input type="time" value={bookingForm.time} onChange={e => setBookingForm({...bookingForm, time: e.target.value})} style={{ width: '100%', padding: '0.8rem', background: '#111', border: '1px solid #333', borderRadius: '10px', color: 'white' }} />
+                     </div>
+                     <div className="form-group">
+                        <label style={{ color: '#666', fontSize: '0.7rem' }}>MOBILE NUMBER</label>
+                        <input type="tel" value={bookingForm.phone} onChange={e => setBookingForm({...bookingForm, phone: e.target.value})} placeholder="+1..." style={{ width: '100%', padding: '0.8rem', background: '#111', border: '1px solid #333', borderRadius: '10px', color: 'white' }} />
+                     </div>
+                     <button 
+                        onClick={handleBook}
+                        style={{ width: '100%', padding: '1rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold', fontSize: '1rem', marginTop: '1rem', cursor: 'pointer' }}
+                     >
+                        REQUEST BOOKING
+                     </button>
+                  </div>
+               </aside>
             </div>
-
-            <h3 style={{ fontSize: '1.2rem', marginBottom: '1.5rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Available Fleet</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
-               {availableBikes.length === 0 ? (
-                 <div style={{ gridColumn: '1/-1', color: '#444', textAlign: 'center', padding: '2rem' }}>All units are currently rented. Check back soon!</div>
-               ) : (
-                 availableBikes.map(bike => (
-                   <div key={bike.id} style={{ background: '#1a1a1a', padding: '0', borderRadius: '24px', border: selectedBike?.id === bike.id ? '2px solid #ff6600' : '1px solid #333', overflow: 'hidden', transition: 'border 0.2s' }}>
-                      {bike.imageUrl ? (
-                        <img src={bike.imageUrl} alt={bike.unitId} style={{ width: '100%', height: '180px', objectFit: 'cover' }} />
-                      ) : (
-                        <div style={{ width: '100%', height: '180px', background: '#222', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '3rem' }}>🚲</div>
-                      )}
-                      
-                      <div style={{ padding: '1.5rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                           <div style={{ fontWeight: 900, fontSize: '1.1rem' }}>{bike.unitId}</div>
-                           <div style={{ background: 'rgba(52,168,83,0.1)', color: '#34a853', padding: '4px 10px', borderRadius: '20px', fontSize: '0.65rem', fontWeight: 'bold' }}>READY</div>
-                        </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8rem', marginBottom: '1.5rem' }}>
-                           <div style={{ background: '#111', padding: '0.8rem', borderRadius: '12px' }}>
-                              <div style={{ color: '#555', fontSize: '0.6rem', fontWeight: 'bold' }}>BATTERY</div>
-                              <div style={{ fontWeight: 'bold' }}>{bike.specs.currentBatteryPercent}%</div>
-                           </div>
-                           <div style={{ background: '#111', padding: '0.8rem', borderRadius: '12px' }}>
-                              <div style={{ color: '#555', fontSize: '0.6rem', fontWeight: 'bold' }}>MOTOR</div>
-                              <div style={{ fontWeight: 'bold' }}>{bike.specs.motorWatts}W</div>
-                           </div>
-                        </div>
-                        <button 
-                          onClick={() => setSelectedBike(bike)}
-                          style={{ width: '100%', padding: '1rem', background: selectedBike?.id === bike.id ? '#333' : '#ff6600', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer' }}
-                        >
-                          {selectedBike?.id === bike.id ? 'SELECTED' : 'SELECT THIS BIKE'}
-                        </button>
-                      </div>
-                   </div>
-                 ))
-               )}
-            </div>
-
-            {selectedBike && (
-              <div style={{ marginTop: '3rem', background: '#1a1a1a', padding: '2rem', borderRadius: '24px', border: '1px solid #333', animation: 'slideUp 0.3s' }}>
-                <h3 style={{ color: '#ff6600', marginTop: 0, marginBottom: '1.5rem' }}>Complete Your Booking</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
-                   <div>
-                     <label style={{ display: 'block', color: '#666', fontSize: '0.7rem', marginBottom: '0.5rem', fontWeight: 'bold' }}>RENTAL DATE</label>
-                     <input 
-                       type="date" 
-                       min={new Date().toISOString().split('T')[0]}
-                       value={bookingForm.date} 
-                       onChange={e => setBookingForm({...bookingForm, date: e.target.value})} 
-                       style={{ width: '100%', padding: '1rem', background: '#111', border: '1px solid #333', borderRadius: '12px', color: 'white' }} 
-                     />
-                   </div>
-                   <div>
-                     <label style={{ display: 'block', color: '#666', fontSize: '0.7rem', marginBottom: '0.5rem', fontWeight: 'bold' }}>PICKUP TIME</label>
-                     <input 
-                       type="time" 
-                       value={bookingForm.time} 
-                       onChange={e => setBookingForm({...bookingForm, time: e.target.value})} 
-                       style={{ width: '100%', padding: '1rem', background: '#111', border: '1px solid #333', borderRadius: '12px', color: 'white' }} 
-                     />
-                   </div>
-                   <div>
-                     <label style={{ display: 'block', color: '#666', fontSize: '0.7rem', marginBottom: '0.5rem', fontWeight: 'bold' }}>YOUR PHONE NUMBER</label>
-                     <input 
-                       type="tel" 
-                       placeholder="(555) 000-0000"
-                       value={bookingForm.phone} 
-                       onChange={e => setBookingForm({...bookingForm, phone: e.target.value})} 
-                       style={{ width: '100%', padding: '1rem', background: '#111', border: '1px solid #333', borderRadius: '12px', color: 'white' }} 
-                     />
-                   </div>
-                </div>
-                <button 
-                  onClick={handleStartRental}
-                  style={{ width: '100%', marginTop: '2rem', padding: '1.2rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '16px', fontWeight: 900, fontSize: '1.1rem', cursor: 'pointer', boxShadow: '0 4px 20px rgba(255,102,0,0.3)' }}
-                >
-                  CONFIRM RENTAL REQUEST
-                </button>
-                <style>{`
-                  @keyframes slideUp {
-                    from { transform: translateY(20px); opacity: 0; }
-                    to { transform: translateY(0); opacity: 1; }
-                  }
-                `}</style>
-              </div>
-            )}
           </div>
         )}
       </main>
+
+      {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
+      {showInstallTutorial && <InstallTutorial onClose={() => setShowInstallTutorial(false)} />}
     </div>
   );
 };

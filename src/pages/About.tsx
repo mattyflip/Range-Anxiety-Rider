@@ -1,33 +1,15 @@
-import React, { useState, useEffect } from 'react'
-import { auth, db } from '../firebase'
-import { onAuthStateChanged } from 'firebase/auth'
-import { doc, getDoc } from 'firebase/firestore'
+import React, { useState } from 'react'
 import NavBar from '../shared/ui/NavBar'
 import AuthModal from '../features/auth/AuthModal'
 import SEO from '../shared/ui/SEO'
 
-const About: React.FC = () => {
-  const [user, setUser] = useState<any>(null);
-  const [userRole, setUserRole] = useState<'rider' | 'fleet' | null>(null);
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  const [loading, setLoading] = useState(true);
+import { useUserData } from '../hooks/useUserData';
 
-  useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (u) => {
-      setUser(u);
-      if (u) {
-        const snap = await getDoc(doc(db, "users", u.uid));
-        if (snap.exists()) {
-          const data = snap.data();
-          setUserRole(data.role || 'rider');
-        }
-      } else {
-        setUserRole(null);
-      }
-      setLoading(false);
-    });
-    return () => unsub();
-  }, []);
+const About: React.FC = () => {
+  const { user, userData, loading } = useUserData();
+  const [showAuthModal, setShowAuthModal] = useState(false);
+
+  const userRole = userData?.role || null;
 
   const renderGuestView = () => (
     <>
