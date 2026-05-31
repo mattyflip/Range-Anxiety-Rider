@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import handler from '../api/send-email';
+import handler from '../api/send-email.js';
 
 const { mockSend } = vi.hoisted(() => ({
   mockSend: vi.fn().mockResolvedValue({ data: { id: 'email-123' } }),

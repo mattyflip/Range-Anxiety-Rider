@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import handler from '../api/create-checkout-session';
+import handler from '../api/create-checkout-session.js';
 
 // Mock dependencies
 vi.mock('stripe', () => {

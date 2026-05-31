@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import handler from '../api/stripe-webhook';
+import handler from '../api/stripe-webhook.js';
 
 // Use vi.hoisted to ensure these variables are available when vi.mock is hoisted
 const { 
