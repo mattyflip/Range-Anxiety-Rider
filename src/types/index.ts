@@ -10,6 +10,7 @@ export interface BikeSpecs {
   driveMode?: 'throttle_only' | 'pas_only' | 'both';
   currentBatteryPercent?: number;
   controllerType?: string;
+  controllerAmps?: number;
 }
 
 export interface SavedBike {

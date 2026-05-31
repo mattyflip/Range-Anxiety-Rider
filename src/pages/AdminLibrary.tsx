@@ -36,6 +36,7 @@ const AdminLibrary: React.FC = () => {
     tirePSI: '30',
     tireType: 'all-terrain',
     controllerType: '',
+    controllerAmps: '',
     driveMode: 'both'
   });
 
@@ -111,6 +112,7 @@ const AdminLibrary: React.FC = () => {
         tirePSI: bike.specs.tirePSI?.toString() || '30',
         tireType: bike.specs.tireType || 'all-terrain',
         controllerType: bike.specs.controllerType || '',
+        controllerAmps: bike.specs.controllerAmps?.toString() || '',
         driveMode: bike.specs.driveMode || 'both'
       });
     } else {
@@ -125,6 +127,7 @@ const AdminLibrary: React.FC = () => {
         tirePSI: '30',
         tireType: 'all-terrain',
         controllerType: '',
+        controllerAmps: '',
         driveMode: 'both'
       });
     }
@@ -143,6 +146,7 @@ const AdminLibrary: React.FC = () => {
       tirePSI: bike.specs.tirePSI?.toString() || '30',
       tireType: bike.specs.tireType || 'all-terrain',
       controllerType: bike.specs.controllerType || '',
+      controllerAmps: bike.specs.controllerAmps?.toString() || '',
       driveMode: bike.specs.driveMode || 'both'
     });
     setShowModal(true);
@@ -167,6 +171,7 @@ const AdminLibrary: React.FC = () => {
           tirePSI: parseFloat(form.tirePSI),
           tireType: form.tireType,
           controllerType: form.controllerType,
+          controllerAmps: form.controllerAmps ? parseFloat(form.controllerAmps) : null,
           driveMode: form.driveMode
         },
         updatedAt: serverTimestamp()
@@ -346,6 +351,11 @@ const AdminLibrary: React.FC = () => {
                  <div style={{ gridColumn: 'span 2' }}>
                     <label style={{ display: 'block', color: '#666', fontSize: '0.7rem', marginBottom: '0.3rem' }}>Controller / Engine Details</label>
                     <input value={form.controllerType} onChange={e => setForm({...form, controllerType: e.target.value})} placeholder="e.g. Sine Wave, FOC, Bosch Gen 4" style={{ width: '100%', padding: '0.8rem', background: '#111', border: '1px solid #333', borderRadius: '8px', color: 'white' }} />
+                 </div>
+
+                 <div style={{ gridColumn: 'span 2' }}>
+                    <label style={{ display: 'block', color: '#666', fontSize: '0.7rem', marginBottom: '0.3rem' }}>Controller Amp Limit (A) - Peak Power Calculation</label>
+                    <input type="number" value={form.controllerAmps} onChange={e => setForm({...form, controllerAmps: e.target.value})} placeholder="e.g. 150" style={{ width: '100%', padding: '0.8rem', background: '#111', border: '1px solid #333', borderRadius: '8px', color: 'white' }} />
                  </div>
               </div>
 

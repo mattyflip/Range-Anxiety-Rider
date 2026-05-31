@@ -14,6 +14,7 @@ export interface BikeSpecs {
   tirePSI?: number | string;
   tireType?: string;
   controllerType?: string;
+  controllerAmps?: number;
 }
 
 export interface BurnRateParams {
@@ -122,8 +123,15 @@ export function calculateBurnRate(params: BurnRateParams): number {
   
   // Acceleration Penalty (Stop-and-go)
   const stopAndGoPenalty = 1.25;
+  const totalPowerW = electricalPowerW * stopAndGoPenalty;
 
-  return Math.min(electricalPowerW * stopAndGoPenalty, motorWatts * 1.5); 
+  // Use controllerAmps if available for a real physical ceiling, else fallback
+  const voltage = specs.voltage || 48;
+  const peakPowerCeiling = specs.controllerAmps 
+    ? (Number(specs.controllerAmps) * Number(voltage))
+    : (motorWatts * 1.5);
+
+  return Math.min(totalPowerW, peakPowerCeiling); 
 }
 
 /**
