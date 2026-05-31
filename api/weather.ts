@@ -2,7 +2,7 @@ import axios from 'axios';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 // SECURITY FIX #3 (continued): Same origin restriction applied to weather API.
-import { setCorsHeaders } from './_utils/cors';
+import { setCorsHeaders } from './_cors';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (setCorsHeaders(req, res)) return;

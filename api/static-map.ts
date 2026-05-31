@@ -2,7 +2,7 @@ import { VercelRequest, VercelResponse } from '@vercel/node';
 import axios from 'axios';
 import polylineCodec from '@mapbox/polyline';
 
-import { setCorsHeaders } from './_utils/cors';
+import { setCorsHeaders } from './_cors';
 
 /**
  * Simplifies a polyline by keeping every Nth point to stay under Google's 8192 char URL limit.
