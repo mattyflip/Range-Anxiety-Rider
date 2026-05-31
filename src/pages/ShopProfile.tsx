@@ -11,7 +11,7 @@ import SEO from '../shared/ui/SEO'
 import type { Organization } from '../types';
 import { useUserData } from '../hooks/useUserData';
 
-const LIBRARIES: ("places" | "geometry")[] = ["places", "geometry"];
+const LIBRARIES: ("places" | "geometry" | "marker")[] = ["places", "geometry", "marker"];
 
 const ShopProfile: React.FC = () => {
   const navigate = useNavigate();
