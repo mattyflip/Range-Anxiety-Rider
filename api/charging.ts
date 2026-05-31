@@ -9,7 +9,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
  */
 
 // SECURITY FIX #3 (continued): Same origin restriction applied to charging API.
-import { setCorsHeaders } from './_cors';
+import { setCorsHeaders } from './_cors.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {

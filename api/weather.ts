@@ -1,4 +1,3 @@
-import axios from 'axios';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 const ALLOWED_ORIGINS = [
@@ -43,23 +42,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'Latitude and Longitude are required' });
     }
 
-    const response = await axios.get('https://api.openweathermap.org/data/2.5/weather', {
-      params: {
-        lat,
-        lon,
-        appid: API_KEY,
-        units: 'imperial'
-      }
-    });
+    const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=imperial`;
+    const response = await fetch(url);
+    const data = await response.json() as any;
     
+    if (!response.ok) {
+      throw new Error(data.message || 'Weather API failed');
+    }
+
     return res.status(200).json({
-      wind_speed: response.data.wind.speed,
-      wind_deg: response.data.wind.deg,
-      temp: response.data.main.temp,
-      description: response.data.weather[0].description
+      wind_speed: data.wind.speed,
+      wind_deg: data.wind.deg,
+      temp: data.main.temp,
+      description: data.weather[0].description
     });
   } catch (error: any) {
-    return res.status(error.response?.status || 500).json({ 
+    return res.status(500).json({ 
       error: 'Failed to fetch weather data',
       details: error.message 
     });
