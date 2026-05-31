@@ -12,11 +12,10 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { setCorsHeaders } from './_cors';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (setCorsHeaders(req, res)) return;
-
-  const OCM_API_KEY = process.env.OPENCHARGEMAP_API_KEY;
-
   try {
+    if (setCorsHeaders(req, res)) return;
+
+    const OCM_API_KEY = process.env.OPENCHARGEMAP_API_KEY;
     let lat: any, lng: any, radius = 25; // Default 25 miles
 
     if (req.method === 'POST') {
@@ -25,10 +24,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       lng = pLng;
       if (distance) radius = distance;
     } else {
-      const url = new URL(req.url || '', `https://${req.headers.host}`);
-      lat = url.searchParams.get('lat');
-      lng = url.searchParams.get('lng') || url.searchParams.get('lon');
-      const d = url.searchParams.get('distance');
+      lat = req.query.lat;
+      lng = req.query.lng || req.query.lon;
+      const d = req.query.distance as string;
       if (d) radius = parseInt(d);
     }
 

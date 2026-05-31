@@ -25,27 +25,23 @@ function simplifyPolyline(encoded: string, maxLen: number = 2000): string {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (setCorsHeaders(req, res)) return;
-
-  const { polyline } = req.query;
-  
-  if (!polyline || typeof polyline !== 'string') {
-    return res.status(400).json({ error: 'Polyline is required' });
-  }
-
-  const apiKey = process.env.GOOGLE_MAPS_BACKEND_KEY || process.env.VITE_GOOGLE_MAPS_API_KEY;
-
-  if (!apiKey) {
-    return res.status(500).json({ error: 'Google Maps API Key not configured on server' });
-  }
-
-  // Google Static Maps has an 8192 character limit for the entire URL.
-  // We simplify the polyline if it's too long.
-  const safePolyline = simplifyPolyline(polyline, 3000);
-
-  const staticMapUrl = `https://maps.googleapis.com/maps/api/staticmap?size=600x300&scale=2&maptype=roadmap&path=color:0xff6600ff|weight:6|enc:${encodeURIComponent(safePolyline)}&key=${apiKey}&style=feature:all|element:all|saturation:-100|lightness:-20&style=feature:water|element:geometry|color:0x000000&style=feature:landscape|element:geometry|color:0x111111&style=feature:road|element:geometry|color:0x333333&style=feature:poi|element:labels|visibility:off&style=feature:transit|element:labels|visibility:off`;
-
   try {
+    if (setCorsHeaders(req, res)) return;
+
+    const polyline = req.query.polyline as string;
+    
+    if (!polyline) {
+      return res.status(400).json({ error: 'Polyline is required' });
+    }
+
+    const apiKey = process.env.GOOGLE_MAPS_BACKEND_KEY || process.env.VITE_GOOGLE_MAPS_API_KEY;
+    if (!apiKey) {
+      return res.status(500).json({ error: 'Missing API Key' });
+    }
+
+    const safePolyline = simplifyPolyline(polyline, 1500);
+    const staticMapUrl = `https://maps.googleapis.com/maps/api/staticmap?size=600x600&path=color:0xff6600ff|weight:5|enc:${safePolyline}&key=${apiKey}&style=feature:all|element:all|saturation:-100|lightness:-50&style=feature:road|element:geometry|color:0x333333&style=feature:water|element:geometry|color:0x111111`;
+
     const response = await axios.get(staticMapUrl, { 
       responseType: 'arraybuffer',
       timeout: 8000
@@ -56,27 +52,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     
     return res.send(response.data);
   } catch (error: any) {
-    let message = error.message;
-    let details = '';
-    
-    if (error.response) {
-       // Extract error message from Google's binary response if possible
+    console.error('Static Map Error:', error.message);
+    let details = error.message;
+    if (error.response?.data) {
        try {
          const errorBody = Buffer.from(error.response.data).toString();
          details = errorBody;
-         console.error('Google API Error Response:', errorBody);
-       } catch (e) {
-         details = 'Could not parse error body';
-       }
+       } catch (e) {}
     }
-
-    console.error('Static Map Proxy Error:', message, details);
     
     return res.status(500).json({ 
       error: 'Failed to fetch static map from Google',
-      message: message,
-      details: details,
-      urlAttempted: staticMapUrl.split('&key=')[0] // Safely log URL without key
+      message: error.message,
+      details: details
     });
   }
 }

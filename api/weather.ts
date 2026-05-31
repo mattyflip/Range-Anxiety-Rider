@@ -5,19 +5,22 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { setCorsHeaders } from './_cors';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (setCorsHeaders(req, res)) return;
-
-  // Use the modern URL API instead of legacy parsing
-  const url = new URL(req.url || '', `https://${req.headers.host}`);
-  const lat = url.searchParams.get('lat');
-  const lon = url.searchParams.get('lng');
-  const API_KEY = process.env.OPENWEATHER_API_KEY;
-
-  if (!lat || !lon) {
-    return res.status(400).json({ error: 'Latitude and Longitude are required' });
-  }
-
   try {
+    if (setCorsHeaders(req, res)) return;
+
+    const lat = req.query.lat as string;
+    const lon = req.query.lng as string;
+    const API_KEY = process.env.OPENWEATHER_API_KEY;
+
+    if (!API_KEY) {
+      console.error('Missing OPENWEATHER_API_KEY');
+      return res.status(500).json({ error: 'SERVER_CONFIG_ERROR', message: 'Missing API Key' });
+    }
+
+    if (!lat || !lon) {
+      return res.status(400).json({ error: 'Latitude and Longitude are required' });
+    }
+
     const response = await axios.get('https://api.openweathermap.org/data/2.5/weather', {
       params: {
         lat,
@@ -33,8 +36,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       temp: response.data.main.temp,
       description: response.data.weather[0].description
     });
-  } catch (error) {
-    console.error('Weather API error:', error);
-    return res.status(500).json({ error: 'Failed to fetch weather data' });
+  } catch (error: any) {
+    console.error('Weather API error:', error.message);
+    return res.status(error.response?.status || 500).json({ 
+      error: 'Failed to fetch weather data',
+      details: error.message 
+    });
   }
 }

@@ -26,6 +26,8 @@ export function setCorsHeaders(req: VercelRequest, res: VercelResponse): boolean
     if (isAllowed) {
       res.setHeader('Access-Control-Allow-Origin', origin);
       res.setHeader('Vary', 'Origin');
+    } else {
+      console.warn(`[CORS] Origin blocked: ${origin}`);
     }
   }
 

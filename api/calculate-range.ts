@@ -9,13 +9,13 @@ import { calculateBurnRate, calculateHeadwind, estimateVoltage, getRollingResCoe
  * Logic protected by server-side execution.
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (setCorsHeaders(req, res)) return;
-
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'METHOD_NOT_ALLOWED' });
-  }
-
   try {
+    if (setCorsHeaders(req, res)) return;
+
+    if (req.method !== 'POST') {
+      return res.status(405).json({ error: 'METHOD_NOT_ALLOWED' });
+    }
+
     const { 
       type, 
       specs, 
@@ -127,6 +127,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: 'INVALID_TYPE' });
 
   } catch (error: any) {
+    console.error('Calculation API Error:', error.message);
     return res.status(500).json({ error: 'CALCULATION_ERROR', message: error.message });      
   }
 }

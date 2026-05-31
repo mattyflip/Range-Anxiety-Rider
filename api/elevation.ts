@@ -22,20 +22,20 @@ function simplifyPolyline(encoded: string, maxLen: number = 2000): string {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (setCorsHeaders(req, res)) return;
-
-  const apiKey = process.env.GOOGLE_MAPS_BACKEND_KEY || process.env.VITE_GOOGLE_MAPS_API_KEY;
-
-  if (!apiKey) {
-    return res.status(500).json({ error: 'SERVER_CONFIG_ERROR', message: 'Missing API Key' });
-  }
-
   try {
+    if (setCorsHeaders(req, res)) return;
+
+    const apiKey = process.env.GOOGLE_MAPS_BACKEND_KEY || process.env.VITE_GOOGLE_MAPS_API_KEY;
+
+    if (!apiKey) {
+      return res.status(500).json({ error: 'SERVER_CONFIG_ERROR', message: 'Missing API Key' });
+    }
+
     let pathParam = '';
     let isEncoded = false;
 
     if (req.method === 'POST') {
-      const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+      const body = req.body;
       if (body.encodedPath) {
         pathParam = body.encodedPath;
         isEncoded = true;
@@ -43,12 +43,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         pathParam = body.path || body.locations || '';
       }
     } else {
-      const url = new URL(req.url || '', 'http://localhost');
-      pathParam = url.searchParams.get('path') || url.searchParams.get('locations') || '';
+      pathParam = (req.query.path as string) || (req.query.locations as string) || '';
     }
 
     if (!pathParam) {
-      return res.status(422).json({ error: 'VALIDATION_ERROR' });
+      return res.status(422).json({ error: 'VALIDATION_ERROR', message: 'Path or locations are required' });
     }
 
     const queryParams: any = { key: apiKey };
