@@ -94,23 +94,34 @@ export function calculateBurnRate(params: BurnRateParams): number {
 
   const totalMechanicalPowerW = (Frr + Fg + Fd) * speedMs;
   
-  // Human Contribution (Refactored to be physically accurate)
+  // Human Contribution (Refactored for dramatic impact on range)
   let humanPowerW = 0;
+  let isAssistLimited = false;
+
   if (driveMode === 'pas') {
     const isTorque = specs.pasSensorType === 'torque';
     const level = Number(pedalAssistLevel) || 0;
 
-    if (isTorque) {
-       // Torque sensors require input to get output. Rider work is higher.
-       // Level 1: 160W (Pro active) -> Level 5: 60W (Relaxed)
-       humanPowerW = 160 - (level * 20); 
+    // 1. Speed-Based Assist Limit (Common on Lectric/Aventon/etc.)
+    // If you pedal faster than the assist level, the motor stops helping.
+    const pasSpeedCaps = [0, 8, 12, 16, 20, 28]; // MPH caps for levels 0-5
+    const speedCap = pasSpeedCaps[level] || 28;
+
+    if (speedMph > speedCap) {
+       isAssistLimited = true;
+       humanPowerW = 180; // Rider is working hard to go faster than the motor helps
+    } else if (isTorque) {
+       // Torque sensors: Higher human input required.
+       // Level 1: 180W -> Level 5: 60W
+       humanPowerW = 210 - (level * 30); 
     } else {
-       // Cadence sensors: Level 1: 100W (Light effort) -> Level 5: 20W (Ghost pedaling)
-       humanPowerW = 120 - (level * 20);
+       // Cadence sensors: Level 1: 150W -> Level 5: 10W (Ghost pedaling)
+       humanPowerW = 185 - (level * 35);
     }
   }
 
-  const motorMechanicalPowerW = Math.max(0, totalMechanicalPowerW - humanPowerW);
+  // If we are above the PAS speed cap, the motor contributes 0W
+  const motorMechanicalPowerW = isAssistLimited ? 0 : Math.max(0, totalMechanicalPowerW - humanPowerW);
   
   // Efficiency & Drivetrain Losses
   let drivetrainEfficiency = 0.85; 
