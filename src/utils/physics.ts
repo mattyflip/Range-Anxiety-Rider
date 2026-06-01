@@ -16,6 +16,7 @@ export interface BikeSpecs {
   controllerType?: string;
   controllerAmps?: number;
   currentBatteryPercent?: number;
+  pasSensorType?: 'cadence' | 'torque';
 }
 
 export interface BurnRateParams {
@@ -93,10 +94,20 @@ export function calculateBurnRate(params: BurnRateParams): number {
 
   const totalMechanicalPowerW = (Frr + Fg + Fd) * speedMs;
   
-  // Human Contribution
+  // Human Contribution (Refactored to be physically accurate)
   let humanPowerW = 0;
   if (driveMode === 'pas') {
-    humanPowerW = 40 + (pedalAssistLevel * 20); 
+    const isTorque = specs.pasSensorType === 'torque';
+    const level = Number(pedalAssistLevel) || 0;
+
+    if (isTorque) {
+       // Torque sensors require input to get output. Rider work is higher.
+       // Level 1: 160W (Pro active) -> Level 5: 60W (Relaxed)
+       humanPowerW = 160 - (level * 20); 
+    } else {
+       // Cadence sensors: Level 1: 100W (Light effort) -> Level 5: 20W (Ghost pedaling)
+       humanPowerW = 120 - (level * 20);
+    }
   }
 
   const motorMechanicalPowerW = Math.max(0, totalMechanicalPowerW - humanPowerW);
@@ -112,6 +123,9 @@ export function calculateBurnRate(params: BurnRateParams): number {
   else if (cType.includes('sine')) controllerEfficiency = 0.90;
   else if (cType.includes('kelly') || cType.includes('bac')) controllerEfficiency = 0.92;
   else if (cType.includes('standard')) controllerEfficiency = 0.82;
+
+  // Sensor Efficiency Bonus: Torque sensors often modulate power better
+  if (specs.pasSensorType === 'torque') controllerEfficiency += 0.05;
 
   // Aggressiveness/Heat waste penalty
   if (driveMode === 'throttle') {

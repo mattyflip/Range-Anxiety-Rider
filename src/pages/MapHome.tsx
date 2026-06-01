@@ -49,6 +49,7 @@ interface BikeSpecs {
   currentBatteryPercent?: number;
   controllerType?: string;
   controllerAmps?: number;
+  pasSensorType?: 'cadence' | 'torque';
 }
 
 interface TripDetails {
