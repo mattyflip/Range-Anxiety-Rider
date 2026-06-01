@@ -705,7 +705,10 @@ function MapHome() {
           let deathPoint: google.maps.LatLngLiteral | undefined = undefined;
           const decodedPath = decode(encodedPolyline).map(([lat, lng]) => ({ lat, lng }));
           
-          if (decodedPath.length > 1) {
+          // PAS 0 Bypass: If motor isn't helping, battery won't "die" (from a mobility standpoint)
+          const isMotorActive = driveMode === 'throttle' || (driveMode === 'pas' && pedalAssistLevel > 0);
+
+          if (decodedPath.length > 1 && isMotorActive) {
             const totalWh = (Number(specs.voltage) || 48) * (Number(specs.capacityAh) || 15);
             let remainingWh = totalWh * ((startBattery || 100) / 100);
             const physicsSpecs = mapToPhysicsSpecs(specs);
@@ -747,6 +750,8 @@ function MapHome() {
                 specs: physicsSpecs
               });
 
+              // Subtract motor consumption. 
+              // We subtract the difference between burn rate and idle draw if PAS 0 (though loop is skipped)
               const energyUsedWh = burnRateW * (distMiles / speedMph);
               remainingWh -= energyUsedWh;
 
@@ -845,6 +850,13 @@ function MapHome() {
 
       setResponse(mockResult);
       setMetrics(topRoute.metrics);
+
+      // Focus the map on the route
+      if (mapRef.current && decodedPath.length > 0) {
+        const bounds = new google.maps.LatLngBounds();
+        decodedPath.forEach(p => bounds.extend(p));
+        mapRef.current.fitBounds(bounds, { top: 50, right: 50, bottom: 50, left: 350 });
+      }
 
     } catch (e: any) {
       console.error("Route calculation failed:", e);
