@@ -53,6 +53,7 @@ interface BikeSpecs {
   controllerAmps?: number;
   pasSensorType?: 'cadence' | 'torque';
   calibrationFactor?: number;
+  motorType?: 'Geared Hub Motor' | 'Direct Drive Hub Motor' | 'Mid Drive Motor';
   correctionFactors?: {
     confidence_interval_pct: number;
   };

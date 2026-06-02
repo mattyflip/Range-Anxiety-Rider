@@ -9,6 +9,7 @@ export interface BikeSpecs {
   tireType?: 'road' | 'knobby';
   driveMode?: 'throttle_only' | 'pas_only' | 'both';
   motorModel?: string;
+  motorType?: 'Geared Hub Motor' | 'Direct Drive Hub Motor' | 'Mid Drive Motor';
   currentBatteryPercent?: number;
   controllerType?: string;
   controllerAmps?: number;
@@ -37,6 +38,7 @@ export interface CalibrationLog {
   prediction_error_pct: number;
   model_version: string;
   motor_model: string;
+  motor_type?: string;
   assist_level: string;
   terrain: string;
   temperature_c: number;

@@ -37,7 +37,8 @@ const AdminLibrary: React.FC = () => {
     tireType: 'all-terrain',
     controllerType: '',
     controllerAmps: '',
-    driveMode: 'both'
+    driveMode: 'both',
+    motorType: 'Geared Hub Motor'
   });
 
   useEffect(() => {
@@ -113,7 +114,8 @@ const AdminLibrary: React.FC = () => {
         tireType: bike.specs.tireType || 'all-terrain',
         controllerType: bike.specs.controllerType || '',
         controllerAmps: bike.specs.controllerAmps?.toString() || '',
-        driveMode: bike.specs.driveMode || 'both'
+        driveMode: bike.specs.driveMode || 'both',
+        motorType: bike.specs.motorType || 'Geared Hub Motor'
       });
     } else {
       setEditingBike(null);
@@ -128,7 +130,8 @@ const AdminLibrary: React.FC = () => {
         tireType: 'all-terrain',
         controllerType: '',
         controllerAmps: '',
-        driveMode: 'both'
+        driveMode: 'both',
+        motorType: 'Geared Hub Motor'
       });
     }
     setShowModal(true);
@@ -147,7 +150,8 @@ const AdminLibrary: React.FC = () => {
       tireType: bike.specs.tireType || 'all-terrain',
       controllerType: bike.specs.controllerType || '',
       controllerAmps: bike.specs.controllerAmps?.toString() || '',
-      driveMode: bike.specs.driveMode || 'both'
+      driveMode: bike.specs.driveMode || 'both',
+      motorType: bike.specs.motorType || 'Geared Hub Motor'
     });
     setShowModal(true);
   };
@@ -172,7 +176,8 @@ const AdminLibrary: React.FC = () => {
           tireType: form.tireType,
           controllerType: form.controllerType,
           controllerAmps: form.controllerAmps ? parseFloat(form.controllerAmps) : null,
-          driveMode: form.driveMode
+          driveMode: form.driveMode,
+          motorType: form.motorType
         },
         updatedAt: serverTimestamp()
       }, { merge: true });
@@ -346,6 +351,15 @@ const AdminLibrary: React.FC = () => {
                  <div>
                    <label style={{ display: 'block', color: '#666', fontSize: '0.7rem', marginBottom: '0.3rem' }}>Tire PSI</label>
                    <input type="number" value={form.tirePSI} onChange={e => setForm({...form, tirePSI: e.target.value})} style={{ width: '100%', padding: '0.8rem', background: '#111', border: '1px solid #333', borderRadius: '8px', color: 'white' }} />
+                 </div>
+
+                 <div style={{ gridColumn: 'span 2' }}>
+                    <label style={{ display: 'block', color: '#666', fontSize: '0.7rem', marginBottom: '0.3rem' }}>Motor Type</label>
+                    <select value={form.motorType} onChange={e => setForm({...form, motorType: e.target.value})} style={{ width: '100%', padding: '0.8rem', background: '#111', border: '1px solid #333', borderRadius: '8px', color: 'white' }}>
+                       <option value="Geared Hub Motor">Geared Hub Motor</option>
+                       <option value="Direct Drive Hub Motor">Direct Drive Hub Motor</option>
+                       <option value="Mid Drive Motor">Mid Drive Motor</option>
+                    </select>
                  </div>
 
                  <div style={{ gridColumn: 'span 2' }}>

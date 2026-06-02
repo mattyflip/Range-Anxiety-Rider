@@ -19,6 +19,7 @@ export interface BikeSpecs {
   pasSensorType?: 'cadence' | 'torque';
   calibrationFactor?: number;
   motorModel?: string;
+  motorType?: 'Geared Hub Motor' | 'Direct Drive Hub Motor' | 'Mid Drive Motor';
   correctionFactors?: {
     global_correction: number;
     motor_corrections: Record<string, number>;

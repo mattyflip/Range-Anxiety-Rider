@@ -120,6 +120,7 @@ const CalibrationModal: React.FC<CalibrationModalProps> = ({
         prediction_error_pct: Number(errorPct.toFixed(2)),
         model_version: 'v1.2.0',
         motor_model: bike.specs.motorModel || 'Generic_Hub',
+        motor_type: bike.specs.motorType || 'Geared Hub Motor',
         assist_level: bike.specs.pasSensorType || 'pas_3',
         terrain: elevationGainFt > 100 ? 'hilly' : 'flat',
         temperature_c: temperatureC,
