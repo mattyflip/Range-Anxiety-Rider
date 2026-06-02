@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import type { BikeSpecs } from '../../types';
 
 interface ChargingStop {
   id: string;
@@ -10,7 +11,7 @@ interface ChargingStop {
 }
 
 interface OpportunityChargingModalProps {
-  bikeSpecs: any;
+  bikeSpecs: BikeSpecs;
   currentBatteryWh: number;
   neededWh: number;
   chargingStops: ChargingStop[];
