@@ -589,6 +589,13 @@ function MapHome() {
     setBatteryInputMode(newMode);
   };
 
+  const loadBike = (bike: SavedBike) => {
+    setSpecs(bike.specs); setBikeSearchQuery(bike.name); setShowBikeResults(false);
+    setCurrentTripBike(bike);
+    if (bike.specs.voltage) setStartVoltage(getBatteryLevels(Number(bike.specs.voltage)).max);
+    markDirty();
+  };
+
   const handleRangeRescue = async () => {
     if (!metrics?.deathPoint || !mapRef.current) return;
     setIsFindingRescue(true);

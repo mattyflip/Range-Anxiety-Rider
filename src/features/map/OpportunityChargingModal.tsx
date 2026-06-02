@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 
 interface ChargingStop {
   id: string;
@@ -26,7 +26,7 @@ const OpportunityChargingModal: React.FC<OpportunityChargingModalProps> = ({
   onSelectStop,
   onClose
 }) => {
-  const [selectedStop, setSelectedStop] = useState<ChargingStop | null>(chargingStops[0] || null);
+  const [selectedStop] = useState<ChargingStop | null>(chargingStops[0] || null);
   const [chargerType, setChargerType] = useState<'standard' | 'fast'>('standard');
 
   const deficitWh = neededWh - currentBatteryWh;
