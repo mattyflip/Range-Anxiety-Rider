@@ -164,7 +164,7 @@ export function calculateBurnRate(params: BurnRateParams): number {
     const cf = specs.correctionFactors;
     const nRides = cf.trained_on_n_rides || 0;
     
-    if (nRides >= 30 && cf.multidim_model) {
+    if (nRides >= 30 && cf.multidim_model && cf.multidim_model.weights?.length >= 6) {
       // Option C: Multi-Dimensional Regression
       const { weights, intercept } = cf.multidim_model;
       const assistNum = pedalAssistLevel || 2;
