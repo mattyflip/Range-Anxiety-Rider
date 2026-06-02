@@ -166,6 +166,10 @@ function MapHome() {
   const [stopCount, setStopCount] = useState<number>(0);
   const [isCurrentlyStopped, setIsCurrentlyStopped] = useState<boolean>(false);
   const [speedHistory, setSpeedHistory] = useState<number[]>([]);
+  const [realTimeSpeedMph, setRealTimeSpeedMph] = useState<number>(0);
+  const [realTimeWhMi, setRealTimeWhMi] = useState<number>(0);
+  const [realTimeRemainingMiles, setRealTimeRemainingMiles] = useState<number>(0);
+  const [lastActivityTimestamp, setLastActivityTimestamp] = useState<number>(Date.now());
 
   // Range Polygon State
   const [rangePolygonPoints, setRangePolygonPoints] = useState<google.maps.LatLngLiteral[] | null>(null);
@@ -533,6 +537,27 @@ function MapHome() {
         setIsCurrentlyStopped(false);
       }
 
+      // --- REAL-TIME TELEMETRY ---
+      setRealTimeSpeedMph(currentSpeedMph);
+      if (currentSpeedMph > 2) {
+        setLastActivityTimestamp(Date.now());
+        const instantaneousBurnRate = calculateBurnRate({
+          speedMph: currentSpeedMph,
+          slope: 0, // Instantaneous slope hard to get without high-res elevation map, assume flat for real-time
+          headwindMph: 0, // Assume no wind for real-time overlay simplicity
+          riderWeightLbs: riderWeight || 180,
+          pedalAssistLevel,
+          driveMode,
+          throttleMode,
+          specs: mapToPhysicsSpecs(specs)
+        });
+        setRealTimeWhMi(instantaneousBurnRate / currentSpeedMph);
+        
+        const totalWh = (Number(specs.voltage)||48) * (Number(specs.capacityAh)||15);
+        const currentWh = totalWh * ((Number(startBattery)||100)/100);
+        setRealTimeRemainingMiles(currentWh / instantaneousBurnRate * currentSpeedMph);
+      }
+
       const route = response.routes[selectedRouteIndex];
       const leg = route.legs[currentLegIndex];
       const step = leg.steps[currentStepIndex];
@@ -558,6 +583,20 @@ function MapHome() {
     }, null, { enableHighAccuracy: true });
     return () => navigator.geolocation.clearWatch(watchId);
   }, [isNavigating, response, currentLegIndex, currentStepIndex, hasAnnouncedNextStep, selectedRouteIndex, lastNavLocation]);
+
+  // --- AUTO-STOP INACTIVITY TIMER ---
+  useEffect(() => {
+    if (!isNavigating) return;
+    const interval = setInterval(() => {
+      const tenMinutesInMs = 10 * 60 * 1000;
+      if (Date.now() - lastActivityTimestamp > tenMinutesInMs) {
+        console.log("Inactivity detected (10 mins). Stopping navigation.");
+        stopNavigation();
+        speak("Navigation stopped due to inactivity.");
+      }
+    }, 30000); // Check every 30 seconds
+    return () => clearInterval(interval);
+  }, [isNavigating, lastActivityTimestamp]);
 
   const markDirty = () => { if (!settingsDirty) setSettingsDirty(true); };
   
@@ -1292,6 +1331,22 @@ function MapHome() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div style={{ color: 'white', fontWeight: 'bold' }}>{distToNextStep || 'Navigating...'}</div>
                   <button onClick={stopNavigation} style={{ background: '#444', color: 'white', border: 'none', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer' }}>✕</button>
+                </div>
+                
+                {/* REAL-TIME TELEMETRY OVERLAY */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', borderTop: '1px solid #333', paddingTop: '1rem', marginTop: '0.4rem' }}>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ color: '#888', fontSize: '0.6rem', textTransform: 'uppercase' }}>Speed</div>
+                    <div style={{ color: '#ff6600', fontSize: '1.5rem', fontWeight: 900 }}>{realTimeSpeedMph.toFixed(0)} <span style={{ fontSize: '0.6rem', fontWeight: 400 }}>{unitSystem === 'imperial' ? 'MPH' : 'KMH'}</span></div>
+                  </div>
+                  <div style={{ textAlign: 'center', borderLeft: '1px solid #333', borderRight: '1px solid #333' }}>
+                    <div style={{ color: '#888', fontSize: '0.6rem', textTransform: 'uppercase' }}>Efficiency</div>
+                    <div style={{ color: '#00ccff', fontSize: '1.2rem', fontWeight: 900 }}>{realTimeWhMi.toFixed(1)} <span style={{ fontSize: '0.6rem', fontWeight: 400 }}>Wh/{unitSystem === 'imperial' ? 'mi' : 'km'}</span></div>
+                  </div>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ color: '#888', fontSize: '0.6rem', textTransform: 'uppercase' }}>Remaining</div>
+                    <div style={{ color: '#34a853', fontSize: '1.2rem', fontWeight: 900 }}>{realTimeRemainingMiles.toFixed(1)} <span style={{ fontSize: '0.6rem', fontWeight: 400 }}>{unitSystem === 'imperial' ? 'mi' : 'km'}</span></div>
+                  </div>
                 </div>
             </div>
           )}
