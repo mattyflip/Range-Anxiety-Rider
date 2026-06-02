@@ -14,6 +14,7 @@ import WelcomeModal from '../shared/ui/WelcomeModal'
 import RouteReplay3D from '../features/map/RouteReplay3D'
 import AdvancedMarker from '../features/map/AdvancedMarker'
 import CalibrationModal from '../features/map/CalibrationModal'
+import OpportunityChargingModal from '../features/map/OpportunityChargingModal'
 import orangePin from '../assets/orange-pin.png'
 import { createNotification } from '../utils/notifications'
 import { STATE_COORDINATES } from '../utils/ebikeLaws'
@@ -143,6 +144,9 @@ function MapHome() {
   const [showInstallTutorial, setShowInstallTutorial] = useState(false);
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [showCalibrationModal, setShowCalibrationModal] = useState(false);
+  const [showChargingRescue, setShowChargingRescue] = useState(false);
+  const [suggestedStops, setSuggestedStops] = useState<any[]>([]);
+  const [isFindingRescue, setIsFindingRescue] = useState(false);
   const [mapSnapshot, setMapSnapshot] = useState<string | null>(null);
   const [settingsDirty, setSettingsDirty] = useState(true);
   const [userLocation, setUserLocation] = useState<google.maps.LatLngLiteral | null>(null);
@@ -585,11 +589,51 @@ function MapHome() {
     setBatteryInputMode(newMode);
   };
 
-  const loadBike = (bike: SavedBike) => {
-    setSpecs(bike.specs); setBikeSearchQuery(bike.name); setShowBikeResults(false);
-    setCurrentTripBike(bike);
-    if (bike.specs.voltage) setStartVoltage(getBatteryLevels(Number(bike.specs.voltage)).max);
-    markDirty();
+  const handleRangeRescue = async () => {
+    if (!metrics?.deathPoint || !mapRef.current) return;
+    setIsFindingRescue(true);
+    
+    try {
+      // 1. Search for Charging POIs near the "Stranded" point
+      const res = await fetch(`/api/charging?lat=${metrics.deathPoint.lat}&lng=${metrics.deathPoint.lng}&distance=5`);
+      const chargingPois = await res.json();
+      
+      if (chargingPois.length === 0) {
+        alert("No charging stations found within 5 miles of your depletion point.");
+        setIsFindingRescue(false);
+        return;
+      }
+
+      // 2. Map to local structure and show modal
+      setSuggestedStops(chargingPois);
+      setShowChargingRescue(true);
+    } catch (err) {
+      console.error("Rescue search failed:", err);
+      alert("Failed to find nearby charging stations.");
+    } finally {
+      setIsFindingRescue(false);
+    }
+  };
+
+  const addRescueStop = (stop: any) => {
+    setShowChargingRescue(false);
+    
+    // Add the stop as an intermediate waypoint (Stop 1)
+    const newLocs = [...locations];
+    // Find the first empty slot or replace the destination if needed?
+    // Better: insert it between start and finish.
+    const origin = newLocs[0];
+    const destination = newLocs.filter(l => l.trim() !== '').pop();
+    
+    setLocations([
+      origin || '', 
+      stop.address || stop.name, 
+      destination || '', 
+      '', ''
+    ]);
+    
+    // Auto-recalculate
+    setTimeout(() => handleCalculate(), 500);
   };
 
   const handleCalculate = async () => { 
@@ -1193,7 +1237,14 @@ function MapHome() {
               {metrics.deathPoint ? (
                 <div style={{ marginTop: '0.5rem' }}>
                   <div style={{ fontSize: '1.8rem', fontWeight: 900, color: '#ff4444' }}>Battery Dies Early</div>
-                  <p style={{ color: '#888', fontSize: '0.75rem', lineHeight: '1.4', margin: '0.5rem 0 1.5rem 0' }}>The physics engine predicts you will run out of power at the location marked 🪫 on the map.</p>
+                  <p style={{ color: '#888', fontSize: '0.75rem', lineHeight: '1.4', margin: '0.5rem 0 1rem 0' }}>The physics engine predicts you will run out of power at the location marked 🪫 on the map.</p>
+                  <button 
+                    onClick={handleRangeRescue} 
+                    disabled={isFindingRescue}
+                    style={{ width: '100%', padding: '0.8rem', background: '#ff4444', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 900, fontSize: '0.8rem', cursor: 'pointer', marginBottom: '1.5rem', opacity: isFindingRescue ? 0.5 : 1 }}
+                  >
+                    {isFindingRescue ? 'SEARCHING...' : '⚡ FIND RANGE RESCUE'}
+                  </button>
                 </div>
               ) : (
                 <>
@@ -1389,6 +1440,17 @@ function MapHome() {
       {showWelcomeModal && <WelcomeModal onClose={() => setShowWelcomeModal(false)} />}
       {showInstallTutorial && <InstallTutorial onClose={() => setShowInstallTutorial(false)} />}
       
+      {showChargingRescue && metrics && (
+        <OpportunityChargingModal
+          bikeSpecs={specs}
+          currentBatteryWh={((Number(specs.voltage)||48) * (Number(specs.capacityAh)||15)) * ((Number(startBattery)||100)/100)}
+          neededWh={metrics.estimatedWh}
+          chargingStops={suggestedStops}
+          onClose={() => setShowChargingRescue(false)}
+          onSelectStop={(stop) => addRescueStop(stop)}
+        />
+      )}
+
       {showCalibrationModal && currentTripBike && (
         <CalibrationModal 
           user={user}
