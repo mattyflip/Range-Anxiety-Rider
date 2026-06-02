@@ -105,9 +105,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       confidence_interval_pct = 15; // Moderate confidence
       try {
         const regression = new MLR(X, y);
+        
+        // ml-regression-multivariate-linear: 
+        // weights is a matrix [input][output], intercept is an array [output]
+        const rawWeights = (regression as any).weights;
+        const rawIntercept = (regression as any).intercept;
+
         multidim_model = {
-          weights: regression.weights.map(w => w[0]),
-          intercept: regression.intercept[0]
+          weights: rawWeights.map((w: number[]) => w[0]),
+          intercept: rawIntercept[0]
         };
         
         const yPred = regression.predict(X);
@@ -138,11 +144,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // 4. Update Bike Profile
     const userSnap = await db.doc(`users/${uid}`).get();
-    if (userSnap.exists()) {
+    if (userSnap.exists) {
       const userData = userSnap.data();
       const updatedBikes = (userData?.bikes || []).map((b: any) => {
-        // Since we don't have bikeId in logs yet, we apply to ALL bikes or matching motor?
-        // For now, if bikeId was passed and matches, update it.
         if (b.id === bikeId || b.name === bikeId) {
           return {
             ...b,
@@ -160,11 +164,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // --- GLOBAL AGGREGATION (Hybrid Strategy) ---
     // If the model is high quality (R2 > 0.7) and we have enough data, 
     // contribute an anonymized version to the global motor profile.
-    if (multidim_model && r_squared > 0.7 && logs.length >= 10 && log.motor_model) {
+    if (multidim_model && r_squared > 0.7 && logs.length >= 10 && logs[0].motor_model) {
       try {
-        const motorId = log.motor_model.replace(/\s+/g, '_');
+        const motorId = logs[0].motor_model.replace(/\s+/g, '_');
         await db.collection('global_models').doc(motorId).set({
-          motor_model: log.motor_model,
+          motor_model: logs[0].motor_model,
           weights: multidim_model.weights,
           intercept: multidim_model.intercept,
           avg_r_squared: r_squared,

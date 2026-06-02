@@ -51,6 +51,10 @@ interface BikeSpecs {
   controllerType?: string;
   controllerAmps?: number;
   pasSensorType?: 'cadence' | 'torque';
+  calibrationFactor?: number;
+  correctionFactors?: {
+    confidence_interval_pct: number;
+  };
 }
 
 interface TripDetails {
@@ -966,7 +970,8 @@ function MapHome() {
   const saveCurrentBike = async () => {
     if (!user) { setShowAuthModal(true); return; }
     if (!newBikeName) return;
-    const updated = [...savedBikes, { id: Date.now().toString(), name: newBikeName, specs }];
+    const newBike: SavedBike = { id: Date.now().toString(), name: newBikeName, specs: specs as any };
+    const updated = [...savedBikes, newBike];
     setSavedBikes(updated);
     try { await updateDoc(doc(db, "users", user.uid), { bikes: updated }); } catch (e) { }
     setNewBikeName(''); alert("Bike saved!");
@@ -1396,6 +1401,8 @@ function MapHome() {
           temperatureC={tripTemperatureC}
           windSpeedMs={tripWindSpeedMs}
           riderWeightLbs={Number(riderWeight) || 180}
+          stopCount={stopCount}
+          speedHistory={speedHistory}
           onClose={() => setShowCalibrationModal(false)}
           onComplete={(newFactor) => {
             setShowCalibrationModal(false);

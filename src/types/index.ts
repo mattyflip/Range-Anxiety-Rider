@@ -12,6 +12,7 @@ export interface BikeSpecs {
   currentBatteryPercent?: number;
   controllerType?: string;
   controllerAmps?: number;
+  pasSensorType?: 'cadence' | 'torque';
   calibrationFactor?: number;
   correctionFactors?: CorrectionFactors;
 }
