@@ -50,6 +50,7 @@ export interface CalibrationLog {
   wind_speed_ms: number;
   actual_stops_per_km?: number;
   speed_variance?: number;
+  orgId?: string | null;
 }
 
 export interface SavedBike {

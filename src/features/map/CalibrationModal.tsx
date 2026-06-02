@@ -112,7 +112,7 @@ const CalibrationModal: React.FC<CalibrationModalProps> = ({
       }
 
       // 2. Log the calibration event strictly following requested schema
-      const logEntry: CalibrationLog & { orgId?: string } = {
+      const logEntry: CalibrationLog = {
         ride_id: crypto.randomUUID(),
         bikeId: bike.id || bike.name,
         orgId: orgId || null,
@@ -133,7 +133,7 @@ const CalibrationModal: React.FC<CalibrationModalProps> = ({
         wind_speed_ms: windSpeedMs,
         actual_stops_per_km: Number((stopCount / Math.max(0.1, distanceMiles * 1.60934)).toFixed(2)),
         speed_variance: Number(calculateVariance(speedHistory).toFixed(2))
-      } as any;
+      };
 
       await addDoc(collection(db, `users/${user.uid}/calibration_logs`), logEntry);
 
