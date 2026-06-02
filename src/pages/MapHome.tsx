@@ -19,7 +19,7 @@ import orangePin from '../assets/orange-pin.png'
 import { createNotification } from '../utils/notifications'
 import { STATE_COORDINATES } from '../utils/ebikeLaws'
 import SEO from '../shared/ui/SEO'
-import type { Bike, LiveUnit, Organization, SavedBike } from '../types';
+import type { Bike, LiveUnit, Organization, SavedBike, BikeSpecs } from '../types';
 import { useUserData } from '../hooks/useUserData';
 import { useBikeLibrary } from '../hooks/useBikeLibrary';
 import { calculateRangePolygon, calculateBurnRate, calculateHeadwind } from '../utils/physics';
@@ -38,25 +38,6 @@ interface GroupRide {
   status: string;
   leaderId?: string;
   leaderTrail?: google.maps.LatLngLiteral[];
-}
-
-interface BikeSpecs {
-  voltage: number | '';
-  capacityAh: number | '';
-  motorWatts: number | '';
-  bikeWeightLbs: number | '';
-  tirePSI?: number | '';
-  tireType?: 'road' | 'knobby';
-  driveMode?: 'throttle_only' | 'pas_only' | 'both';
-  currentBatteryPercent?: number;
-  controllerType?: string;
-  controllerAmps?: number;
-  pasSensorType?: 'cadence' | 'torque';
-  calibrationFactor?: number;
-  motorType?: 'Geared Hub Motor' | 'Direct Drive Hub Motor' | 'Mid Drive Motor';
-  correctionFactors?: {
-    confidence_interval_pct: number;
-  };
 }
 
 interface TripDetails {
