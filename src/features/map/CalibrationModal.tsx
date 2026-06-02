@@ -142,7 +142,9 @@ const CalibrationModal: React.FC<CalibrationModalProps> = ({
         const localHistory = JSON.parse(localStorage.getItem('ebike-ride-history') || '[]');
         localHistory.push(logEntry);
         localStorage.setItem('ebike-ride-history', JSON.stringify(localHistory.slice(-50)));
-      } catch (e) { }
+      } catch (e) {
+        console.error('Failed to save local ride history backup:', e);
+      }
 
       // 3. Trigger Layer 3 Multi-Dimensional Fit
       try {
@@ -166,7 +168,9 @@ const CalibrationModal: React.FC<CalibrationModalProps> = ({
             return;
           }
         }
-      } catch (err) { }
+      } catch (err) {
+        console.error('Failed to trigger Layer 3 model fit:', err);
+      }
 
       onComplete(newFactor);
     } catch (error) {

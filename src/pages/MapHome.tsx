@@ -449,7 +449,7 @@ function MapHome() {
                }
              }
           }
-        } catch (e) { }
+        } catch (e) { console.error('Non-critical map/telemetry error:', e); }
       }
       if (activeRide) {
         await setDoc(doc(db, `group_rides/${activeRide.id}/participants`, user.uid), {
@@ -973,7 +973,7 @@ function MapHome() {
     const newBike: SavedBike = { id: Date.now().toString(), name: newBikeName, specs: specs as any };
     const updated = [...savedBikes, newBike];
     setSavedBikes(updated);
-    try { await updateDoc(doc(db, "users", user.uid), { bikes: updated }); } catch (e) { }
+    try { await updateDoc(doc(db, "users", user.uid), { bikes: updated }); } catch (e) { console.error('Non-critical map/telemetry error:', e); }
     setNewBikeName(''); alert("Bike saved!");
   };
 
@@ -996,7 +996,7 @@ function MapHome() {
         tripData: { origin: trip.origin, destination: trip.destination, waypoints: trip.waypoints, isRoundTrip }
       });
       alert("Shared!"); setShowSharePreview(false);
-    } catch (e) { }
+    } catch (e) { console.error('Non-critical map/telemetry error:', e); }
   };
 
   const downloadShareCard = async () => {
@@ -1007,7 +1007,7 @@ function MapHome() {
       const dataUrl = await toPng(shareCardRef.current, { backgroundColor: "#121212", pixelRatio: 2 });
       shareCardRef.current.style.opacity = '0';
       const link = document.createElement('a'); link.download = `trip.png`; link.href = dataUrl; link.click();
-    } catch (e) { }
+    } catch (e) { console.error('Non-critical map/telemetry error:', e); }
   };
 
   const filteredBikes = [...globalBikes, ...savedBikes].filter(b => b.name.toLowerCase().includes(bikeSearchQuery.toLowerCase()));

@@ -58,7 +58,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
        try {
          const errorBody = Buffer.from(error.response.data).toString();
          details = errorBody;
-       } catch (e) {}
+       } catch (e) {
+         console.error('Failed to parse error body:', e);
+       }
     }
     
     return res.status(500).json({ 
