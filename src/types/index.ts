@@ -8,9 +8,47 @@ export interface BikeSpecs {
   tirePSI?: number | '';
   tireType?: 'road' | 'knobby';
   driveMode?: 'throttle_only' | 'pas_only' | 'both';
+  motorModel?: string;
   currentBatteryPercent?: number;
   controllerType?: string;
   controllerAmps?: number;
+  calibrationFactor?: number;
+  correctionFactors?: CorrectionFactors;
+}
+
+export interface CorrectionFactors {
+  global_correction: number;
+  motor_corrections: Record<string, number>;
+  multidim_model: {
+    weights: number[];
+    intercept: number;
+  } | null;
+  r_squared: number;
+  trained_on_n_rides: number;
+  model_version: string;
+  confidence_interval_pct: number;
+}
+
+export interface CalibrationLog {
+  ride_id: string;
+  bikeId: string;
+  timestamp: string; // ISO string
+  prediction_error_pct: number;
+  model_version: string;
+  motor_model: string;
+  assist_level: string;
+  terrain: string;
+  temperature_c: number;
+  avg_speed_kmh: number;
+  elevation_gain_m: number;
+  distance_km: number;
+  battery_soc_before: number;
+  battery_soc_after: number;
+  tire_pressure_psi: number;
+  rider_weight_kg: number;
+  wind_speed_ms: number;
+  actual_stops_per_km?: number;
+  speed_variance?: number;
 }
 
 export interface SavedBike {

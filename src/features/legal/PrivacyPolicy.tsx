@@ -31,16 +31,18 @@ const PrivacyPolicy: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         <div style={{ marginTop: '1.5rem', lineHeight: '1.6', fontSize: '0.9rem' }}>
           <h3>1. Information We Collect</h3>
           <p><strong>Account Information:</strong> When you create an account, we collect your email address and any profile information you provide.</p>
-          <p><strong>Bike Data:</strong> We store the specifications of the bikes you save (e.g., battery capacity, motor type, weight) to provide accurate range estimates.</p>
-          <p><strong>Location Data:</strong> To provide route planning and range estimates, we may process location data. This is typically done on-device or via third-party map providers (Google Maps).</p>
+          <p><strong>Bike Data:</strong> We store the specifications of the bikes you save (e.g., battery capacity, motor type, weight) and <strong>calibration factors</strong> derived from your ride history.</p>
+          <p><strong>Ride Telemetry:</strong> To improve accuracy, we collect anonymized performance data (e.g., energy burn rate, average speed, elevation gain, and environmental conditions) to train our physics models.</p>
+          <p><strong>Location Data:</strong> To provide route planning and navigation, we process location data while the app is active.</p>
 
           <h3>2. How We Use Your Information</h3>
           <p>We use your data to:</p>
           <ul>
-            <li>Calculate and provide range estimates.</li>
+            <li>Calculate and provide personalized range estimates.</li>
+            <li>Calibrate our <strong>Layer 3 adaptive physics engine</strong> specifically for your riding style and bike.</li>
+            <li>Improve global motor efficiency models through anonymized aggregation.</li>
             <li>Maintain your account and saved bikes.</li>
-            <li>Send technical updates and marketing communications (with your consent).</li>
-            <li>Improve our physics models and app performance.</li>
+            <li>Improve app performance and safety features.</li>
           </ul>
 
           <h3>3. Third-Party Services</h3>

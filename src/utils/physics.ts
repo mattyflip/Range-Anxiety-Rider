@@ -17,13 +17,28 @@ export interface BikeSpecs {
   controllerAmps?: number;
   currentBatteryPercent?: number;
   pasSensorType?: 'cadence' | 'torque';
+  calibrationFactor?: number;
+  motorModel?: string;
+  correctionFactors?: {
+    global_correction: number;
+    motor_corrections: Record<string, number>;
+    multidim_model: {
+      weights: number[];
+      intercept: number;
+    } | null;
+    r_squared: number;
+    trained_on_n_rides: number;
+  };
 }
 
 export interface BurnRateParams {
   speedMph: number;
   slope: number;
   headwindMph: number;
+  temperatureC?: number;
   riderWeightLbs?: number | string;
+  actualStopsPerKm?: number;
+  speedVariance?: number;
   pedalAssistLevel?: number;
   driveMode?: 'throttle' | 'pas';
   throttleMode?: 'eco' | 'normal' | 'sport';
@@ -149,7 +164,38 @@ export function calculateBurnRate(params: BurnRateParams): number {
   
   // Acceleration Penalty (Stop-and-go)
   const stopAndGoPenalty = 1.25;
-  const totalPowerW = electricalPowerW * stopAndGoPenalty;
+  const calibrationFactor = specs.calibrationFactor || 1.0;
+  let totalPowerW = electricalPowerW * stopAndGoPenalty * calibrationFactor;
+
+  // --- Layer 3: Adaptive Corrections (Learned from Ride History) ---
+  if (specs.correctionFactors) {
+    const cf = specs.correctionFactors;
+    const nRides = cf.trained_on_n_rides || 0;
+    
+    if (nRides >= 30 && cf.multidim_model && cf.multidim_model.weights?.length >= 6) {
+      // Option C: Multi-Dimensional Regression
+      const { weights, intercept } = cf.multidim_model;
+      const assistNum = pedalAssistLevel || 2;
+      const avgSpeedKmh = speedMph * 1.60934;
+      const tempC = params.temperatureC || 20;
+      
+      const errorAdjustment = intercept + 
+        (weights[0] * assistNum) + 
+        (weights[1] * slope) + 
+        (weights[2] * tempC) + 
+        (weights[3] * avgSpeedKmh) +
+        (weights[4] * (params.actualStopsPerKm || 0)) +
+        (weights[5] * (params.speedVariance || 0));
+        
+      totalPowerW *= (1 - errorAdjustment);
+    } else if (nRides >= 20 && specs.motorModel && cf.motor_corrections?.[specs.motorModel]) {
+      // Option B: Per-Motor Correction
+      totalPowerW *= cf.motor_corrections[specs.motorModel];
+    } else if (nRides > 0) {
+      // Option A: Global Correction
+      totalPowerW *= cf.global_correction;
+    }
+  }
 
   // Use controllerAmps if available for a real physical ceiling, else fallback
   const voltage = specs.voltage || 48;

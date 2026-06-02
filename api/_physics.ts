@@ -15,13 +15,30 @@ export interface BikeSpecs {
   tireType?: string;
   controllerType?: string;
   controllerAmps?: number;
+  currentBatteryPercent?: number;
+  pasSensorType?: 'cadence' | 'torque';
+  calibrationFactor?: number;
+  motorModel?: string;
+  correctionFactors?: {
+    global_correction: number;
+    motor_corrections: Record<string, number>;
+    multidim_model: {
+      weights: number[];
+      intercept: number;
+    } | null;
+    r_squared: number;
+    trained_on_n_rides: number;
+  };
 }
 
 export interface BurnRateParams {
   speedMph: number;
   slope: number;
   headwindMph: number;
+  temperatureC?: number;
   riderWeightLbs?: number | string;
+  actualStopsPerKm?: number;
+  speedVariance?: number;
   pedalAssistLevel?: number;
   driveMode?: 'throttle' | 'pas';
   throttleMode?: 'eco' | 'normal' | 'sport';
@@ -94,11 +111,26 @@ export function calculateBurnRate(params: BurnRateParams): number {
   
   // Human Contribution
   let humanPowerW = 0;
+  let isAssistLimited = false;
+
   if (driveMode === 'pas') {
-    humanPowerW = 40 + (pedalAssistLevel * 20); 
+    const isTorque = specs.pasSensorType === 'torque';
+    const level = Number(pedalAssistLevel) || 0;
+
+    const pasSpeedCaps = [0, 8, 12, 16, 20, 28]; 
+    const speedCap = pasSpeedCaps[level] || 28;
+
+    if (speedMph > speedCap) {
+       isAssistLimited = true;
+       humanPowerW = 180; 
+    } else if (isTorque) {
+       humanPowerW = 210 - (level * 30); 
+    } else {
+       humanPowerW = 185 - (level * 35);
+    }
   }
 
-  const motorMechanicalPowerW = Math.max(0, totalMechanicalPowerW - humanPowerW);
+  const motorMechanicalPowerW = isAssistLimited ? 0 : Math.max(0, totalMechanicalPowerW - humanPowerW);
   
   // Efficiency & Drivetrain Losses
   let drivetrainEfficiency = 0.85; 
@@ -112,7 +144,8 @@ export function calculateBurnRate(params: BurnRateParams): number {
   else if (cType.includes('kelly') || cType.includes('bac')) controllerEfficiency = 0.92;
   else if (cType.includes('standard')) controllerEfficiency = 0.82;
 
-  // Aggressiveness/Heat waste penalty
+  if (specs.pasSensorType === 'torque') controllerEfficiency += 0.05;
+
   if (driveMode === 'throttle') {
     if (throttleMode === 'eco') controllerEfficiency *= 1.05;
     else if (throttleMode === 'sport') controllerEfficiency *= 0.85;
@@ -123,7 +156,38 @@ export function calculateBurnRate(params: BurnRateParams): number {
   
   // Acceleration Penalty (Stop-and-go)
   const stopAndGoPenalty = 1.25;
-  const totalPowerW = electricalPowerW * stopAndGoPenalty;
+  const calibrationFactor = specs.calibrationFactor || 1.0;
+  let totalPowerW = electricalPowerW * stopAndGoPenalty * calibrationFactor;
+
+  // --- Layer 3: Adaptive Corrections (Learned from Ride History) ---
+  if (specs.correctionFactors) {
+    const cf = specs.correctionFactors;
+    const nRides = cf.trained_on_n_rides || 0;
+    
+    if (nRides >= 30 && cf.multidim_model) {
+      // Option C: Multi-Dimensional Regression
+      const { weights, intercept } = cf.multidim_model;
+      const assistNum = pedalAssistLevel || 2;
+      const avgSpeedKmh = speedMph * 1.60934;
+      const tempC = params.temperatureC || 20;
+      
+      const errorAdjustment = intercept + 
+        (weights[0] * assistNum) + 
+        (weights[1] * slope) + 
+        (weights[2] * tempC) + 
+        (weights[3] * avgSpeedKmh) +
+        (weights[4] * (params.actualStopsPerKm || 0)) +
+        (weights[5] * (params.speedVariance || 0));
+        
+      totalPowerW *= (1 - errorAdjustment);
+    } else if (nRides >= 20 && specs.motorModel && cf.motor_corrections?.[specs.motorModel]) {
+      // Option B: Per-Motor Correction
+      totalPowerW *= cf.motor_corrections[specs.motorModel];
+    } else if (nRides > 0) {
+      // Option A: Global Correction
+      totalPowerW *= cf.global_correction;
+    }
+  }
 
   // Use controllerAmps if available for a real physical ceiling, else fallback
   const voltage = specs.voltage || 48;

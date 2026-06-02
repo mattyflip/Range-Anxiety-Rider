@@ -13,6 +13,7 @@ import AuthModal from '../features/auth/AuthModal'
 import WelcomeModal from '../shared/ui/WelcomeModal'
 import RouteReplay3D from '../features/map/RouteReplay3D'
 import AdvancedMarker from '../features/map/AdvancedMarker'
+import CalibrationModal from '../features/map/CalibrationModal'
 import orangePin from '../assets/orange-pin.png'
 import { createNotification } from '../utils/notifications'
 import { STATE_COORDINATES } from '../utils/ebikeLaws'
@@ -137,11 +138,25 @@ function MapHome() {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showInstallTutorial, setShowInstallTutorial] = useState(false);
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const [showCalibrationModal, setShowCalibrationModal] = useState(false);
   const [mapSnapshot, setMapSnapshot] = useState<string | null>(null);
   const [settingsDirty, setSettingsDirty] = useState(true);
   const [userLocation, setUserLocation] = useState<google.maps.LatLngLiteral | null>(null);
   const [loading, setLoading] = useState(true);
   const [showRouteReplay, setShowRouteReplay] = useState(false);
+
+  // Trip Tracking for Calibration
+  const [tripStartBattery, setTripStartBattery] = useState<number>(100);
+  const [tripPredictedWh, setTripPredictedWh] = useState<number>(0);
+  const [actualDistanceMiles, setActualDistanceMiles] = useState<number>(0);
+  const [tripElevationGain, setTripElevationGain] = useState<number>(0);
+  const [tripTemperatureC, setTripTemperatureC] = useState<number>(20);
+  const [tripWindSpeedMs, setTripWindSpeedMs] = useState<number>(0);
+  const [lastNavLocation, setLastNavLocation] = useState<google.maps.LatLngLiteral | null>(null);
+  const [currentTripBike, setCurrentTripBike] = useState<SavedBike | null>(null);
+  const [stopCount, setStopCount] = useState<number>(0);
+  const [isCurrentlyStopped, setIsCurrentlyStopped] = useState<boolean>(false);
+  const [speedHistory, setSpeedHistory] = useState<number[]>([]);
 
   // Range Polygon State
   const [rangePolygonPoints, setRangePolygonPoints] = useState<google.maps.LatLngLiteral[] | null>(null);
@@ -453,8 +468,21 @@ function MapHome() {
   };
 
   const startNavigation = () => {
-    if (!response) return;
+    if (!response || !metrics) return;
     setIsNavigating(true); setCurrentLegIndex(0); setCurrentStepIndex(0); setHasAnnouncedNextStep(false); setShowMobileMenu(false);
+    
+    // TRACKING FOR CALIBRATION
+    setTripStartBattery(Number(startBattery) || 100);
+    setTripPredictedWh(metrics.estimatedWh || 0);
+    setActualDistanceMiles(0);
+    setTripElevationGain(metrics.elevationGainFeet || 0);
+    setTripTemperatureC(20); // Default, could be refined if weather state is expanded
+    setTripWindSpeedMs((metrics.windConditions?.speed || 0) * 0.44704); // mph to m/s
+    setLastNavLocation(userLocation);
+    setStopCount(0);
+    setIsCurrentlyStopped(false);
+    setSpeedHistory([]);
+
     const firstStep = response.routes[selectedRouteIndex].legs[0].steps[0];
     speak(`Starting trip. ${firstStep.instructions.replace(/<[^>]*>?/gm, '')}`);
     if (mapRef.current) { mapRef.current.setZoom(18); mapRef.current.setTilt(45); }
@@ -463,12 +491,39 @@ function MapHome() {
   const stopNavigation = () => {
     setIsNavigating(false);
     if (mapRef.current) { mapRef.current.setTilt(0); }
+    
+    // Trigger Calibration if trip was significant (> 0.2 miles)
+    if (user && actualDistanceMiles > 0.2 && currentTripBike) {
+      setShowCalibrationModal(true);
+    }
   };
 
   useEffect(() => {
     if (!isNavigating || !response) return;
     const watchId = navigator.geolocation.watchPosition((pos) => {
       const uLoc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+
+      // Track Distance for Calibration
+      if (lastNavLocation) {
+        const dMeters = google.maps.geometry.spherical.computeDistanceBetween(
+          new google.maps.LatLng(lastNavLocation.lat, lastNavLocation.lng),
+          new google.maps.LatLng(uLoc.lat, uLoc.lng)
+        );
+        setActualDistanceMiles(prev => prev + (dMeters * 0.000621371));
+      }
+      setLastNavLocation(uLoc);
+
+      // --- STOP TRACKING & SPEED VARIANCE ---
+      const currentSpeedMph = (pos.coords.speed || 0) * 2.23694;
+      setSpeedHistory(prev => [...prev, currentSpeedMph]);
+
+      if (currentSpeedMph < 2 && !isCurrentlyStopped) {
+        setIsCurrentlyStopped(true);
+        setStopCount(prev => prev + 1);
+      } else if (currentSpeedMph > 5 && isCurrentlyStopped) {
+        setIsCurrentlyStopped(false);
+      }
+
       const route = response.routes[selectedRouteIndex];
       const leg = route.legs[currentLegIndex];
       const step = leg.steps[currentStepIndex];
@@ -493,7 +548,7 @@ function MapHome() {
       }
     }, null, { enableHighAccuracy: true });
     return () => navigator.geolocation.clearWatch(watchId);
-  }, [isNavigating, response, currentLegIndex, currentStepIndex, hasAnnouncedNextStep, selectedRouteIndex]);
+  }, [isNavigating, response, currentLegIndex, currentStepIndex, hasAnnouncedNextStep, selectedRouteIndex, lastNavLocation]);
 
   const markDirty = () => { if (!settingsDirty) setSettingsDirty(true); };
   
@@ -528,6 +583,7 @@ function MapHome() {
 
   const loadBike = (bike: SavedBike) => {
     setSpecs(bike.specs); setBikeSearchQuery(bike.name); setShowBikeResults(false);
+    setCurrentTripBike(bike);
     if (bike.specs.voltage) setStartVoltage(getBatteryLevels(Number(bike.specs.voltage)).max);
     markDirty();
   };
@@ -1136,7 +1192,14 @@ function MapHome() {
                 </div>
               ) : (
                 <>
-                  <div style={{ fontSize: '1.8rem', fontWeight: 900, color: 'white' }}>Battery Left: {metrics.batteryPercentRemaining.toFixed(1)}%</div>
+                  <div style={{ fontSize: '1.8rem', fontWeight: 900, color: 'white' }}>
+                    Battery Left: {metrics.batteryPercentRemaining.toFixed(1)}%
+                    {userData?.isAdmin && (
+                      <span style={{ fontSize: '0.9rem', color: '#888', marginLeft: '0.5rem', fontWeight: 400 }}>
+                        (±{specs.correctionFactors?.confidence_interval_pct || 25}%)
+                      </span>
+                    )}
+                  </div>
                   <div style={{ color: '#888', fontSize: '0.9rem', marginBottom: '1.5rem' }}>Est. End Voltage: {metrics.endingVoltage?.toFixed(1)}V</div>
                 </>
               )}
@@ -1321,6 +1384,31 @@ function MapHome() {
       {showWelcomeModal && <WelcomeModal onClose={() => setShowWelcomeModal(false)} />}
       {showInstallTutorial && <InstallTutorial onClose={() => setShowInstallTutorial(false)} />}
       
+      {showCalibrationModal && currentTripBike && (
+        <CalibrationModal 
+          user={user}
+          bike={currentTripBike}
+          predictedWh={tripPredictedWh}
+          distanceMiles={actualDistanceMiles}
+          avgSpeedMph={targetSpeed}
+          startBattery={tripStartBattery}
+          elevationGainFt={tripElevationGain}
+          temperatureC={tripTemperatureC}
+          windSpeedMs={tripWindSpeedMs}
+          riderWeightLbs={Number(riderWeight) || 180}
+          onClose={() => setShowCalibrationModal(false)}
+          onComplete={(newFactor) => {
+            setShowCalibrationModal(false);
+            // Update local state to reflect the new factor immediately
+            setSpecs(p => ({ ...p, calibrationFactor: newFactor }));
+            setCurrentTripBike(prev => prev ? {
+              ...prev,
+              specs: { ...prev.specs, calibrationFactor: newFactor }
+            } : null);
+          }}
+        />
+      )}
+
       {showRouteReplay && response && response.routes[selectedRouteIndex] && (
         <RouteReplay3D 
           polyline={response.routes[selectedRouteIndex].overview_polyline as any} 
