@@ -55,6 +55,7 @@ export interface CalibrationLog {
 export interface SavedBike {
   id?: string;
   name: string;
+  type?: string;
   specs: BikeSpecs;
 }
 

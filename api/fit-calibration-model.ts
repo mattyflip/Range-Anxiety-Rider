@@ -5,6 +5,12 @@ import { getAuth } from 'firebase-admin/auth';
 import MLR from 'ml-regression-multivariate-linear';
 import { setCorsHeaders } from './_cors.js';
 
+interface MLRInstance {
+  weights: number[][];
+  intercept: number[];
+  predict(x: number[][]): number[][];
+}
+
 const serviceAccount: ServiceAccount = {
   projectId: process.env.VITE_FIREBASE_PROJECT_ID,
   clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
@@ -104,16 +110,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (logs.length >= 5) {
       confidence_interval_pct = 15; // Moderate confidence
       try {
-        const regression = new MLR(X, y);
+        const regression = new MLR(X, y) as unknown as MLRInstance;
         
-        // ml-regression-multivariate-linear: 
-        // weights is a matrix [input][output], intercept is an array [output]
-        const rawWeights = (regression as any).weights;
-        const rawIntercept = (regression as any).intercept;
-
         multidim_model = {
-          weights: rawWeights.map((w: number[]) => w[0]),
-          intercept: rawIntercept[0]
+          weights: regression.weights.map((w: number[]) => w[0]),
+          intercept: regression.intercept[0]
         };
         
         const yPred = regression.predict(X);

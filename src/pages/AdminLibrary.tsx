@@ -63,7 +63,7 @@ const AdminLibrary: React.FC = () => {
   const filteredBikes = useMemo(() => {
     return bikes.filter(b => {
       const matchesSearch = b.name.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesType = typeFilter === 'All Types' || (b as any).type?.toLowerCase() === typeFilter.toLowerCase().replace(' ', '-');
+      const matchesType = typeFilter === 'All Types' || b.type?.toLowerCase() === typeFilter.toLowerCase().replace(' ', '-');
       return matchesSearch && matchesType;
     });
   }, [bikes, searchQuery, typeFilter]);
@@ -104,7 +104,7 @@ const AdminLibrary: React.FC = () => {
       setEditingBike(bike);
       setForm({
         name: bike.name,
-        type: (bike as any).type || 'standard',
+        type: bike.type || 'standard',
         voltage: bike.specs.voltage?.toString() || '48',
         capacityAh: bike.specs.capacityAh?.toString() || '15',
         motorWatts: bike.specs.motorWatts?.toString() || '750',
@@ -138,7 +138,7 @@ const AdminLibrary: React.FC = () => {
     setEditingBike(null); // Ensure it's treated as a new entry
     setForm({
       name: `${bike.name} (Copy)`,
-      type: (bike as any).type || 'standard',
+      type: bike.type || 'standard',
       voltage: bike.specs.voltage?.toString() || '48',
       capacityAh: bike.specs.capacityAh?.toString() || '15',
       motorWatts: bike.specs.motorWatts?.toString() || '750',
@@ -262,7 +262,7 @@ const AdminLibrary: React.FC = () => {
                      <div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                            <div style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{bike.name}</div>
-                           <span style={{ background: '#333', color: '#888', fontSize: '0.6rem', padding: '2px 6px', borderRadius: '4px', textTransform: 'uppercase' }}>{(bike as any).type}</span>
+                           <span style={{ background: '#333', color: '#888', fontSize: '0.6rem', padding: '2px 6px', borderRadius: '4px', textTransform: 'uppercase' }}>{bike.type}</span>
                         </div>
                         <div style={{ fontSize: '0.7rem', color: '#666', marginTop: '0.2rem' }}>
                           {bike.specs.voltage}V • {bike.specs.capacityAh}Ah • {bike.specs.motorWatts}W

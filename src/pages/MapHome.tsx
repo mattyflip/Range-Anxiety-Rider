@@ -1392,6 +1392,7 @@ function MapHome() {
       {showCalibrationModal && currentTripBike && (
         <CalibrationModal 
           user={user}
+          userData={userData}
           bike={currentTripBike}
           predictedWh={tripPredictedWh}
           distanceMiles={actualDistanceMiles}

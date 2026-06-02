@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { db } from '../../firebase';
 import { doc, updateDoc, collection, addDoc } from 'firebase/firestore';
-import type { SavedBike, CalibrationLog } from '../../types';
+import type { SavedBike, CalibrationLog, UserProfile } from '../../types';
 
 interface CalibrationModalProps {
-  user: any;
+  user: any; // Firebase Auth User (has .uid and .getIdToken)
+  userData: UserProfile | null;
   bike: SavedBike;
   predictedWh: number;
   distanceMiles: number;
@@ -22,6 +23,7 @@ interface CalibrationModalProps {
 
 const CalibrationModal: React.FC<CalibrationModalProps> = ({
   user,
+  userData,
   bike,
   predictedWh,
   distanceMiles,
@@ -68,7 +70,7 @@ const CalibrationModal: React.FC<CalibrationModalProps> = ({
 
       // 1. Update the Bike in the user's bikes array
       const userRef = doc(db, 'users', user.uid);
-      const updatedBikes = (user.bikes || []).map((b: SavedBike) => {
+      const updatedBikes = (userData?.bikes || []).map((b: SavedBike) => {
         if (b.id === bike.id || b.name === bike.name) {
           return {
             ...b,
@@ -150,7 +152,7 @@ const CalibrationModal: React.FC<CalibrationModalProps> = ({
   };
 
   return (
-    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.9)', zIndex: 200000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(10px)' }}>
+    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.9)', zIndex: 15000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(10px)' }}>
       <div style={{ background: '#1a1a1a', border: '1px solid #ff6600', borderRadius: '24px', padding: '2rem', maxWidth: '400px', width: '90%', textAlign: 'center' }}>
         <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🎓</div>
         <h2 style={{ color: '#ff6600', fontSize: '1.4rem', marginBottom: '0.5rem' }}>Ride Complete!</h2>
