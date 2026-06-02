@@ -27,7 +27,7 @@ const OpportunityChargingModal: React.FC<OpportunityChargingModalProps> = ({
   onClose
 }) => {
   const [selectedStop] = useState<ChargingStop | null>(chargingStops[0] || null);
-  const [chargerType, setChargerType] = useState<'standard' | 'fast'>('standard');
+  const [chargeAmps, setChargeAmps] = useState<2 | 5 | 10>(2);
 
   const deficitWh = neededWh - currentBatteryWh;
   // Safety margin: add 10% extra
@@ -35,9 +35,7 @@ const OpportunityChargingModal: React.FC<OpportunityChargingModalProps> = ({
 
   const calculateChargeTime = () => {
     const voltage = Number(bikeSpecs.voltage) || 48;
-    // Standard charger is usually 2A, Fast is 5A+
-    const amps = chargerType === 'fast' ? 5 : 2;
-    const watts = voltage * amps;
+    const watts = voltage * chargeAmps;
     
     const hours = targetRechargeWh / watts;
     return Math.ceil(hours * 60);
@@ -65,8 +63,9 @@ const OpportunityChargingModal: React.FC<OpportunityChargingModalProps> = ({
             <div style={{ textAlign: 'right' }}>
               <div style={{ color: '#666', fontSize: '0.65rem', textTransform: 'uppercase' }}>Charger Type</div>
               <div className="mode-toggle" style={{ marginTop: '0.4rem', scale: '0.8', transformOrigin: 'right' }}>
-                <button className={chargerType === 'standard' ? 'active' : ''} onClick={() => setChargerType('standard')}>2A</button>
-                <button className={chargerType === 'fast' ? 'active' : ''} onClick={() => setChargerType('fast')}>5A</button>
+                <button className={chargeAmps === 2 ? 'active' : ''} onClick={() => setChargeAmps(2)}>2A</button>
+                <button className={chargeAmps === 5 ? 'active' : ''} onClick={() => setChargeAmps(5)}>5A</button>
+                <button className={chargeAmps === 10 ? 'active' : ''} onClick={() => setChargeAmps(10)}>10A</button>
               </div>
             </div>
           </div>
