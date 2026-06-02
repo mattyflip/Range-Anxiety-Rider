@@ -38,7 +38,8 @@ const AdminLibrary: React.FC = () => {
     controllerType: '',
     controllerAmps: '',
     driveMode: 'both',
-    motorType: 'Geared Hub Motor'
+    motorType: 'Geared Hub Motor',
+    motorModel: ''
   });
 
   useEffect(() => {
@@ -115,7 +116,8 @@ const AdminLibrary: React.FC = () => {
         controllerType: bike.specs.controllerType || '',
         controllerAmps: bike.specs.controllerAmps?.toString() || '',
         driveMode: bike.specs.driveMode || 'both',
-        motorType: bike.specs.motorType || 'Geared Hub Motor'
+        motorType: bike.specs.motorType || 'Geared Hub Motor',
+        motorModel: bike.specs.motorModel || ''
       });
     } else {
       setEditingBike(null);
@@ -131,7 +133,8 @@ const AdminLibrary: React.FC = () => {
         controllerType: '',
         controllerAmps: '',
         driveMode: 'both',
-        motorType: 'Geared Hub Motor'
+        motorType: 'Geared Hub Motor',
+        motorModel: ''
       });
     }
     setShowModal(true);
@@ -151,7 +154,8 @@ const AdminLibrary: React.FC = () => {
       controllerType: bike.specs.controllerType || '',
       controllerAmps: bike.specs.controllerAmps?.toString() || '',
       driveMode: bike.specs.driveMode || 'both',
-      motorType: bike.specs.motorType || 'Geared Hub Motor'
+      motorType: bike.specs.motorType || 'Geared Hub Motor',
+      motorModel: bike.specs.motorModel || ''
     });
     setShowModal(true);
   };
@@ -177,7 +181,8 @@ const AdminLibrary: React.FC = () => {
           controllerType: form.controllerType,
           controllerAmps: form.controllerAmps ? parseFloat(form.controllerAmps) : null,
           driveMode: form.driveMode,
-          motorType: form.motorType
+          motorType: form.motorType,
+          motorModel: form.motorModel
         },
         updatedAt: serverTimestamp()
       }, { merge: true });
@@ -354,8 +359,13 @@ const AdminLibrary: React.FC = () => {
                  </div>
 
                  <div style={{ gridColumn: 'span 2' }}>
+                    <label style={{ display: 'block', color: '#666', fontSize: '0.7rem', marginBottom: '0.3rem' }}>Motor Model (if available)</label>
+                    <input value={form.motorModel} onChange={e => setForm({...form, motorModel: e.target.value})} placeholder="e.g. Bosch Performance Line CX, Bafang BBSHD" style={{ width: '100%', padding: '0.8rem', background: '#111', border: '1px solid #333', borderRadius: '8px', color: 'white' }} />
+                 </div>
+
+                 <div style={{ gridColumn: 'span 2' }}>
                     <label style={{ display: 'block', color: '#666', fontSize: '0.7rem', marginBottom: '0.3rem' }}>Motor Type</label>
-                    <select value={form.motorType} onChange={e => setForm({...form, motorType: e.target.value})} style={{ width: '100%', padding: '0.8rem', background: '#111', border: '1px solid #333', borderRadius: '8px', color: 'white' }}>
+                    <select value={form.motorType} onChange={e => setForm({...form, motorType: e.target.value as any})} style={{ width: '100%', padding: '0.8rem', background: '#111', border: '1px solid #333', borderRadius: '8px', color: 'white' }}>
                        <option value="Geared Hub Motor">Geared Hub Motor</option>
                        <option value="Direct Drive Hub Motor">Direct Drive Hub Motor</option>
                        <option value="Mid Drive Motor">Mid Drive Motor</option>
