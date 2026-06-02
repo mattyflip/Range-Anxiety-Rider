@@ -17,6 +17,7 @@ interface CalibrationModalProps {
   riderWeightLbs: number;
   stopCount: number;
   speedHistory: number[];
+  orgId?: string;
   onClose: () => void;
   onComplete: (newFactor: number) => void;
 }
@@ -35,6 +36,7 @@ const CalibrationModal: React.FC<CalibrationModalProps> = ({
   riderWeightLbs,
   stopCount,
   speedHistory,
+  orgId,
   onClose,
   onComplete
 }) => {
@@ -68,7 +70,7 @@ const CalibrationModal: React.FC<CalibrationModalProps> = ({
       // (Predicted - Actual) / Actual * 100
       const errorPct = ((safePredictedWh - actualWh) / Math.max(1, actualWh)) * 100;
 
-      // 1. Update the Bike in the user's bikes array
+      // 1. Update the Bike in the user's bikes array (Personal Garage)
       const userRef = doc(db, 'users', user.uid);
       const updatedBikes = (userData?.bikes || []).map((b: SavedBike) => {
         if (b.id === bike.id || b.name === bike.name) {
@@ -82,10 +84,38 @@ const CalibrationModal: React.FC<CalibrationModalProps> = ({
 
       await updateDoc(userRef, { bikes: updatedBikes });
 
+      // --- FLEET SYNC (B2B Requirement) ---
+      if (orgId && bike.id) {
+        try {
+          const orgBikeRef = doc(db, `organizations/${orgId}/bikes`, bike.id);
+          await updateDoc(orgBikeRef, {
+            'specs.calibrationFactor': newFactor,
+            'lastCalibrationError': errorPct,
+            'lastCalibrationAt': new Date().toISOString()
+          });
+
+          // Maintenance Alert: If error is > 20%, suggest service
+          if (Math.abs(errorPct) > 20) {
+            await addDoc(collection(db, `organizations/${orgId}/alerts`), {
+              type: 'maintenance_suggestion',
+              bikeId: bike.id,
+              unitId: (bike as any).unitId || bike.name,
+              message: `Abnormal energy consumption detected (${errorPct.toFixed(1)}% error). Suggest mechanical inspection.`,
+              severity: 'medium',
+              createdAt: new Date().toISOString(),
+              status: 'new'
+            });
+          }
+        } catch (err) {
+          console.error('Fleet sync failed:', err);
+        }
+      }
+
       // 2. Log the calibration event strictly following requested schema
-      const logEntry: CalibrationLog = {
+      const logEntry: CalibrationLog & { orgId?: string } = {
         ride_id: crypto.randomUUID(),
         bikeId: bike.id || bike.name,
+        orgId: orgId || null,
         timestamp: new Date().toISOString(),
         prediction_error_pct: Number(errorPct.toFixed(2)),
         model_version: 'v1.2.0',
@@ -103,19 +133,16 @@ const CalibrationModal: React.FC<CalibrationModalProps> = ({
         wind_speed_ms: windSpeedMs,
         actual_stops_per_km: Number((stopCount / Math.max(0.1, distanceMiles * 1.60934)).toFixed(2)),
         speed_variance: Number(calculateVariance(speedHistory).toFixed(2))
-      };
+      } as any;
 
       await addDoc(collection(db, `users/${user.uid}/calibration_logs`), logEntry);
 
-      // --- ON-DEVICE PERSISTENCE BACKUP (Checklist Requirement) ---
+      // --- ON-DEVICE PERSISTENCE BACKUP ---
       try {
         const localHistory = JSON.parse(localStorage.getItem('ebike-ride-history') || '[]');
         localHistory.push(logEntry);
-        // Keep last 50 rides locally
         localStorage.setItem('ebike-ride-history', JSON.stringify(localHistory.slice(-50)));
-      } catch (e) {
-        console.error('Failed to save local backup:', e);
-      }
+      } catch (e) { }
 
       // 3. Trigger Layer 3 Multi-Dimensional Fit
       try {
@@ -126,21 +153,20 @@ const CalibrationModal: React.FC<CalibrationModalProps> = ({
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${idToken}`
           },
-          body: JSON.stringify({ bikeId: bike.id || bike.name })
+          body: JSON.stringify({ 
+            bikeId: bike.id || bike.name,
+            orgId: orgId || null
+          })
         });
         
         if (fitRes.ok) {
           const factors = await fitRes.json();
           if (factors.trained_on_n_rides >= 5) {
-            console.log('Layer 3 Model updated:', factors);
-            // newFactor is still updated for Layer 2 compatibility
             onComplete(newFactor);
             return;
           }
         }
-      } catch (err) {
-        console.error('Failed to trigger Layer 3 fit:', err);
-      }
+      } catch (err) { }
 
       onComplete(newFactor);
     } catch (error) {

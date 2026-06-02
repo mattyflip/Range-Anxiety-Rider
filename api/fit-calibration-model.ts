@@ -34,7 +34,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(405).json({ error: 'METHOD_NOT_ALLOWED' });
     }
 
-    const { bikeId } = req.body;
+    const { bikeId, orgId } = req.body;
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -160,6 +160,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return b;
       });
       await db.doc(`users/${uid}`).update({ bikes: updatedBikes });
+    }
+
+    // --- FLEET SYNC (B2B Requirement) ---
+    if (orgId && bikeId) {
+      try {
+        const orgBikeRef = db.doc(`organizations/${orgId}/bikes/${bikeId}`);
+        const orgBikeSnap = await orgBikeRef.get();
+        if (orgBikeSnap.exists) {
+          await orgBikeRef.update({
+            'specs.correctionFactors': correctionFactors,
+            'lastModelFitAt': new Date().toISOString()
+          });
+        }
+      } catch (e) {
+        console.error('Fleet model sync failed:', e);
+      }
     }
 
     // --- GLOBAL AGGREGATION (Hybrid Strategy) ---

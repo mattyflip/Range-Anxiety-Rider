@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import handler from './fit-calibration-model';
+import handler from './fit-calibration-model.js';
 
 const mocks = vi.hoisted(() => ({
   verifyIdToken: vi.fn().mockResolvedValue({ uid: 'test-user-123' }),

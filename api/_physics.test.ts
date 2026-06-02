@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { calculateBurnRate } from './_physics';
+import { calculateBurnRate } from './_physics.js';
 
 describe('Layer 3 Physics Engine Corrections', () => {
   const baseSpecs = {

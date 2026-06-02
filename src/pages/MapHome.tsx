@@ -1404,6 +1404,7 @@ function MapHome() {
           riderWeightLbs={Number(riderWeight) || 180}
           stopCount={stopCount}
           speedHistory={speedHistory}
+          orgId={userData?.orgId}
           onClose={() => setShowCalibrationModal(false)}
           onComplete={(newFactor) => {
             setShowCalibrationModal(false);
