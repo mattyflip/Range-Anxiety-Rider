@@ -1116,24 +1116,43 @@ function MapHome() {
       <SEO title={userRole === 'fleet' ? "Fleet Map" : "Rider Map"} />
       <NavBar user={user} onShowInstall={() => setShowInstallTutorial(true)} onShowAuth={() => setShowAuthModal(true)} />
       
-      {/* Persistent Mobile Controls - Always on Top */}
-      <div style={{ position: 'fixed', bottom: '5rem', left: '50%', transform: 'translateX(-50%)', zIndex: 100001, display: 'flex', flexDirection: 'row', gap: '0.8rem', background: 'rgba(0,0,0,0.5)', padding: '0.6rem 1rem', borderRadius: '40px', backdropFilter: 'blur(5px)', border: '1px solid rgba(255,255,255,0.1)' }}>
-        <button 
-          onClick={locateMe}
-          style={{ width: '50px', height: '50px', borderRadius: '50%', background: 'none', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
-          title="Locate Me"
-        >
-          <img src={orangePin} alt="Locate" style={{ width: '45px', height: '45px', objectFit: 'contain' }} />
-        </button>
-        <button 
-          className="mobile-toggle-btn" 
-          onClick={() => setShowMobileMenu(!showMobileMenu)} 
-          style={{ height: '50px', padding: '0 1.5rem', borderRadius: '40px', background: '#ff6600', color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '0.85rem', boxShadow: '0 4px 12px rgba(0,0,0,0.4)', textTransform: 'uppercase', whiteSpace: 'nowrap' }}
-        >
-          {getMobileToggleLabel()}
-        </button>
-        <button onClick={() => searchPOIs('charging')} className="desktop-only" style={{ padding: '0.8rem 1.2rem', background: 'rgba(20,20,20,0.9)', color: 'white', border: '1px solid #333', borderRadius: '12px', fontWeight: 900 }}>⚡ Chargers</button>
-        <button onClick={() => searchPOIs('cafe')} className="desktop-only" style={{ padding: '0.8rem 1.2rem', background: 'rgba(20,20,20,0.9)', color: 'white', border: '1px solid #333', borderRadius: '12px', fontWeight: 900 }}>☕ Cafes</button>
+      {/* Persistent Controls - Now includes scrollable POI bar for mobile */}
+      <div style={{ position: 'fixed', bottom: '5rem', left: '50%', transform: 'translateX(-50%)', zIndex: 100001, display: 'flex', flexDirection: 'column', gap: '0.8rem', width: 'auto', maxWidth: '95vw', alignItems: 'center' }}>
+        
+        {/* POI Fast Search Bar */}
+        <div className="poi-bar" style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', padding: '0.5rem', width: '100%', maxWidth: '500px', scrollbarWidth: 'none', msOverflowStyle: 'none', maskImage: 'linear-gradient(to right, transparent, black 10%, black 90%, transparent)' }}>
+          {[
+            { label: '⚡ CHARGERS', cat: 'charging' },
+            { label: '☕ CAFES', cat: 'cafe' },
+            { label: '🍔 FOOD', cat: 'restaurant' },
+            { label: '🌳 PARKS', cat: 'park' }
+          ].map(poi => (
+            <button 
+              key={poi.cat}
+              onClick={() => searchPOIs(poi.cat)} 
+              style={{ padding: '0.6rem 1rem', background: 'rgba(20,20,20,0.9)', color: 'white', border: '1px solid #333', borderRadius: '20px', fontWeight: 900, fontSize: '0.65rem', whiteSpace: 'nowrap', cursor: 'pointer', backdropFilter: 'blur(10px)', boxShadow: '0 4px 10px rgba(0,0,0,0.3)' }}
+            >
+              {poi.label}
+            </button>
+          ))}
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'row', gap: '0.8rem', background: 'rgba(0,0,0,0.5)', padding: '0.6rem 1rem', borderRadius: '40px', backdropFilter: 'blur(5px)', border: '1px solid rgba(255,255,255,0.1)' }}>
+          <button 
+            onClick={locateMe}
+            style={{ width: '50px', height: '50px', borderRadius: '50%', background: 'none', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+            title="Locate Me"
+          >
+            <img src={orangePin} alt="Locate" style={{ width: '45px', height: '45px', objectFit: 'contain' }} />
+          </button>
+          <button 
+            className="mobile-toggle-btn" 
+            onClick={() => setShowMobileMenu(!showMobileMenu)} 
+            style={{ height: '50px', padding: '0 1.5rem', borderRadius: '40px', background: '#ff6600', color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '0.85rem', boxShadow: '0 4px 12px rgba(0,0,0,0.4)', textTransform: 'uppercase', whiteSpace: 'nowrap' }}
+          >
+            {getMobileToggleLabel()}
+          </button>
+        </div>
       </div>
 
       <div className="main-layout" style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
