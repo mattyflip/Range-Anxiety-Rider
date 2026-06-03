@@ -432,140 +432,123 @@ const FleetDashboard = () => {
   const lowBatteryBikes = fleetBikes.filter(b => (b.specs?.currentBatteryPercent || 0) < 30);
 
   return (
-    <div className="container" style={{ minHeight: '100vh', background: '#121212', color: 'white' }}>
+    <div className="container" style={{ minHeight: '100vh', background: '#121212', color: 'white', overflowY: 'auto' }}>
       <SEO title="Shop Dashboard" />
       <NavBar user={user} onShowInstall={() => {}} onShowAuth={() => {}} />
 
-      <main style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
-        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3rem' }}>
-          <div>
-            <h1 style={{ margin: 0, fontSize: '2rem', fontWeight: 900, color: '#ff6600', textTransform: 'uppercase' }}>Fleet Hub</h1>
+      <main style={{ padding: '1.5rem', maxWidth: '1200px', margin: '0 auto' }}>
+        <header style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
+          <div style={{ flex: '1 1 300px' }}>
+            <h1 style={{ margin: 0, fontSize: '1.8rem', fontWeight: 900, color: '#ff6600', textTransform: 'uppercase' }}>Fleet Hub</h1>
             <div style={{ color: '#888', fontWeight: 'bold' }}>{userData?.orgName || 'Bike Shop'} Management</div>
           </div>
-          <div style={{ display: 'flex', gap: '1rem' }}>
+          <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap' }}>
             <button 
               onClick={handleTestEmail}
-              style={{ padding: '1rem 1.5rem', background: '#222', color: '#888', border: '1px solid #333', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem' }}
+              style={{ padding: '0.8rem 1.2rem', background: '#222', color: '#888', border: '1px solid #333', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.75rem' }}
             >
-              📧 TEST EMAIL SYSTEM
+              📧 TEST EMAIL
             </button>
             <button 
               onClick={() => { setEditingBike(null); setBikeForm({ unitId: '', voltage: '48', capacityAh: '15', capacityUnit: 'Ah', motorWatts: '750', tirePSI: '30', tireType: 'all-terrain', driveMode: 'both', bikeWeightLbs: '65', targetSpeedMph: '20', controllerAmps: '', cycleCount: '0', imageUrl: '' }); setShowShowBikeModal(true); }}
-              style={{ padding: '1rem 2rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer' }}
+              style={{ padding: '0.8rem 1.5rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }}
             >
-              + REGISTER NEW BIKE
+              + REGISTER BIKE
             </button>
           </div>
         </header>
 
         {/* KPI Dashboard */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1rem', marginBottom: '2.5rem' }}>
           {[
             { label: 'TOTAL FLEET', val: fleetBikes.length, color: 'white' },
             { label: 'RENTED OUT', val: rentedBikes.length, color: '#ff6600' },
             { label: 'AVAILABLE', val: availableBikes.length, color: '#34a853' },
             { label: 'LOW BATTERY', val: lowBatteryBikes.length, color: '#ff4444' }
           ].map((kpi, i) => (
-            <div key={i} style={{ background: '#1a1a1a', padding: '1.5rem', borderRadius: '20px', border: '1px solid #333', textAlign: 'center' }}>
-              <div style={{ color: '#666', fontSize: '0.7rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>{kpi.label}</div>
-              <div style={{ fontSize: '2.5rem', fontWeight: 900, color: kpi.color }}>{kpi.val}</div>
+            <div key={i} style={{ background: '#1a1a1a', padding: '1.2rem', borderRadius: '20px', border: '1px solid #333', textAlign: 'center' }}>
+              <div style={{ color: '#666', fontSize: '0.65rem', fontWeight: 'bold', marginBottom: '0.3rem' }}>{kpi.label}</div>
+              <div style={{ fontSize: '1.8rem', fontWeight: 900, color: kpi.color }}>{kpi.val}</div>
             </div>
           ))}
         </div>
 
         {/* Alerts Section */}
         {alerts.length > 0 && (
-          <div style={{ marginBottom: '3rem' }}>
-            <h2 style={{ fontSize: '1.2rem', color: '#ff4444', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              ⚠️ ACTIVE SECURITY ALERTS ({alerts.length})
+          <div style={{ marginBottom: '2.5rem' }}>
+            <h2 style={{ fontSize: '1.1rem', color: '#ff4444', marginBottom: '1.2rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              ⚠️ SECURITY ALERTS ({alerts.length})
             </h2>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
                {alerts.map(alert => (
-                 <div key={alert.id} style={{ background: 'rgba(255,68,68,0.1)', border: '1px solid #ff4444', padding: '1rem 1.5rem', borderRadius: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', animation: 'pulse 2s infinite' }}>
-                    <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
-                       <span style={{ fontSize: '1.5rem' }}>🚨</span>
+                 <div key={alert.id} style={{ background: 'rgba(255,68,68,0.1)', border: '1px solid #ff4444', padding: '1rem', borderRadius: '15px', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', animation: 'pulse 2s infinite' }}>
+                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                       <span style={{ fontSize: '1.2rem' }}>🚨</span>
                        <div>
-                          <div style={{ fontWeight: 'bold', color: 'white' }}>{alert.text}</div>
-                          <div style={{ fontSize: '0.7rem', color: '#888' }}>Rider: {alert.fromName} • {new Date(alert.createdAt?.seconds * 1000).toLocaleTimeString()}</div>
+                          <div style={{ fontWeight: 'bold', color: 'white', fontSize: '0.9rem' }}>{alert.text}</div>
+                          <div style={{ fontSize: '0.65rem', color: '#888' }}>{alert.fromName} • {new Date(alert.createdAt?.seconds * 1000).toLocaleTimeString()}</div>
                        </div>
                     </div>
                     <button 
                       onClick={() => handleDismissAlert(alert.id)}
-                      style={{ background: '#ff4444', color: 'white', border: 'none', padding: '0.5rem 1.2rem', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem' }}
+                      style={{ background: '#ff4444', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.75rem', width: '100%', maxWidth: '150px' }}
                     >
-                      ACKNOWLEDGE
+                      DISMISS
                     </button>
                  </div>
                ))}
             </div>
-            <style>{`
-              @keyframes pulse {
-                0% { box-shadow: 0 0 0 0 rgba(255, 68, 68, 0.4); }
-                70% { box-shadow: 0 0 0 10px rgba(255, 68, 68, 0); }
-                100% { box-shadow: 0 0 0 0 rgba(255, 68, 68, 0); }
-              }
-            `}</style>
           </div>
         )}
 
         {/* Appointments Section */}
         {rentalRequests.length > 0 && (
-          <div id="appointments" style={{ marginBottom: '3rem' }}>
-            <h2 style={{ fontSize: '1.2rem', color: '#34a853', marginBottom: '1.5rem', display: 'center', alignItems: 'center', gap: '0.5rem' }}>
-              🗓️ APPOINTMENTS & BOOKING REQUESTS ({rentalRequests.length})
+          <div id="appointments" style={{ marginBottom: '2.5rem' }}>
+            <h2 style={{ fontSize: '1.1rem', color: '#34a853', marginBottom: '1.2rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              🗓️ BOOKING REQUESTS ({rentalRequests.length})
             </h2>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '1rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
                {rentalRequests.map(req => (
-                 <div key={req.id} style={{ background: '#1a1a1a', padding: '1.5rem', borderRadius: '20px', border: '1px solid #333' }}>
+                 <div key={req.id} style={{ background: '#1a1a1a', padding: '1.2rem', borderRadius: '20px', border: '1px solid #333' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
                        <div>
-                          <div style={{ color: 'white', fontWeight: 900, fontSize: '1.1rem' }}>{req.riderName}</div>
-                          <div style={{ color: '#888', fontSize: '0.7rem' }}>Requested: {new Date(req.createdAt?.seconds * 1000 || Date.now()).toLocaleString()}</div>
+                          <div style={{ color: 'white', fontWeight: 900, fontSize: '1rem' }}>{req.riderName}</div>
+                          <div style={{ color: '#888', fontSize: '0.65rem' }}>{new Date(req.createdAt?.seconds * 1000 || Date.now()).toLocaleString()}</div>
                        </div>
-                       <div style={{ background: 'rgba(52,168,83,0.1)', color: '#34a853', padding: '4px 10px', borderRadius: '8px', fontSize: '0.65rem', fontWeight: 'bold', height: 'fit-content' }}>PENDING</div>
+                       <div style={{ background: 'rgba(52,168,83,0.1)', color: '#34a853', padding: '3px 8px', borderRadius: '6px', fontSize: '0.6rem', fontWeight: 'bold', height: 'fit-content' }}>PENDING</div>
                     </div>
                     
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8rem', marginBottom: '1rem' }}>
-                       <div style={{ background: '#111', padding: '0.8rem', borderRadius: '12px', border: '1px solid #222' }}>
-                          <div style={{ color: '#555', fontSize: '0.6rem', fontWeight: 'bold', marginBottom: '4px' }}>BIKE</div>
-                          <div style={{ color: 'white', fontWeight: 'bold', fontSize: '0.9rem' }}>{req.unitId}</div>
+                       <div style={{ background: '#111', padding: '0.6rem', borderRadius: '10px', border: '1px solid #222' }}>
+                          <div style={{ color: '#555', fontSize: '0.55rem', fontWeight: 'bold', marginBottom: '2px' }}>BIKE</div>
+                          <div style={{ color: 'white', fontWeight: 'bold', fontSize: '0.8rem' }}>{req.unitId}</div>
                        </div>
-                       <div style={{ background: '#111', padding: '0.8rem', borderRadius: '12px', border: '1px solid #222' }}>
-                          <div style={{ color: '#555', fontSize: '0.6rem', fontWeight: 'bold', marginBottom: '4px' }}>PICKUP</div>
-                          <div style={{ color: '#ff6600', fontWeight: 'bold', fontSize: '0.9rem' }}>{req.rentalDate} @ {req.rentalTime}</div>
+                       <div style={{ background: '#111', padding: '0.6rem', borderRadius: '10px', border: '1px solid #222' }}>
+                          <div style={{ color: '#555', fontSize: '0.55rem', fontWeight: 'bold', marginBottom: '2px' }}>PICKUP</div>
+                          <div style={{ color: '#ff6600', fontWeight: 'bold', fontSize: '0.8rem' }}>{req.rentalDate}</div>
                        </div>
                     </div>
 
-                    <div style={{ background: '#111', padding: '1rem', borderRadius: '12px', marginBottom: '1rem', border: '1px solid #222' }}>
-                       <div style={{ color: '#555', fontSize: '0.6rem', fontWeight: 'bold', marginBottom: '4px' }}>CONTACT INFO</div>
-                       <div style={{ color: 'white', fontSize: '0.85rem' }}>📞 {req.riderPhone || 'No Phone'}</div>
-                       <div style={{ color: '#888', fontSize: '0.85rem', marginTop: '4px' }}>📧 {req.riderEmail}</div>
-                    </div>
-
-                    <div style={{ marginBottom: '1.5rem' }}>
-                       <label style={{ display: 'block', color: '#555', fontSize: '0.6rem', fontWeight: 'bold', marginBottom: '4px' }}>INTERNAL SHOP NOTES</label>
+                    <div style={{ marginBottom: '1rem' }}>
+                       <label style={{ display: 'block', color: '#555', fontSize: '0.55rem', fontWeight: 'bold', marginBottom: '4px' }}>INTERNAL SHOP NOTES</label>
                        <textarea 
-                         placeholder="Add pickup notes, ID verification details, etc..."
+                         placeholder="Add pickup notes..."
                          defaultValue={req.shopNotes || ''}
                          onBlur={(e) => handleUpdateReqNotes(req.id, e.target.value)}
-                         style={{ width: '100%', background: '#111', border: '1px solid #222', borderRadius: '10px', color: '#aaa', padding: '0.8rem', fontSize: '0.75rem', minHeight: '60px', resize: 'vertical' }}
+                         style={{ width: '100%', background: '#111', border: '1px solid #222', borderRadius: '8px', color: '#aaa', padding: '0.6rem', fontSize: '0.7rem', minHeight: '40px', resize: 'vertical' }}
                        />
                     </div>
 
                     <div style={{ display: 'flex', gap: '0.8rem' }}>
                        <button 
                          onClick={() => handleAssignRider(req)}
-                         style={{ flex: 1, padding: '0.8rem', background: '#34a853', color: 'white', border: 'none', borderRadius: '10px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem' }}
+                         style={{ flex: 1, padding: '0.7rem', background: '#34a853', color: 'white', border: 'none', borderRadius: '10px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.75rem' }}
                        >
-                         ASSIGN RIDER
+                         APPROVE
                        </button>
                        <button 
-                         onClick={() => {
-                           if(window.confirm("Reject this request?")) {
-                             handleDeclineRequest(req);
-                           }
-                         }}
-                         style={{ padding: '0.8rem', background: '#333', color: '#ff4444', border: 'none', borderRadius: '10px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem' }}
+                         onClick={() => handleDeclineRequest(req)}
+                         style={{ padding: '0.7rem', background: '#333', color: '#ff4444', border: 'none', borderRadius: '10px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.75rem' }}
                        >
                          REJECT
                        </button>
@@ -576,59 +559,48 @@ const FleetDashboard = () => {
           </div>
         )}
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 350px', gap: '2rem', alignItems: 'start' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
           {/* Main Fleet List */}
-          <section>
-            <h2 style={{ fontSize: '1.2rem', color: 'white', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <section style={{ order: 2 }}>
+            <h2 style={{ fontSize: '1.1rem', color: 'white', marginBottom: '1.2rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               📦 Inventory Management
             </h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               {fleetBikes.length === 0 ? (
-                <div style={{ padding: '4rem', textAlign: 'center', background: '#1a1a1a', borderRadius: '24px', border: '1px dashed #333', color: '#444' }}>No bikes registered in garage.</div>
+                <div style={{ padding: '3rem', textAlign: 'center', background: '#1a1a1a', borderRadius: '24px', border: '1px dashed #333', color: '#444' }}>No bikes in inventory.</div>
               ) : (
                 fleetBikes.sort((a,b) => a.unitId.localeCompare(b.unitId)).map(b => (
-                  <div key={b.id} style={{ background: '#1a1a1a', padding: '1.5rem', borderRadius: '20px', border: '1px solid #333', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
-                      <div style={{ width: '60px', height: '60px', borderRadius: '12px', background: '#222', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        {b.imageUrl ? (
-                          <img src={b.imageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        ) : (
-                          <span style={{ fontSize: '1.5rem' }}>🚲</span>
-                        )}
+                  <div key={b.id} style={{ background: '#1a1a1a', padding: '1rem', borderRadius: '20px', border: '1px solid #333', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
+                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flex: '1 1 300px' }}>
+                      <div style={{ width: '50px', height: '50px', borderRadius: '10px', background: '#222', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        {b.imageUrl ? <img src={b.imageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: '1.2rem' }}>🚲</span>}
                       </div>
-                      <div style={{ width: '100px' }}>
-                        <div style={{ color: 'white', fontWeight: 900, fontSize: '1.2rem' }}>{b.unitId}</div>
-                        <div style={{ fontSize: '0.6rem', color: b.status === 'rented' ? '#ff6600' : '#34a853', fontWeight: 'bold', textTransform: 'uppercase' }}>{b.status}</div>
+                      <div style={{ minWidth: '80px' }}>
+                        <div style={{ color: 'white', fontWeight: 900, fontSize: '1.1rem' }}>{b.unitId}</div>
+                        <div style={{ fontSize: '0.55rem', color: b.status === 'rented' ? '#ff6600' : '#34a853', fontWeight: 'bold', textTransform: 'uppercase' }}>{b.status}</div>
                       </div>
                       
-                      <div style={{ width: '200px' }}>
-                         <label style={{ display: 'block', color: '#555', fontSize: '0.6rem', fontWeight: 'bold', marginBottom: '4px' }}>BATTERY CALIBRATION</label>
+                      <div style={{ flex: 1, minWidth: '150px' }}>
                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                             <input 
                               type="number" 
                               value={b.specs.currentBatteryPercent} 
                               onChange={(e) => handleUpdateBattery(b, parseInt(e.target.value))}
-                              style={{ width: '60px', background: '#111', border: '1px solid #333', color: 'white', padding: '5px', borderRadius: '6px', textAlign: 'center', fontWeight: 'bold' }} 
+                              style={{ width: '50px', background: '#111', border: '1px solid #333', color: 'white', padding: '4px', borderRadius: '6px', textAlign: 'center', fontWeight: 'bold', fontSize: '0.8rem' }} 
                             />
-                            <span style={{ color: '#888', fontWeight: 'bold' }}>%</span>
-                            <div style={{ flex: 1, height: '8px', background: '#222', borderRadius: '4px', overflow: 'hidden' }}>
+                            <div style={{ flex: 1, height: '6px', background: '#222', borderRadius: '3px', overflow: 'hidden' }}>
                                <div style={{ width: `${b.specs.currentBatteryPercent}%`, height: '100%', background: (b.specs.currentBatteryPercent || 0) < 30 ? '#ff4444' : '#34a853' }} />
                             </div>
                          </div>
                       </div>
-
-                      <div style={{ color: '#666', fontSize: '0.7rem' }}>
-                        <div>{b.specs.motorWatts}W • {b.specs.voltage}V</div>
-                        <div>{b.specs.cycleCount} cycles</div>
-                      </div>
                     </div>
 
-                    <div style={{ display: 'flex', gap: '0.8rem' }}>
-                      <button onClick={() => openEditModal(b)} style={{ background: '#222', border: '1px solid #333', color: '#888', padding: '0.6rem 1rem', borderRadius: '10px', fontSize: '0.7rem', fontWeight: 'bold', cursor: 'pointer' }}>EDIT SPECS</button>
+                    <div style={{ display: 'flex', gap: '0.6rem', flex: '1 1 auto', justifyContent: 'flex-end' }}>
+                      <button onClick={() => openEditModal(b)} style={{ background: '#222', border: '1px solid #333', color: '#888', padding: '0.5rem 0.8rem', borderRadius: '8px', fontSize: '0.65rem', fontWeight: 'bold', cursor: 'pointer' }}>EDIT</button>
                       {b.status === 'available' ? (
-                        <button onClick={() => { setBikeToAssign(b); setShowDirectAssignModal(true); }} style={{ background: 'rgba(52,168,83,0.1)', border: '1px solid #34a853', color: '#34a853', padding: '0.6rem 1.5rem', borderRadius: '10px', fontSize: '0.7rem', fontWeight: 'bold', cursor: 'pointer' }}>RENT OUT</button>
+                        <button onClick={() => { setBikeToAssign(b); setShowDirectAssignModal(true); }} style={{ background: 'rgba(52,168,83,0.1)', border: '1px solid #34a853', color: '#34a853', padding: '0.5rem 1rem', borderRadius: '8px', fontSize: '0.65rem', fontWeight: 'bold', cursor: 'pointer' }}>RENT OUT</button>
                       ) : (
-                        <button onClick={() => handleReturnBike(b)} style={{ background: 'rgba(255,102,0,0.1)', border: '1px solid #ff6600', color: '#ff6600', padding: '0.6rem 1.5rem', borderRadius: '10px', fontSize: '0.7rem', fontWeight: 'bold', cursor: 'pointer' }}>RETURN BIKE</button>
+                        <button onClick={() => handleReturnBike(b)} style={{ background: 'rgba(255,102,0,0.1)', border: '1px solid #ff6600', color: '#ff6600', padding: '0.5rem 1rem', borderRadius: '8px', fontSize: '0.65rem', fontWeight: 'bold', cursor: 'pointer' }}>RETURN</button>
                       )}
                     </div>
                   </div>
@@ -638,57 +610,36 @@ const FleetDashboard = () => {
           </section>
 
           {/* Active Rentals Sidebar */}
-          <aside>
-            <h2 style={{ fontSize: '1.2rem', color: 'white', marginBottom: '1.5rem' }}>🛰️ Active Field Units</h2>
-            <div style={{ background: '#111', borderRadius: '24px', padding: '1.5rem', border: '1px solid #222' }}>
+          <aside style={{ order: 1 }}>
+            <h2 style={{ fontSize: '1.1rem', color: 'white', marginBottom: '1.2rem' }}>🛰️ Active Units</h2>
+            <div style={{ background: '#111', borderRadius: '24px', padding: '1.2rem', border: '1px solid #222' }}>
               {rentedBikes.length === 0 ? (
-                <div style={{ color: '#444', fontSize: '0.8rem', textAlign: 'center', padding: '2rem' }}>No units currently in the field.</div>
+                <div style={{ color: '#444', fontSize: '0.75rem', textAlign: 'center', padding: '1rem' }}>No units in field.</div>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                    {rentedBikes.map(b => {
                      const live = liveUnits.find(l => l.unitName === b.unitId);
                      return (
-                       <div key={b.id} style={{ borderBottom: '1px solid #222', paddingBottom: '1.2rem' }}>
+                       <div key={b.id} style={{ borderBottom: '1px solid #222', paddingBottom: '1rem' }}>
                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                            <div style={{ fontWeight: 'bold' }}>{b.unitId}</div>
-                            <div style={{ fontSize: '0.65rem', color: '#34a853' }}>{live ? '🛰️ SIGNAL LIVE' : '⌛ SYNCING...'}</div>
+                            <div style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{b.unitId}</div>
+                            <div style={{ fontSize: '0.6rem', color: '#34a853' }}>{live ? '🛰️ LIVE' : '⌛ SYNC'}</div>
                          </div>
                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                            <div style={{ background: '#1a1a1a', padding: '0.5rem', borderRadius: '8px' }}>
-                               <div style={{ color: '#555', fontSize: '0.55rem', fontWeight: 'bold' }}>BATTERY</div>
-                               <div style={{ color: (live?.battery || b.specs.currentBatteryPercent || 0) < 30 ? '#ff4444' : 'white', fontWeight: 900 }}>{live?.battery || b.specs.currentBatteryPercent}%</div>
+                            <div style={{ background: '#1a1a1a', padding: '0.4rem', borderRadius: '8px' }}>
+                               <div style={{ color: '#555', fontSize: '0.5rem', fontWeight: 'bold' }}>BATTERY</div>
+                               <div style={{ color: (live?.battery || b.specs.currentBatteryPercent || 0) < 30 ? '#ff4444' : 'white', fontWeight: 900, fontSize: '0.9rem' }}>{live?.battery || b.specs.currentBatteryPercent}%</div>
                             </div>
-                            <div style={{ background: '#1a1a1a', padding: '0.5rem', borderRadius: '8px' }}>
-                               <div style={{ color: '#555', fontSize: '0.55rem', fontWeight: 'bold' }}>EST. RANGE</div>
-                               <div style={{ color: '#ff6600', fontWeight: 900 }}>{live?.milesRemaining ? `${live.milesRemaining.toFixed(1)} mi` : '--'}</div>
+                            <div style={{ background: '#1a1a1a', padding: '0.4rem', borderRadius: '8px' }}>
+                               <div style={{ color: '#555', fontSize: '0.5rem', fontWeight: 'bold' }}>RANGE</div>
+                               <div style={{ color: '#ff6600', fontWeight: 900, fontSize: '0.9rem' }}>{live?.milesRemaining ? `${live.milesRemaining.toFixed(1)} mi` : '--'}</div>
                             </div>
                          </div>
-                         {live && (
-                           <div style={{ marginTop: '0.8rem', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.4rem' }}>
-                              <div style={{ textAlign: 'center' }}>
-                                 <div style={{ color: '#444', fontSize: '0.5rem', fontWeight: 'bold' }}>SPEED</div>
-                                 <div style={{ color: '#888', fontSize: '0.75rem', fontWeight: 'bold' }}>{live.speed?.toFixed(0)} <span style={{fontSize: '0.5rem'}}>MPH</span></div>
-                              </div>
-                              <div style={{ textAlign: 'center' }}>
-                                 <div style={{ color: '#444', fontSize: '0.5rem', fontWeight: 'bold' }}>ELEV</div>
-                                 <div style={{ color: '#888', fontSize: '0.75rem', fontWeight: 'bold' }}>{live.elevationFt?.toFixed(0)} <span style={{fontSize: '0.5rem'}}>FT</span></div>
-                              </div>
-                              <div style={{ textAlign: 'center' }}>
-                                 <div style={{ color: '#444', fontSize: '0.5rem', fontWeight: 'bold' }}>WIND</div>
-                                 <div style={{ color: '#888', fontSize: '0.75rem', fontWeight: 'bold' }}>{live.windMph?.toFixed(0)} <span style={{fontSize: '0.5rem'}}>MPH</span></div>
-                              </div>
-                           </div>
-                         )}
                        </div>
                      )
                    })}
                 </div>
               )}
-            </div>
-            
-            <div style={{ marginTop: '2rem', padding: '1.5rem', background: 'rgba(255,102,0,0.05)', borderRadius: '24px', border: '1px solid rgba(255,102,0,0.1)' }}>
-               <h4 style={{ color: '#ff6600', margin: '0 0 0.5rem 0', fontSize: '0.8rem' }}>PRO TIP</h4>
-               <p style={{ fontSize: '0.7rem', color: '#888', margin: 0, lineHeight: '1.5' }}>Use the <strong>Fleet Map</strong> to see these units' exact GPS coordinates and plan suggested routes for your customers.</p>
             </div>
           </aside>
         </div>

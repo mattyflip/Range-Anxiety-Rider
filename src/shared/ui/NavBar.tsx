@@ -16,7 +16,13 @@ const NavBar: React.FC<NavBarProps> = ({ user: providedUser, onShowInstall, onSh
   const navigate = useNavigate();
   const location = useLocation();
   const [unreadCount, setUnreadCount] = useState(0);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { user, userData } = useUserData(providedUser);
+
+  useEffect(() => {
+    // Close menu on route change
+    setIsMenuOpen(false);
+  }, [location.pathname]);
 
   useEffect(() => {
     if (!user) return;
@@ -113,119 +119,77 @@ const NavBar: React.FC<NavBarProps> = ({ user: providedUser, onShowInstall, onSh
       height: '4.5rem'
     }}>
       <div className="logo-container" style={{ display: 'flex', alignItems: 'center' }}>
-        <Link to={user ? (isFleet ? "/fleet" : "/map") : "/"} style={{ display: 'flex', alignItems: 'center' }}>
+        <Link to={user ? (isFleet ? "/fleet" : "/map") : "/"} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <img src="/app-icon.png" alt="Logo" style={{ height: '2.5rem', width: 'auto' }} />
-          <span style={{ display: 'none' }}>v{__APP_VERSION__}</span>
+          <span style={{ color: 'white', fontWeight: 900, fontSize: '1rem', letterSpacing: '-0.5px' }} className="desktop-only">RANGE ANXIETY</span>
         </Link>
       </div>
 
-      <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', minWidth: 0 }}>
-        <nav 
-          className="nav-scroll-hint"
-          style={{ 
-            display: 'flex', 
-            gap: '1.2rem', 
-            alignItems: 'center',
-            overflowX: 'auto',
-            paddingBottom: '8px'
-          }}
-        >
+      <div style={{ display: 'flex', gap: '1.2rem', alignItems: 'center' }}>
+        {/* Desktop Navigation */}
+        <nav className="desktop-only nav-links">
           {renderNavLinks()}
           
           {isAdmin && (
             <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-              <Link to="/admin/library" style={{ color: location.pathname === '/admin/library' ? '#ff6600' : '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Catalog</Link>
-              <button 
-                onClick={toggleRole}
-                style={{ 
-                  background: 'rgba(255,102,0,0.1)', 
-                  border: '1px solid #ff6600', 
-                  color: '#ff6600', 
-                  borderRadius: '20px', 
-                  padding: '0.3rem 0.8rem', 
-                  fontSize: '0.65rem', 
-                  fontWeight: 'bold',
-                  cursor: 'pointer',
-                  whiteSpace: 'nowrap'
-                }}
-              >
-                Switch: {userData?.role === 'fleet' ? 'Rider' : 'Manager'}
+              <Link to="/admin/library" style={{ color: location.pathname === '/admin/library' ? '#ff6600' : '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' }}>Catalog</Link>
+              <button onClick={toggleRole} style={{ background: 'rgba(255,102,0,0.1)', border: '1px solid #ff6600', color: '#ff6600', borderRadius: '20px', padding: '0.3rem 0.8rem', fontSize: '0.65rem', fontWeight: 'bold', cursor: 'pointer' }}>
+                Switch to {userData?.role === 'fleet' ? 'Rider' : 'Manager'}
               </button>
             </div>
           )}
-          
-          {user && (
-            <button 
-              onClick={() => navigate('/notifications')}
-              style={{ 
-                background: 'none', 
-                border: 'none', 
-                color: unreadCount > 0 ? '#ff6600' : '#888', 
-                fontSize: '1.2rem', 
-                cursor: 'pointer',
-                position: 'relative',
-                display: 'flex',
-                alignItems: 'center'
-              }}
-            >
-              🔔
-              {unreadCount > 0 && (
-                <span style={{ 
-                  position: 'absolute', 
-                  top: '-5px', 
-                  right: '-5px', 
-                  background: '#ff0000', 
-                  color: 'white', 
-                  fontSize: '0.6rem', 
-                  padding: '2px 5px', 
-                  borderRadius: '10px',
-                  fontWeight: 'bold',
-                  boxShadow: '0 0 5px rgba(255,0,0,0.5)'
-                }}>
-                  {unreadCount}
-                </span>
-              )}
-            </button>
-          )}
 
           {user && (
-            <button 
-              onClick={handleLogout}
-              style={{ 
-                background: 'none', 
-                border: '1px solid #444', 
-                color: '#888', 
-                borderRadius: '20px', 
-                padding: '0.3rem 0.8rem', 
-                fontSize: '0.65rem', 
-                fontWeight: 'bold', 
-                cursor: 'pointer',
-                whiteSpace: 'nowrap'
-              }}
-            >
-              Log Out
-            </button>
+            <button onClick={handleLogout} style={{ background: 'none', border: '1px solid #444', color: '#888', borderRadius: '20px', padding: '0.3rem 0.8rem', fontSize: '0.65rem', fontWeight: 'bold', cursor: 'pointer' }}>Log Out</button>
           )}
 
-          <button 
-            onClick={onShowInstall}
-            style={{ 
-              background: user ? 'linear-gradient(45deg, #ff6600, #ff9900)' : '#333', 
-              color: 'white', 
-              border: 'none', 
-              borderRadius: '20px', 
-              padding: '0.3rem 0.8rem', 
-              fontSize: '0.7rem', 
-              fontWeight: 'bold', 
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-              boxShadow: user ? '0 4px 10px rgba(255,102,0,0.3)' : 'none'
-            }}
-          >
-            Get App
-          </button>
+          <button onClick={onShowInstall} style={{ background: 'linear-gradient(45deg, #ff6600, #ff9900)', color: 'white', border: 'none', borderRadius: '20px', padding: '0.3rem 1rem', fontSize: '0.7rem', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 10px rgba(255,102,0,0.3)' }}>Get App</button>
         </nav>
+
+        {/* Notifications (Always visible if user) */}
+        {user && (
+          <button 
+            onClick={() => navigate('/notifications')}
+            style={{ background: 'none', border: 'none', color: unreadCount > 0 ? '#ff6600' : '#888', fontSize: '1.2rem', cursor: 'pointer', position: 'relative', display: 'flex', alignItems: 'center' }}
+          >
+            🔔
+            {unreadCount > 0 && (
+              <span style={{ position: 'absolute', top: '-5px', right: '-5px', background: '#ff0000', color: 'white', fontSize: '0.6rem', padding: '2px 5px', borderRadius: '10px', fontWeight: 'bold', boxShadow: '0 0 5px rgba(255,0,0,0.5)' }}>{unreadCount}</span>
+            )}
+          </button>
+        )}
+
+        {/* Mobile Hamburger Button */}
+        <button 
+          className="mobile-only" 
+          onClick={() => setIsMenuOpen(!isMenuOpen)}
+          style={{ background: 'none', border: 'none', color: '#ff6600', fontSize: '1.8rem', cursor: 'pointer', padding: '0.5rem' }}
+        >
+          {isMenuOpen ? '✕' : '☰'}
+        </button>
       </div>
+
+      {/* Mobile Dropdown Menu */}
+      {isMenuOpen && (
+        <div className="mobile-nav-dropdown mobile-only">
+          {renderNavLinks()}
+          
+          {isAdmin && (
+            <>
+              <Link to="/admin/library" style={{ color: '#888', textDecoration: 'none', fontSize: '1rem', fontWeight: 700, textTransform: 'uppercase' }}>Catalog</Link>
+              <button onClick={toggleRole} style={{ width: '100%', background: 'rgba(255,102,0,0.1)', border: '1px solid #ff6600', color: '#ff6600', borderRadius: '12px', padding: '0.8rem', fontSize: '0.9rem', fontWeight: 'bold', cursor: 'pointer' }}>
+                Switch to {userData?.role === 'fleet' ? 'Rider' : 'Manager'}
+              </button>
+            </>
+          )}
+
+          {user && (
+            <button onClick={handleLogout} style={{ width: '100%', background: 'none', border: '1px solid #444', color: '#888', borderRadius: '12px', padding: '0.8rem', fontSize: '0.9rem', fontWeight: 'bold', cursor: 'pointer' }}>Log Out</button>
+          )}
+
+          <button onClick={onShowInstall} style={{ width: '100%', background: 'linear-gradient(45deg, #ff6600, #ff9900)', color: 'white', border: 'none', borderRadius: '12px', padding: '1rem', fontSize: '1rem', fontWeight: 'bold', cursor: 'pointer' }}>Get The App</button>
+        </div>
+      )}
     </header>
   )
 }

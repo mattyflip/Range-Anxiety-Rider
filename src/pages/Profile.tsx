@@ -222,44 +222,44 @@ const Profile: React.FC = () => {
       <SEO title={`${profileData.username}'s Profile`} />
       <NavBar user={user} onShowInstall={() => setShowInstallTutorial(true)} onShowAuth={() => setShowAuthModal(true)} />
 
-      <main style={{ padding: '2rem 1.5rem', maxWidth: '800px', margin: '0 auto' }}>
-        <header style={{ textAlign: 'center', marginBottom: '3rem' }}>
-           <div style={{ width: '120px', height: '120px', borderRadius: '50%', background: '#1a1a1a', margin: '0 auto 1.5rem', border: '3px solid #ff6600', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '3rem' }}>
+      <main style={{ padding: '1.5rem', maxWidth: '800px', margin: '0 auto' }}>
+        <header style={{ textAlign: 'center', marginBottom: '2.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+           <div style={{ width: '100px', height: '100px', borderRadius: '50%', background: '#1a1a1a', marginBottom: '1.2rem', border: '3px solid #ff6600', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.5rem' }}>
               {profileData.profilePic ? <img src={profileData.profilePic} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : '🚲'}
            </div>
-           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.6rem' }}>
-              <h1 style={{ color: 'white', margin: 0 }}>{profileData.username || 'Anonymous Rider'}</h1>
+           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+              <h1 style={{ color: 'white', margin: 0, fontSize: '1.5rem' }}>{profileData.username || 'Anonymous Rider'}</h1>
               {profileData.isAdmin && (
-                <span style={{ background: '#ff0000', color: 'white', fontSize: '0.65rem', padding: '2px 6px', borderRadius: '4px', fontWeight: 900 }}>ADMIN</span>
+                <span style={{ background: '#ff0000', color: 'white', fontSize: '0.6rem', padding: '2px 6px', borderRadius: '4px', fontWeight: 900 }}>ADMIN</span>
               )}
            </div>
-           <p style={{ color: '#666', marginTop: '0.5rem' }}>{profileData.homeRegion || 'E-Bike Enthusiast'}</p>
+           <p style={{ color: '#666', marginTop: '0.4rem', fontSize: '0.9rem' }}>{profileData.homeRegion || 'E-Bike Enthusiast'}</p>
            
            {canEdit && (
-             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}>
-               <button onClick={() => setShowSettings(true)} style={{ background: '#222', border: '1px solid #333', color: 'white', padding: '0.5rem 1.5rem', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>Edit Profile</button>
-               {isAdmin && !isOwnProfile && <p style={{ color: '#ffcc00', fontSize: '0.6rem', fontWeight: 'bold', margin: 0 }}>MODERATION ACCESS</p>}
+             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.6rem', marginTop: '1rem' }}>
+               <button onClick={() => setShowSettings(true)} style={{ background: '#222', border: '1px solid #333', color: 'white', padding: '0.5rem 1.5rem', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem' }}>Edit Profile</button>
+               {isAdmin && !isOwnProfile && <p style={{ color: '#ffcc00', fontSize: '0.65rem', fontWeight: 'bold', margin: 0 }}>MODERATION ACCESS</p>}
              </div>
            )}
         </header>
 
-        <section style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '3rem' }}>
-           <div style={{ background: '#1a1a1a', padding: '1.5rem', borderRadius: '20px', border: '1px solid #333', textAlign: 'center' }}>
-              <div style={{ color: '#666', fontSize: '0.7rem', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Bikes Owned</div>
-              <div style={{ color: 'white', fontSize: '1.5rem', fontWeight: 900 }}>{profileData.bikes?.length || 0}</div>
+        <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1rem', marginBottom: '3rem' }}>
+           <div style={{ background: '#1a1a1a', padding: '1.2rem', borderRadius: '20px', border: '1px solid #333', textAlign: 'center' }}>
+              <div style={{ color: '#666', fontSize: '0.65rem', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '0.4rem' }}>Bikes Owned</div>
+              <div style={{ color: 'white', fontSize: '1.4rem', fontWeight: 900 }}>{profileData.bikes?.length || 0}</div>
            </div>
-           <div style={{ background: '#1a1a1a', padding: '1.5rem', borderRadius: '20px', border: '1px solid #333', textAlign: 'center' }}>
-              <div style={{ color: '#666', fontSize: '0.7rem', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Rating</div>
-              <div style={{ color: '#ffcc00', fontSize: '1.5rem', fontWeight: 900 }}>
+           <div style={{ background: '#1a1a1a', padding: '1.2rem', borderRadius: '20px', border: '1px solid #333', textAlign: 'center' }}>
+              <div style={{ color: '#666', fontSize: '0.65rem', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '0.4rem' }}>Rating</div>
+              <div style={{ color: '#ffcc00', fontSize: '1.4rem', fontWeight: 900 }}>
                 {reviews.length > 0 ? (reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length).toFixed(1) : '5.0'} ⭐
               </div>
            </div>
         </section>
 
         {/* My Garage Section */}
-        <section style={{ marginBottom: '4rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-            <h2 style={{ color: 'white', fontSize: '1.2rem', margin: 0 }}>My Garage</h2>
+        <section style={{ marginBottom: '3rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem', flexWrap: 'wrap', gap: '1rem' }}>
+            <h2 style={{ color: 'white', fontSize: '1.1rem', margin: 0 }}>My Garage</h2>
             {canEdit && (
               <button 
                 onClick={() => { setEditingBike(null); setBikeForm({ name: '', voltage: '48', capacityAh: '15', motorWatts: '750', bikeWeightLbs: '65', tirePSI: '30', tireType: 'road', driveMode: 'both', targetSpeedMph: '20' }); setShowBikeModal(true); }}
@@ -270,43 +270,43 @@ const Profile: React.FC = () => {
             )}
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.2rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '1rem' }}>
             {!profileData.bikes || profileData.bikes.length === 0 ? (
-              <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '3rem', background: '#1a1a1a', borderRadius: '24px', border: '1px dashed #333' }}>
-                <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🚲</div>
-                <p style={{ color: '#666', margin: 0 }}>No bikes in the garage yet.</p>
+              <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '2.5rem', background: '#1a1a1a', borderRadius: '24px', border: '1px dashed #333' }}>
+                <div style={{ fontSize: '2.5rem', marginBottom: '0.8rem' }}>🚲</div>
+                <p style={{ color: '#666', margin: 0, fontSize: '0.9rem' }}>No bikes in the garage yet.</p>
               </div>
             ) : (
               profileData.bikes.map((bike: any) => (
-                <div key={bike.id} style={{ background: '#1a1a1a', padding: '1.5rem', borderRadius: '24px', border: '1px solid #333', position: 'relative', overflow: 'hidden' }}>
-                  <div style={{ position: 'absolute', top: 0, right: 0, padding: '1rem', display: 'flex', gap: '0.5rem' }}>
+                <div key={bike.id} style={{ background: '#1a1a1a', padding: '1.2rem', borderRadius: '24px', border: '1px solid #333', position: 'relative', overflow: 'hidden' }}>
+                  <div style={{ position: 'absolute', top: 0, right: 0, padding: '0.8rem', display: 'flex', gap: '0.4rem' }}>
                     {canEdit && (
                       <>
-                        <button onClick={() => openEditBike(bike)} style={{ background: '#222', border: 'none', color: '#ffcc00', padding: '0.4rem', borderRadius: '8px', cursor: 'pointer', fontSize: '0.8rem' }}>✏️</button>
-                        <button onClick={() => deleteBike(bike.id)} style={{ background: '#222', border: 'none', color: '#ff4444', padding: '0.4rem', borderRadius: '8px', cursor: 'pointer', fontSize: '0.8rem' }}>🗑️</button>
+                        <button onClick={() => openEditBike(bike)} style={{ background: '#222', border: 'none', color: '#ffcc00', padding: '0.4rem', borderRadius: '8px', cursor: 'pointer', fontSize: '0.75rem' }}>✏️</button>
+                        <button onClick={() => deleteBike(bike.id)} style={{ background: '#222', border: 'none', color: '#ff4444', padding: '0.4rem', borderRadius: '8px', cursor: 'pointer', fontSize: '0.75rem' }}>🗑️</button>
                       </>
                     )}
                   </div>
 
-                  <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>⚡</div>
-                  <h3 style={{ color: 'white', margin: '0 0 0.5rem 0', fontSize: '1.1rem' }}>{bike.name}</h3>
+                  <div style={{ fontSize: '1.8rem', marginBottom: '0.8rem' }}>⚡</div>
+                  <h3 style={{ color: 'white', margin: '0 0 0.5rem 0', fontSize: '1rem' }}>{bike.name}</h3>
                   
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8rem', marginTop: '1rem' }}>
-                    <div style={{ background: '#121212', padding: '0.6rem', borderRadius: '12px', textAlign: 'center' }}>
-                      <div style={{ color: '#555', fontSize: '0.6rem', textTransform: 'uppercase' }}>Voltage</div>
-                      <div style={{ color: 'white', fontWeight: 'bold', fontSize: '0.9rem' }}>{bike.specs.voltage}V</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem', marginTop: '0.8rem' }}>
+                    <div style={{ background: '#121212', padding: '0.5rem', borderRadius: '10px', textAlign: 'center' }}>
+                      <div style={{ color: '#555', fontSize: '0.55rem', textTransform: 'uppercase' }}>Voltage</div>
+                      <div style={{ color: 'white', fontWeight: 'bold', fontSize: '0.85rem' }}>{bike.specs.voltage}V</div>
                     </div>
-                    <div style={{ background: '#121212', padding: '0.6rem', borderRadius: '12px', textAlign: 'center' }}>
-                      <div style={{ color: '#555', fontSize: '0.6rem', textTransform: 'uppercase' }}>Capacity</div>
-                      <div style={{ color: 'white', fontWeight: 'bold', fontSize: '0.9rem' }}>{bike.specs.capacityAh}Ah</div>
+                    <div style={{ background: '#121212', padding: '0.5rem', borderRadius: '10px', textAlign: 'center' }}>
+                      <div style={{ color: '#555', fontSize: '0.55rem', textTransform: 'uppercase' }}>Capacity</div>
+                      <div style={{ color: 'white', fontWeight: 'bold', fontSize: '0.85rem' }}>{bike.specs.capacityAh}Ah</div>
                     </div>
-                    <div style={{ background: '#121212', padding: '0.6rem', borderRadius: '12px', textAlign: 'center' }}>
-                      <div style={{ color: '#555', fontSize: '0.6rem', textTransform: 'uppercase' }}>Motor</div>
-                      <div style={{ color: 'white', fontWeight: 'bold', fontSize: '0.9rem' }}>{bike.specs.motorWatts}W</div>
+                    <div style={{ background: '#121212', padding: '0.5rem', borderRadius: '10px', textAlign: 'center' }}>
+                      <div style={{ color: '#555', fontSize: '0.55rem', textTransform: 'uppercase' }}>Motor</div>
+                      <div style={{ color: 'white', fontWeight: 'bold', fontSize: '0.85rem' }}>{bike.specs.motorWatts}W</div>
                     </div>
-                    <div style={{ background: '#121212', padding: '0.6rem', borderRadius: '12px', textAlign: 'center' }}>
-                      <div style={{ color: '#555', fontSize: '0.6rem', textTransform: 'uppercase' }}>Weight</div>
-                      <div style={{ color: 'white', fontWeight: 'bold', fontSize: '0.9rem' }}>{bike.specs.bikeWeightLbs || 65} lbs</div>
+                    <div style={{ background: '#121212', padding: '0.5rem', borderRadius: '10px', textAlign: 'center' }}>
+                      <div style={{ color: '#555', fontSize: '0.55rem', textTransform: 'uppercase' }}>Weight</div>
+                      <div style={{ color: 'white', fontWeight: 'bold', fontSize: '0.85rem' }}>{bike.specs.bikeWeightLbs || 65} lb</div>
                     </div>
                   </div>
                 </div>

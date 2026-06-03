@@ -1323,7 +1323,7 @@ function MapHome() {
 
         <main style={{ flex: 1, position: 'relative' }}>
           {isNavigating && response && (
-            <div style={{ position: 'fixed', top: '5.5rem', left: '50%', transform: 'translateX(-50%)', width: '90%', maxWidth: '500px', zIndex: 10000, background: '#1a1a1a', border: '2px solid #ff6600', borderRadius: '20px', padding: '1.2rem', boxShadow: '0 10px 40px rgba(0,0,0,0.8)', display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+            <div className="nav-overlay" style={{ background: '#1a1a1a', border: '2px solid #ff6600', borderRadius: '20px', padding: '1.2rem', boxShadow: '0 10px 40px rgba(0,0,0,0.8)', display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div style={{ color: 'white', fontWeight: 'bold' }}>{distToNextStep || 'Navigating...'}</div>
                   <button onClick={stopNavigation} style={{ background: '#444', color: 'white', border: 'none', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer' }}>✕</button>
