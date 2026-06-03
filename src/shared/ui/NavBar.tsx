@@ -89,6 +89,7 @@ const NavBar: React.FC<NavBarProps> = ({ user: providedUser, onShowInstall, onSh
       <>
         <Link to="/map" style={{ color: location.pathname === '/map' ? '#ff6600' : '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Trip Map</Link>
         <Link to="/rent" style={{ color: location.pathname === '/rent' ? '#ff6600' : '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Rent</Link>
+        <Link to="/rentals" style={{ color: location.pathname === '/rentals' ? '#ff6600' : '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>My Rentals</Link>
         <Link to="/feed" style={{ color: location.pathname === '/feed' ? '#ff6600' : '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Community</Link>
         <Link to="/forum" style={{ color: location.pathname.startsWith('/forum') ? '#ff6600' : '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Forum</Link>
         <Link to="/faq" style={{ color: location.pathname === '/faq' ? '#ff6600' : '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>FAQ</Link>

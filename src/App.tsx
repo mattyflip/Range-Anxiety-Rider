@@ -13,6 +13,7 @@ import FAQ from './pages/FAQ'
 import ExploreMap from './pages/ExploreMap'
 import Rent from './pages/Rent'
 import MapHome from './pages/MapHome'
+import MyRentals from './pages/MyRentals'
 import AdminLibrary from './pages/AdminLibrary'
 
 // Protected Route Component
@@ -75,6 +76,7 @@ function App() {
         {/* Protected Feature Routes */}
         <Route path="/map" element={<ProtectedRoute><MapHome /></ProtectedRoute>} />
         <Route path="/rent" element={<ProtectedRoute><Rent /></ProtectedRoute>} />
+        <Route path="/rentals" element={<ProtectedRoute><MyRentals /></ProtectedRoute>} />
         <Route path="/fleet" element={<RoleRoute requiredRole="fleet"><FleetDashboard /></RoleRoute>} />
         <Route path="/faq" element={<ProtectedRoute><FAQ /></ProtectedRoute>} />
         <Route path="/explore" element={<ProtectedRoute><ExploreMap /></ProtectedRoute>} />

@@ -111,19 +111,34 @@ const FleetDashboard = () => {
     } catch (e) { console.error(e); }
   };
 
-  const handleAssignRider = async (request: any) => {
+  // Generate a 4-digit PIN
+  const generatePIN = () => Math.floor(1000 + Math.random() * 9000).toString();
+
+  // Generate a simple QR code string (could be encoded data)
+  const generateQRCode = (request: any) => {
+    return `RAR-${request.id.slice(0, 8)}-${Date.now().toString(36).toUpperCase()}`;
+  };
+
+  const handleApproveRequest = async (request: any) => {
     if (!userData?.orgId) return;
     try {
-      const rentalDate = new Date().toISOString();
+      const now = new Date().toISOString();
+      const pin = generatePIN();
+      const qrCode = generateQRCode(request);
 
-      // 1. Mark request as assigned
-      await updateDoc(doc(db, `organizations/${userData.orgId}/rental_requests`, request.id), { status: 'assigned' });
+      // 1. Mark request as approved with QR/PIN
+      await updateDoc(doc(db, `organizations/${userData.orgId}/rental_requests`, request.id), { 
+        status: 'approved',
+        approvedAt: now,
+        qrCode,
+        pin
+      });
 
       // 2. Mark bike as rented and link to rider UID
       await updateDoc(doc(db, `organizations/${userData.orgId}/bikes`, request.bikeId), { 
         status: 'rented',
         currentRiderId: request.riderId,
-        rentedAt: rentalDate
+        rentedAt: now
       });
 
       // 3. Initialize Live Unit
@@ -140,7 +155,7 @@ const FleetDashboard = () => {
           shopId: userData.orgId,
           bikeId: request.bikeId,
           unitId: request.unitId,
-          rentedAt: rentalDate
+          rentedAt: now
         },
         orgId: userData.orgId
       });
@@ -153,11 +168,44 @@ const FleetDashboard = () => {
         userData.orgName || 'Shop',
         'rental_approved',
         request.bikeId,
-        `Your rental for ${request.unitId} has been approved! Have a safe ride.`
+        `Your rental for ${request.unitId} is ready! PIN: ${pin}`
       );
 
-      alert(`Bike ${request.unitId} successfully assigned to ${request.riderName}! Live tracking enabled.`);
-    } catch (e) { console.error(e); }
+      alert(`✅ Rental approved! QR code and PIN sent to rider.`);
+    } catch (e) { 
+      console.error(e); 
+      alert('Failed to approve rental.');
+    }
+  };
+
+  const handleDeclineRequest = async (request: any, reason?: string) => {
+    if (!userData?.orgId) return;
+    try {
+      await updateDoc(doc(db, `organizations/${userData.orgId}/rental_requests`, request.id), {
+        status: 'declined',
+        declinedReason: reason || 'No reason provided'
+      });
+
+      // Send notification
+      const { createNotification } = await import('../utils/notifications');
+      await createNotification(
+        request.riderId,
+        userData.orgId,
+        userData.orgName || 'Shop',
+        'rental_declined',
+        request.bikeId,
+        `Your rental request for ${request.unitId} was declined. ${reason ? `Reason: ${reason}` : ''}`
+      );
+
+      alert('Rental request declined.');
+    } catch (e) { 
+      console.error(e); 
+    }
+  };
+
+  // Keep old function for backward compat but mark deprecated
+  const handleAssignRider = async (request: any) => {
+    await handleApproveRequest(request);
   };
 
   const handleReturnBike = async (bike: Bike) => {

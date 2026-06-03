@@ -172,7 +172,7 @@ export interface ForumComment {
  */
 export interface Notification {
   id: string;
-  type: 'like' | 'comment' | 'follow' | 'moderation' | 'fleet_alert' | 'rental_request' | 'upvote' | 'review' | 'rental_approved';
+  type: 'like' | 'comment' | 'follow' | 'moderation' | 'fleet_alert' | 'rental_request' | 'upvote' | 'review' | 'rental_approved' | 'rental_declined';
   fromId: string;
   fromName: string;
   senderUsername?: string;
@@ -184,6 +184,37 @@ export interface Notification {
 }
 
 /**
+ * Rental Request model stored in /organizations/{orgId}/rental_requests/{requestId}
+ */
+export type RentalStatus = 'pending' | 'approved' | 'declined' | 'active' | 'completed' | 'cancelled';
+
+export interface RentalRequest {
+  id: string;
+  shopId: string;
+  shopName: string;
+  bikeId: string;
+  unitId: string;
+  riderId: string;
+  riderName: string;
+  riderEmail: string;
+  riderPhone: string;
+  rentalDate: string;
+  pickupTime: string;
+  returnTime: string;
+  duration: number;           // hours
+  pricePerHour: number;
+  totalPrice: number;
+  status: RentalStatus;
+  approvedAt?: string;
+  declinedReason?: string;
+  qrCode?: string;            // generated on approval
+  pin?: string;                 // 4-digit backup code
+  completedAt?: string;
+  createdAt: Timestamp;
+  shopNotes?: string;
+}
+
+/**
  * Organization model stored in /organizations/{orgId}
  */
 export interface Organization {
@@ -192,13 +223,22 @@ export interface Organization {
   ownerId: string;
   bio?: string;
   address?: string;
+  phone?: string;
+  email?: string;
   location?: {
     lat: number;
     lng: number;
     address?: string;
   };
-  phone?: string;
-  email?: string;
+  hours?: {
+    open: string;
+    close: string;
+  };
+  pricing?: {
+    pricePerHour: number;
+    pricePerDay?: number;
+    minimumCharge?: number;
+  };
   settings?: {
     rentalZoneRadius: number;
     lowBatteryAlertThreshold: number;

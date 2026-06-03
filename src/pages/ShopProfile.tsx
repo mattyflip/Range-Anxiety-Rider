@@ -27,6 +27,13 @@ const ShopProfile: React.FC = () => {
   const [shopPhone, setShopPhone] = useState('');
   const [shopEmail, setShopEmail] = useState('');
   
+  // Pricing states
+  const [pricePerHour, setPricePerHour] = useState('');
+  const [pricePerDay, setPricePerDay] = useState('');
+  const [minimumCharge, setMinimumCharge] = useState('');
+  const [openTime, setOpenTime] = useState('09:00');
+  const [closeTime, setCloseTime] = useState('18:00');
+  
   const [isUpdating, setIsUpdating] = useState(false);
   const [isShopTier, setIsShopTier] = useState(false);
   const [shopTierExpiresAt, setShopTierExpiresAt] = useState<Date | null>(null);
@@ -55,6 +62,12 @@ const ShopProfile: React.FC = () => {
           setShopLng(d.location?.lng || null);
           setShopPhone(d.phone || '');
           setShopEmail(d.email || '');
+          // Load pricing
+          setPricePerHour(d.pricing?.pricePerHour?.toString() || '25');
+          setPricePerDay(d.pricing?.pricePerDay?.toString() || '100');
+          setMinimumCharge(d.pricing?.minimumCharge?.toString() || '15');
+          setOpenTime(d.hours?.open || '09:00');
+          setCloseTime(d.hours?.close || '18:00');
         }
       });
     }
@@ -81,6 +94,17 @@ const ShopProfile: React.FC = () => {
           address: shopAddress
         },
         ownerId: user.uid,
+        phone: shopPhone,
+        email: shopEmail,
+        hours: {
+          open: openTime,
+          close: closeTime
+        },
+        pricing: {
+          pricePerHour: parseFloat(pricePerHour) || 25,
+          pricePerDay: parseFloat(pricePerDay) || 100,
+          minimumCharge: parseFloat(minimumCharge) || 15
+        },
         updatedAt: new Date().toISOString()
       }, { merge: true });
       
@@ -186,11 +210,43 @@ const ShopProfile: React.FC = () => {
                     <input type="email" value={shopEmail} onChange={e => setShopEmail(e.target.value)} style={{ width: '100%', padding: '0.9rem', background: '#111', border: '1px solid #333', borderRadius: '12px', color: 'white' }} />
                   </div>
                 </div>
-                <button onClick={handleUpdateShop} disabled={isUpdating} style={{ width: '100%', padding: '1rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', marginTop: '1rem' }}>
-                  {isUpdating ? 'Saving...' : 'Update Shop Details'}
-                </button>
               </div>
             </section>
+
+            {/* Pricing Section */}
+            <section className="card" style={{ background: '#1a1a1a', padding: '2rem', borderRadius: '24px', border: '1px solid #34a853', marginBottom: '2rem' }}>
+              <h2 style={{ color: '#34a853', fontSize: '1.2rem', marginBottom: '1.5rem' }}>💰 Rental Pricing</h2>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+                  <div className="form-group">
+                    <label style={{ display: 'block', color: '#888', fontSize: '0.75rem', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Price/Hour ($)</label>
+                    <input type="number" value={pricePerHour} onChange={e => setPricePerHour(e.target.value)} placeholder="25" style={{ width: '100%', padding: '0.9rem', background: '#111', border: '1px solid #333', borderRadius: '12px', color: 'white' }} />
+                  </div>
+                  <div className="form-group">
+                    <label style={{ display: 'block', color: '#888', fontSize: '0.75rem', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Price/Day ($)</label>
+                    <input type="number" value={pricePerDay} onChange={e => setPricePerDay(e.target.value)} placeholder="100" style={{ width: '100%', padding: '0.9rem', background: '#111', border: '1px solid #333', borderRadius: '12px', color: 'white' }} />
+                  </div>
+                  <div className="form-group">
+                    <label style={{ display: 'block', color: '#888', fontSize: '0.75rem', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Minimum ($)</label>
+                    <input type="number" value={minimumCharge} onChange={e => setMinimumCharge(e.target.value)} placeholder="15" style={{ width: '100%', padding: '0.9rem', background: '#111', border: '1px solid #333', borderRadius: '12px', color: 'white' }} />
+                  </div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div className="form-group">
+                    <label style={{ display: 'block', color: '#888', fontSize: '0.75rem', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Opening Time</label>
+                    <input type="time" value={openTime} onChange={e => setOpenTime(e.target.value)} style={{ width: '100%', padding: '0.9rem', background: '#111', border: '1px solid #333', borderRadius: '12px', color: 'white' }} />
+                  </div>
+                  <div className="form-group">
+                    <label style={{ display: 'block', color: '#888', fontSize: '0.75rem', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Closing Time</label>
+                    <input type="time" value={closeTime} onChange={e => setCloseTime(e.target.value)} style={{ width: '100%', padding: '0.9rem', background: '#111', border: '1px solid #333', borderRadius: '12px', color: 'white' }} />
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <button onClick={handleUpdateShop} disabled={isUpdating} style={{ width: '100%', padding: '1rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', marginTop: '1rem' }}>
+              {isUpdating ? 'Saving...' : 'Update Shop Details'}
+            </button>
           </>
         ) : (
           <div style={{ textAlign: 'center', padding: '4rem 0' }}>
