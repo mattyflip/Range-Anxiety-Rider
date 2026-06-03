@@ -13,7 +13,7 @@ const Rent: React.FC = () => {
   const [shops, setShops] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedShop, setSelectedShop] = useState<any>(null);
-  const [availableBikes] = useState<any[]>([]);
+  const [availableBikes, setAvailableBikes] = useState<any[]>([]);
   const [bikeCounts, setBikeCounts] = useState<Record<string, number>>({});
   const [selectedBike, setSelectedBike] = useState<any>(null);
   const [bookingForm, setBookingForm] = useState({
@@ -48,6 +48,20 @@ const Rent: React.FC = () => {
 
     return () => unsubShops();
   }, []);
+
+  useEffect(() => {
+    if (!selectedShop) {
+      setAvailableBikes([]);
+      return;
+    }
+
+    const qBikes = query(collection(db, `organizations/${selectedShop.id}/bikes`), where("status", "==", "available"));
+    const unsubBikes = onSnapshot(qBikes, (snap) => {
+      setAvailableBikes(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+
+    return () => unsubBikes();
+  }, [selectedShop]);
 
   const handleBook = async () => {
     if (!user || !userData) { setShowAuthModal(true); return; }
@@ -116,8 +130,34 @@ const Rent: React.FC = () => {
                <section>
                   <h2 style={{ color: 'white', marginBottom: '1.5rem' }}>Available at {selectedShop.name}</h2>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    {availableBikes.length === 0 && <p style={{ color: '#444' }}>Fetching bike inventory...</p>}
-                    {/* Inventory logic normally goes here, for now mock list based on shop data if any */}
+                    {availableBikes.length === 0 ? (
+                      <p style={{ color: '#444' }}>No bikes currently available for rental at this location.</p>
+                    ) : (
+                      availableBikes.map(bike => (
+                        <div 
+                          key={bike.id} 
+                          onClick={() => setSelectedBike(bike)}
+                          style={{ 
+                            background: '#1a1a1a', 
+                            padding: '1.5rem', 
+                            borderRadius: '16px', 
+                            border: selectedBike?.id === bike.id ? '2px solid #ff6600' : '1px solid #333',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center'
+                          }}
+                        >
+                          <div>
+                            <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: 'white' }}>{bike.unitId}</div>
+                            <div style={{ fontSize: '0.8rem', color: '#888' }}>{bike.specs?.motorWatts}W · {bike.specs?.voltage}V · {bike.specs?.capacityAh}Ah</div>
+                          </div>
+                          <div style={{ color: '#ff6600', fontWeight: 'bold' }}>
+                            {selectedBike?.id === bike.id ? 'SELECTED' : 'SELECT'}
+                          </div>
+                        </div>
+                      ))
+                    )}
                   </div>
                </section>
                <aside style={{ background: '#1a1a1a', padding: '2rem', borderRadius: '24px', border: '1px solid #333', height: 'fit-content' }}>
