@@ -23,6 +23,82 @@ const Profile: React.FC = () => {
   const [newProfilePic, setNewProfilePic] = useState('');
   const [isSavingProfile, setIsSavingProfile] = useState(false);
 
+  // Garage states
+  const [showBikeModal, setShowBikeModal] = useState(false);
+  const [editingBike, setEditingBike] = useState<any>(null);
+  const [bikeForm, setBikeForm] = useState({
+    name: '',
+    voltage: '48',
+    capacityAh: '15',
+    motorWatts: '750',
+    bikeWeightLbs: '65',
+    tirePSI: '30',
+    tireType: 'road' as 'road' | 'knobby',
+    driveMode: 'both' as 'throttle_only' | 'pas_only' | 'both'
+  });
+
+  const handleSaveBike = async () => {
+    if (!user || !profileData || !bikeForm.name.trim()) return;
+    
+    const newBike = {
+      id: editingBike?.id || Date.now().toString(),
+      name: bikeForm.name,
+      specs: {
+        voltage: parseFloat(bikeForm.voltage),
+        capacityAh: parseFloat(bikeForm.capacityAh),
+        motorWatts: parseFloat(bikeForm.motorWatts),
+        bikeWeightLbs: parseFloat(bikeForm.bikeWeightLbs),
+        tirePSI: parseFloat(bikeForm.tirePSI),
+        tireType: bikeForm.tireType,
+        driveMode: bikeForm.driveMode
+      }
+    };
+
+    let updatedBikes = [...(profileData.bikes || [])];
+    if (editingBike) {
+      updatedBikes = updatedBikes.map(b => b.id === editingBike.id ? newBike : b);
+    } else {
+      updatedBikes.push(newBike);
+    }
+
+    try {
+      await updateDoc(doc(db, "users", profileData.uid), {
+        bikes: updatedBikes
+      });
+      setShowBikeModal(false);
+      setEditingBike(null);
+      alert("Garage updated!");
+    } catch (e) {
+      console.error(e);
+      alert("Failed to save bike.");
+    }
+  };
+
+  const deleteBike = async (bikeId: string) => {
+    if (!profileData || !window.confirm("Delete this bike from your garage?")) return;
+    const updatedBikes = (profileData.bikes || []).filter(b => b.id !== bikeId);
+    try {
+      await updateDoc(doc(db, "users", profileData.uid), {
+        bikes: updatedBikes
+      });
+    } catch (e) { console.error(e); }
+  };
+
+  const openEditBike = (bike: any) => {
+    setEditingBike(bike);
+    setBikeForm({
+      name: bike.name,
+      voltage: bike.specs.voltage.toString(),
+      capacityAh: bike.specs.capacityAh.toString(),
+      motorWatts: bike.specs.motorWatts.toString(),
+      bikeWeightLbs: (bike.specs.bikeWeightLbs || 65).toString(),
+      tirePSI: (bike.specs.tirePSI || 30).toString(),
+      tireType: bike.specs.tireType || 'road',
+      driveMode: bike.specs.driveMode || 'both'
+    });
+    setShowBikeModal(true);
+  };
+
   // Profile Edit states
   const [editHomeRegion, setEditHomeRegion] = useState('');
   const [editBirthday, setEditBirthday] = useState('');
@@ -177,6 +253,65 @@ const Profile: React.FC = () => {
            </div>
         </section>
 
+        {/* My Garage Section */}
+        <section style={{ marginBottom: '4rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+            <h2 style={{ color: 'white', fontSize: '1.2rem', margin: 0 }}>My Garage</h2>
+            {canEdit && (
+              <button 
+                onClick={() => { setEditingBike(null); setBikeForm({ name: '', voltage: '48', capacityAh: '15', motorWatts: '750', bikeWeightLbs: '65', tirePSI: '30', tireType: 'road', driveMode: 'both' }); setShowBikeModal(true); }}
+                style={{ background: 'none', border: '1px solid #ff6600', color: '#ff6600', padding: '0.4rem 1rem', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer' }}
+              >
+                + Add Bike
+              </button>
+            )}
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.2rem' }}>
+            {!profileData.bikes || profileData.bikes.length === 0 ? (
+              <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '3rem', background: '#1a1a1a', borderRadius: '24px', border: '1px dashed #333' }}>
+                <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🚲</div>
+                <p style={{ color: '#666', margin: 0 }}>No bikes in the garage yet.</p>
+              </div>
+            ) : (
+              profileData.bikes.map((bike: any) => (
+                <div key={bike.id} style={{ background: '#1a1a1a', padding: '1.5rem', borderRadius: '24px', border: '1px solid #333', position: 'relative', overflow: 'hidden' }}>
+                  <div style={{ position: 'absolute', top: 0, right: 0, padding: '1rem', display: 'flex', gap: '0.5rem' }}>
+                    {canEdit && (
+                      <>
+                        <button onClick={() => openEditBike(bike)} style={{ background: '#222', border: 'none', color: '#ffcc00', padding: '0.4rem', borderRadius: '8px', cursor: 'pointer', fontSize: '0.8rem' }}>✏️</button>
+                        <button onClick={() => deleteBike(bike.id)} style={{ background: '#222', border: 'none', color: '#ff4444', padding: '0.4rem', borderRadius: '8px', cursor: 'pointer', fontSize: '0.8rem' }}>🗑️</button>
+                      </>
+                    )}
+                  </div>
+
+                  <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>⚡</div>
+                  <h3 style={{ color: 'white', margin: '0 0 0.5rem 0', fontSize: '1.1rem' }}>{bike.name}</h3>
+                  
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8rem', marginTop: '1rem' }}>
+                    <div style={{ background: '#121212', padding: '0.6rem', borderRadius: '12px', textAlign: 'center' }}>
+                      <div style={{ color: '#555', fontSize: '0.6rem', textTransform: 'uppercase' }}>Voltage</div>
+                      <div style={{ color: 'white', fontWeight: 'bold', fontSize: '0.9rem' }}>{bike.specs.voltage}V</div>
+                    </div>
+                    <div style={{ background: '#121212', padding: '0.6rem', borderRadius: '12px', textAlign: 'center' }}>
+                      <div style={{ color: '#555', fontSize: '0.6rem', textTransform: 'uppercase' }}>Capacity</div>
+                      <div style={{ color: 'white', fontWeight: 'bold', fontSize: '0.9rem' }}>{bike.specs.capacityAh}Ah</div>
+                    </div>
+                    <div style={{ background: '#121212', padding: '0.6rem', borderRadius: '12px', textAlign: 'center' }}>
+                      <div style={{ color: '#555', fontSize: '0.6rem', textTransform: 'uppercase' }}>Motor</div>
+                      <div style={{ color: 'white', fontWeight: 'bold', fontSize: '0.9rem' }}>{bike.specs.motorWatts}W</div>
+                    </div>
+                    <div style={{ background: '#121212', padding: '0.6rem', borderRadius: '12px', textAlign: 'center' }}>
+                      <div style={{ color: '#555', fontSize: '0.6rem', textTransform: 'uppercase' }}>Weight</div>
+                      <div style={{ color: 'white', fontWeight: 'bold', fontSize: '0.9rem' }}>{bike.specs.bikeWeightLbs || 65} lbs</div>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </section>
+
         {/* Reviews Section */}
         <section style={{ marginBottom: '4rem' }}>
           <h2 style={{ color: 'white', fontSize: '1.2rem', marginBottom: '1.5rem' }}>Rider Reviews</h2>
@@ -238,6 +373,75 @@ const Profile: React.FC = () => {
         </div>
       )}
       
+      {showBikeModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.9)', zIndex: 5000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+          <div style={{ background: '#1a1a1a', width: '100%', maxWidth: '500px', padding: '2.5rem', borderRadius: '24px', border: '1px solid #333', maxHeight: '90vh', overflowY: 'auto' }}>
+            <h2 style={{ color: 'white', marginTop: 0 }}>{editingBike ? 'Edit Bike' : 'Add to Garage'}</h2>
+            
+            <div className="form-group" style={{ marginTop: '1.5rem' }}>
+              <label>Bike Nickname</label>
+              <input type="text" value={bikeForm.name} onChange={e => setBikeForm({ ...bikeForm, name: e.target.value })} placeholder="e.g. My Fast Commuter" />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1.5rem' }}>
+              <div className="form-group">
+                <label>Voltage (V)</label>
+                <select value={bikeForm.voltage} onChange={e => setBikeForm({ ...bikeForm, voltage: e.target.value })} style={{ background: '#222', color: 'white', border: '1px solid #333', padding: '0.8rem', borderRadius: '12px', width: '100%' }}>
+                  <option value="36">36V</option>
+                  <option value="48">48V</option>
+                  <option value="52">52V</option>
+                  <option value="60">60V</option>
+                  <option value="72">72V</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Capacity (Ah)</label>
+                <input type="number" value={bikeForm.capacityAh} onChange={e => setBikeForm({ ...bikeForm, capacityAh: e.target.value })} />
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1.5rem' }}>
+              <div className="form-group">
+                <label>Motor (Watts)</label>
+                <input type="number" value={bikeForm.motorWatts} onChange={e => setBikeForm({ ...bikeForm, motorWatts: e.target.value })} />
+              </div>
+              <div className="form-group">
+                <label>Bike Weight (lbs)</label>
+                <input type="number" value={bikeForm.bikeWeightLbs} onChange={e => setBikeForm({ ...bikeForm, bikeWeightLbs: e.target.value })} />
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1.5rem' }}>
+              <div className="form-group">
+                <label>Tire PSI</label>
+                <input type="number" value={bikeForm.tirePSI} onChange={e => setBikeForm({ ...bikeForm, tirePSI: e.target.value })} />
+              </div>
+              <div className="form-group">
+                <label>Tire Type</label>
+                <select value={bikeForm.tireType} onChange={e => setBikeForm({ ...bikeForm, tireType: e.target.value as any })} style={{ background: '#222', color: 'white', border: '1px solid #333', padding: '0.8rem', borderRadius: '12px', width: '100%' }}>
+                  <option value="road">Road / Slicks</option>
+                  <option value="knobby">Knobby / Off-road</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="form-group" style={{ marginTop: '1.5rem' }}>
+              <label>Drive Mode</label>
+              <select value={bikeForm.driveMode} onChange={e => setBikeForm({ ...bikeForm, driveMode: e.target.value as any })} style={{ background: '#222', color: 'white', border: '1px solid #333', padding: '0.8rem', borderRadius: '12px', width: '100%' }}>
+                <option value="both">PAS + Throttle</option>
+                <option value="pas_only">PAS Only (Class 1/3)</option>
+                <option value="throttle_only">Throttle Only</option>
+              </select>
+            </div>
+
+            <div style={{ display: 'flex', gap: '1rem', marginTop: '2.5rem' }}>
+              <button onClick={() => setShowBikeModal(false)} style={{ flex: 1, padding: '1rem', background: '#333', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold' }}>Cancel</button>
+              <button onClick={handleSaveBike} style={{ flex: 2, padding: '1rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold' }}>Save Bike</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
       {showInstallTutorial && <InstallTutorial onClose={() => setShowInstallTutorial(false)} />}
     </div>
