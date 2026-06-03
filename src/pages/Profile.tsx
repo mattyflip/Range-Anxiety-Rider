@@ -34,7 +34,8 @@ const Profile: React.FC = () => {
     bikeWeightLbs: '65',
     tirePSI: '30',
     tireType: 'road' as 'road' | 'knobby',
-    driveMode: 'both' as 'throttle_only' | 'pas_only' | 'both'
+    driveMode: 'both' as 'throttle_only' | 'pas_only' | 'both',
+    targetSpeedMph: '20'
   });
 
   const handleSaveBike = async () => {
@@ -50,7 +51,8 @@ const Profile: React.FC = () => {
         bikeWeightLbs: parseFloat(bikeForm.bikeWeightLbs),
         tirePSI: parseFloat(bikeForm.tirePSI),
         tireType: bikeForm.tireType,
-        driveMode: bikeForm.driveMode
+        driveMode: bikeForm.driveMode,
+        targetSpeedMph: parseFloat(bikeForm.targetSpeedMph)
       }
     };
 
@@ -94,7 +96,8 @@ const Profile: React.FC = () => {
       bikeWeightLbs: (bike.specs.bikeWeightLbs || 65).toString(),
       tirePSI: (bike.specs.tirePSI || 30).toString(),
       tireType: bike.specs.tireType || 'road',
-      driveMode: bike.specs.driveMode || 'both'
+      driveMode: bike.specs.driveMode || 'both',
+      targetSpeedMph: (bike.specs.targetSpeedMph || 20).toString()
     });
     setShowBikeModal(true);
   };
@@ -259,7 +262,7 @@ const Profile: React.FC = () => {
             <h2 style={{ color: 'white', fontSize: '1.2rem', margin: 0 }}>My Garage</h2>
             {canEdit && (
               <button 
-                onClick={() => { setEditingBike(null); setBikeForm({ name: '', voltage: '48', capacityAh: '15', motorWatts: '750', bikeWeightLbs: '65', tirePSI: '30', tireType: 'road', driveMode: 'both' }); setShowBikeModal(true); }}
+                onClick={() => { setEditingBike(null); setBikeForm({ name: '', voltage: '48', capacityAh: '15', motorWatts: '750', bikeWeightLbs: '65', tirePSI: '30', tireType: 'road', driveMode: 'both', targetSpeedMph: '20' }); setShowBikeModal(true); }}
                 style={{ background: 'none', border: '1px solid #ff6600', color: '#ff6600', padding: '0.4rem 1rem', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer' }}
               >
                 + Add Bike
@@ -432,6 +435,11 @@ const Profile: React.FC = () => {
                 <option value="pas_only">PAS Only (Class 1/3)</option>
                 <option value="throttle_only">Throttle Only</option>
               </select>
+            </div>
+
+            <div className="form-group" style={{ marginTop: '1.5rem' }}>
+              <label>Target Average Speed (mph)</label>
+              <input type="number" value={bikeForm.targetSpeedMph} onChange={e => setBikeForm({ ...bikeForm, targetSpeedMph: e.target.value })} style={{ width: '100%', padding: '0.8rem', background: '#222', border: '1px solid #333', borderRadius: '12px', color: '#ff6600', fontWeight: 'bold' }} />
             </div>
 
             <div style={{ display: 'flex', gap: '1rem', marginTop: '2.5rem' }}>

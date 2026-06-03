@@ -1227,8 +1227,7 @@ function MapHome() {
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem', marginTop: '1rem' }}>
             <section className="form-group"><label>Target Average Speed (mph)</label>
-              <input type="range" min="5" max="60" value={targetSpeed} onChange={e => { setTargetSpeed(parseInt(e.target.value)); markDirty(); }} style={{ width: '100%' }} />
-              <div style={{ textAlign: 'center', color: '#ff6600', fontWeight: 'bold' }}>{targetSpeed} MPH</div>
+              <input type="number" min="1" max="100" value={targetSpeed} onChange={e => { setTargetSpeed(parseFloat(e.target.value) || 0); markDirty(); }} style={{ width: '100%', padding: '0.8rem', background: '#111', border: '1px solid #333', borderRadius: '12px', color: '#ff6600', fontWeight: 'bold', fontSize: '1.2rem', textAlign: 'center' }} />
             </section>
           </div>
 

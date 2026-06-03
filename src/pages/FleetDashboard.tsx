@@ -746,6 +746,10 @@ const FleetDashboard = () => {
                    <label style={{ display: 'block', color: '#666', fontSize: '0.7rem', marginBottom: '0.3rem' }}>Bike Weight (lbs)</label>
                    <input type="number" value={bikeForm.bikeWeightLbs} onChange={e => setBikeForm({...bikeForm, bikeWeightLbs: e.target.value})} style={{ width: '100%', padding: '0.8rem', background: '#111', border: '1px solid #333', borderRadius: '8px', color: 'white' }} />
                  </div>
+                 <div>
+                   <label style={{ display: 'block', color: '#666', fontSize: '0.7rem', marginBottom: '0.3rem' }}>Target Speed (mph)</label>
+                   <input type="number" value={bikeForm.targetSpeedMph} onChange={e => setBikeForm({...bikeForm, targetSpeedMph: e.target.value})} style={{ width: '100%', padding: '0.8rem', background: '#111', border: '1px solid #333', borderRadius: '8px', color: '#ff6600', fontWeight: 'bold' }} />
+                 </div>
                  <div style={{ gridColumn: 'span 2' }}>
                    <label style={{ display: 'block', color: '#666', fontSize: '0.7rem', marginBottom: '0.3rem' }}>Bike Photo</label>
                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', background: '#111', padding: '1rem', borderRadius: '12px', border: '1px dashed #333' }}>
