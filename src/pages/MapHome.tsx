@@ -132,6 +132,7 @@ function MapHome() {
   const [mapSnapshot, setMapSnapshot] = useState<string | null>(null);
   const [settingsDirty, setSettingsDirty] = useState(true);
   const [userLocation, setUserLocation] = useState<google.maps.LatLngLiteral | null>(null);
+  const [mapCenter, setMapCenter] = useState<google.maps.LatLngLiteral>(center);
   const [loading, setLoading] = useState(true);
   const [showRouteReplay, setShowRouteReplay] = useState(false);
 
@@ -326,8 +327,9 @@ function MapHome() {
         const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         setUserLocation(loc);
         if (mapRef.current && userRole !== 'fleet') {
+          setMapCenter(loc);
           mapRef.current.panTo(loc);
-          mapRef.current.setZoom(13);
+          mapRef.current.setZoom(11); // 10 mile radius approx
         }
       }, (err) => {
         console.warn("Initial auto-centering failed:", err.message);
@@ -542,7 +544,7 @@ function MapHome() {
       const route = response.routes[selectedRouteIndex];
       const leg = route.legs[currentLegIndex];
       const step = leg.steps[currentStepIndex];
-      if (mapRef.current) { mapRef.current.panTo(uLoc); }
+      // Note: Continuous panTo removed to allow free movement as requested
       const endLoc = { lat: step.end_location.lat(), lng: step.end_location.lng() };
       const distMeters = google.maps.geometry.spherical.computeDistanceBetween(new google.maps.LatLng(uLoc.lat, uLoc.lng), new google.maps.LatLng(endLoc.lat, endLoc.lng));
       const distFeet = distMeters * 3.28084;
@@ -1019,8 +1021,9 @@ function MapHome() {
         const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         setUserLocation(loc);
         if (mapRef.current) {
+          setMapCenter(loc);
           mapRef.current.panTo(loc);
-          mapRef.current.setZoom(15);
+          mapRef.current.setZoom(11); // 10 mile radius approx
         }
       }, (err) => {
         alert("Location error: " + err.message);
@@ -1353,9 +1356,22 @@ function MapHome() {
 
           <GoogleMap 
             mapContainerStyle={{ width: '100%', height: '100%' }} 
-            center={userRole === 'fleet' ? (shopLocation || center) : (userLocation || center)} 
+            center={userRole === 'fleet' ? (shopLocation || center) : mapCenter} 
             zoom={12} 
             onLoad={onMapLoad}
+            onIdle={() => {
+              if (mapRef.current && userRole !== 'fleet') {
+                const newCenter = mapRef.current.getCenter();
+                if (newCenter) {
+                  const lat = newCenter.lat();
+                  const lng = newCenter.lng();
+                  // Only update if it's different enough to avoid unnecessary re-renders
+                  if (Math.abs(mapCenter.lat - lat) > 0.0001 || Math.abs(mapCenter.lng - lng) > 0.0001) {
+                    setMapCenter({ lat, lng });
+                  }
+                }
+              }
+            }}
             options={{ mapId: import.meta.env.VITE_GOOGLE_MAP_ID || 'DEMO_MAP_ID', disableDefaultUI: true }}
           >
             {rangePolygonPoints && (
