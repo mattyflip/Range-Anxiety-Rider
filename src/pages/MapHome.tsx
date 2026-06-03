@@ -1482,8 +1482,27 @@ function MapHome() {
             )}
           </GoogleMap>
 
-          <div style={{ position: 'absolute', bottom: '10px', left: '50%', transform: 'translateX(-50%)', backgroundColor: 'rgba(0,0,0,0.85)', color: '#888', fontSize: '0.65rem', padding: '8px 16px', borderRadius: '20px', zIndex: 1000, whiteSpace: 'nowrap', border: '1px solid #333', display: 'flex', gap: '12px', alignItems: 'center', boxShadow: '0 4px 15px rgba(0,0,0,0.5)', backdropFilter: 'blur(5px)' }}>
-            <span>⚡ Estimates only. Actual range varies with conditions. Never ride beyond your physical limits.</span>
+          <div style={{ 
+            position: 'absolute', 
+            bottom: '10px', 
+            left: '50%', 
+            transform: 'translateX(-50%)', 
+            backgroundColor: 'rgba(0,0,0,0.85)', 
+            color: '#888', 
+            fontSize: '0.65rem', 
+            padding: '8px 16px', 
+            borderRadius: '20px', 
+            zIndex: 1000, 
+            width: '90%',
+            maxWidth: '500px',
+            border: '1px solid #333', 
+            display: 'flex', 
+            gap: '12px', 
+            alignItems: 'center', 
+            boxShadow: '0 4px 15px rgba(0,0,0,0.5)', 
+            backdropFilter: 'blur(5px)' 
+          }}>
+            <span style={{ flex: 1 }}>⚡ Estimates only. Actual range varies with conditions. Never ride beyond your physical limits.</span>
             <div style={{ display: 'flex', gap: '8px', borderLeft: '1px solid #444', paddingLeft: '12px' }}>
               <span onClick={() => setShowToSPage(true)} style={{ color: '#ff6600', cursor: 'pointer', textDecoration: 'underline' }}>TOS</span>
               <span onClick={() => setShowPrivacyPage(true)} style={{ color: '#ff6600', cursor: 'pointer', textDecoration: 'underline' }}>Privacy</span>
