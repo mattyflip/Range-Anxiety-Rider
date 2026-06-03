@@ -152,6 +152,19 @@ const ThreadView: React.FC = () => {
           await updateDoc(docRef, { score: increment(2), downvotedBy: arrayRemove(userId), upvotedBy: arrayUnion(userId) });
         } else {
           await updateDoc(docRef, { score: increment(1), upvotedBy: arrayUnion(userId) });
+          
+          // Notify author of upvote
+          if (target.authorId && target.authorId !== userId) {
+            await createNotification(
+              target.authorId,
+              userId,
+              userData?.username || "Rider",
+              'upvote',
+              threadId,
+              '',
+              isThread ? (target as Thread).title : (target as ForumComment).text
+            );
+          }
         }
       } else {
         if (hasDownvoted) {

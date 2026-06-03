@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../../firebase';
 import { doc, getDoc, setDoc, deleteDoc, collection, getCountFromServer, serverTimestamp } from 'firebase/firestore';
+import { createNotification } from '../../utils/notifications';
 
 interface LikeWidgetProps {
   post: any;
   user: any;
+  userData?: any;
   onAuthNeeded: () => void;
 }
 
-const LikeWidget: React.FC<LikeWidgetProps> = ({ post, user, onAuthNeeded }) => {
+const LikeWidget: React.FC<LikeWidgetProps> = ({ post, user, userData, onAuthNeeded }) => {
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
 
@@ -33,6 +35,19 @@ const LikeWidget: React.FC<LikeWidgetProps> = ({ post, user, onAuthNeeded }) => 
         await deleteDoc(doc(db, "posts", post.id, "likes", user.uid));
       } else {
         await setDoc(doc(db, "posts", post.id, "likes", user.uid), { timestamp: serverTimestamp() });
+        
+        // Notify post author
+        if (post.authorId && post.authorId !== user.uid) {
+          await createNotification(
+            post.authorId,
+            user.uid,
+            userData?.username || "Rider",
+            'like',
+            post.id,
+            '',
+            post.caption
+          );
+        }
       }
     } catch (e) {
       console.error("Like error:", e);

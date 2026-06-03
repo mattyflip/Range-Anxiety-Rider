@@ -16,11 +16,12 @@ interface Comment {
 interface CommentModalProps {
   postId: string;
   postAuthorId?: string;
+  postCaption?: string;
   onClose: () => void;
   user: any;
 }
 
-const CommentModal: React.FC<CommentModalProps> = ({ postId, postAuthorId, onClose, user: providedUser }) => {
+const CommentModal: React.FC<CommentModalProps> = ({ postId, postAuthorId, postCaption, onClose, user: providedUser }) => {
   const { user, userData } = useUserData(providedUser);
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
@@ -64,7 +65,8 @@ const CommentModal: React.FC<CommentModalProps> = ({ postId, postAuthorId, onClo
           userData.username || "Rider",
           'comment',
           postId,
-          newComment
+          newComment,
+          postCaption
         );
       }
 

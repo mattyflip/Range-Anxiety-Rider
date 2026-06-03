@@ -296,7 +296,7 @@ const Feed: React.FC = () => {
 
                 <div style={{ padding: '1.2rem' }}>
                   <div style={{ display: 'flex', gap: '1.2rem', marginBottom: '1rem', alignItems: 'center' }}>
-                    <LikeWidget post={post} user={user} onAuthNeeded={() => setShowAuthModal(true)} />
+                    <LikeWidget post={post} user={user} userData={userData} onAuthNeeded={() => setShowAuthModal(true)} />
                     
                     {post.commentsEnabled !== false && (
                       <button 
@@ -420,7 +420,7 @@ const Feed: React.FC = () => {
                   {selectedFullPost.caption}
                 </p>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '1rem' }}>
-                   <span style={{ color: '#ff6600', fontWeight: 'bold' }}><LikeWidget post={selectedFullPost} user={user} onAuthNeeded={() => setShowAuthModal(true)} /></span>
+                   <span style={{ color: '#ff6600', fontWeight: 'bold' }}><LikeWidget post={selectedFullPost} user={user} userData={userData} onAuthNeeded={() => setShowAuthModal(true)} /></span>
                    {selectedFullPost.tripData && (
                      <button 
                        onClick={() => handleLoadRoute(selectedFullPost)}
@@ -442,6 +442,7 @@ const Feed: React.FC = () => {
         <CommentModal 
           postId={activeCommentPost.id} 
           postAuthorId={activeCommentPost.authorId}
+          postCaption={activeCommentPost.caption}
           user={user} 
           onClose={() => setActiveCommentPost(null)} 
         />

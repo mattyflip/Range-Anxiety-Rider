@@ -9,17 +9,21 @@ export const createNotification = async (
   senderUsername: string,
   type: NotificationType,
   relatedId: string, // postId, threadId, or reviewId
-  content?: string
+  content?: string,
+  relatedText?: string
 ) => {
   if (targetUserId === senderId) return; // Don't notify yourself
 
   try {
     await addDoc(collection(db, `users/${targetUserId}/notifications`), {
-      senderId,
-      senderUsername,
+      fromId: senderId,
+      fromName: senderUsername,
+      senderId,       // keep for compat
+      senderUsername, // keep for compat
       type,
       relatedId,
       content: content || '',
+      relatedText: relatedText || '',
       read: false,
       createdAt: serverTimestamp(),
     });

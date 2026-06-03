@@ -175,9 +175,11 @@ export interface Notification {
   type: 'like' | 'comment' | 'follow' | 'moderation' | 'fleet_alert' | 'rental_request' | 'upvote' | 'review' | 'rental_approved' | 'rental_declined';
   fromId: string;
   fromName: string;
-  senderUsername?: string;
-  content?: string;
-  text: string;
+  senderId?: string;       // For backward compat or mapping
+  senderUsername?: string; // For backward compat or mapping
+  content?: string;        // The actual comment text or reason
+  relatedText?: string;   // The snippet of the original post/thread title
+  text: string;            // The fallback display text
   linkId?: string;
   read: boolean;
   createdAt: Timestamp;

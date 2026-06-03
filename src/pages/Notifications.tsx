@@ -28,7 +28,13 @@ const Notifications: React.FC = () => {
     const unsub = onSnapshot(q, (snap) => {
       const notifs: Notification[] = [];
       snap.forEach(d => {
-        notifs.push({ id: d.id, ...d.data() } as Notification);
+        const data = d.data();
+        notifs.push({ 
+          id: d.id, 
+          ...data,
+          fromName: data.fromName || data.senderUsername || "Rider",
+          fromId: data.fromId || data.senderId || ""
+        } as Notification);
       });
       setNotifications(notifs);
       setLoading(false);
@@ -134,19 +140,34 @@ const Notifications: React.FC = () => {
                 <div style={{ flex: 1 }}>
                   <div style={{ color: 'white', fontSize: '1rem', lineHeight: '1.4' }}>
                     {n.type === 'rental_request' || n.type === 'rental_approved' || n.type === 'fleet_alert' ? (
-                      <span>{n.text}</span>
+                      <span>{n.text || n.content}</span>
                     ) : (
                       <>
                         <span style={{ fontWeight: 'bold' }}>{n.fromName}</span>
                         {n.type === 'like' && ' liked your post'}
                         {n.type === 'comment' && ' commented on your post'}
-                        {n.type === 'upvote' && ' upvoted your thread'}
+                        {n.type === 'upvote' && (n.relatedText?.length ? ' upvoted your thread' : ' upvoted your comment')}
                         {n.type === 'review' && ' left you a rider review'}
-                        {n.type === 'moderation' && ` moderated your content: ${n.text}`}
+                        {n.type === 'moderation' && ` moderated your content: ${n.text || n.content}`}
                       </>
                     )}
                   </div>
-                  <div style={{ color: '#666', fontSize: '0.75rem', marginTop: '0.5rem' }}>
+                  
+                  {/* Context Snippet */}
+                  {n.relatedText && (
+                    <div style={{ color: '#888', fontSize: '0.85rem', marginTop: '0.3rem', fontStyle: 'italic', borderLeft: '2px solid #333', paddingLeft: '0.8rem' }}>
+                      "{n.relatedText.length > 60 ? n.relatedText.substring(0, 60) + '...' : n.relatedText}"
+                    </div>
+                  )}
+
+                  {/* Comment Content */}
+                  {n.type === 'comment' && n.content && (
+                    <div style={{ color: '#bbb', fontSize: '0.9rem', marginTop: '0.5rem', background: '#121212', padding: '0.8rem', borderRadius: '12px' }}>
+                      {n.content}
+                    </div>
+                  )}
+
+                  <div style={{ color: '#444', fontSize: '0.7rem', marginTop: '0.6rem', fontWeight: 'bold' }}>
                     {n.createdAt?.toDate().toLocaleString()}
                   </div>
                 </div>

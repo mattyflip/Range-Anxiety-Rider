@@ -122,7 +122,11 @@ const CommunityView: React.FC = () => {
              thread.authorId,
              user?.uid || 'guest',
              userData?.username || "Rider",
-             'upvote', thread.id);
+             'upvote', 
+             thread.id,
+             '',
+             thread.title
+           );
         }
 
         if (hasUpvoted) {
