@@ -1016,6 +1016,11 @@ function MapHome() {
   const onMapLoad = useCallback((map: google.maps.Map) => { mapRef.current = map; }, []);
 
   const locateMe = () => {
+    if (!window.isSecureContext && window.location.hostname !== 'localhost') {
+      alert("Location services require a secure connection (HTTPS). Please ensure you are using a secure URL.");
+      return;
+    }
+
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition((pos) => {
         const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
@@ -1026,8 +1031,16 @@ function MapHome() {
           mapRef.current.setZoom(11); // 10 mile radius approx
         }
       }, (err) => {
-        alert("Location error: " + err.message);
-      }, { enableHighAccuracy: true });
+        if (err.code === 1) { // PERMISSION_DENIED
+          alert("Location access denied. Please check your browser settings and ensure you've granted permission for this site to access your location.");
+        } else if (err.code === 3) { // TIMEOUT
+          alert("Location request timed out. Try again or check your device settings.");
+        } else {
+          alert("Location error: " + err.message);
+        }
+      }, { enableHighAccuracy: true, timeout: 10000 });
+    } else {
+      alert("Geolocation is not supported by your browser.");
     }
   };
 
