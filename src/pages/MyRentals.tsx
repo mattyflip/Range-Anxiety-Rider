@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { db } from '../firebase';
-import { collection, query, where, onSnapshot, doc, updateDoc, orderBy } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 import NavBar from '../shared/ui/NavBar';
 import SEO from '../shared/ui/SEO';
 import AuthModal from '../features/auth/AuthModal';
@@ -20,7 +20,7 @@ const STATUS_CONFIG: Record<RentalStatus, { label: string; color: string; bg: st
 
 const MyRentals: React.FC = () => {
   const navigate = useNavigate();
-  const { user, userData, loading: authLoading } = useUserData();
+  const { user, loading: authLoading } = useUserData();
   const [rentals, setRentals] = useState<RentalRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAuthModal, setShowAuthModal] = useState(false);

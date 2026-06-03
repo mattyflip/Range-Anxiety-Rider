@@ -560,9 +560,9 @@ const FleetDashboard = () => {
                          ASSIGN RIDER
                        </button>
                        <button 
-                         onClick={async () => {
-                           if(userData?.orgId && window.confirm("Reject this request?")) {
-                             await updateDoc(doc(db, `organizations/${userData.orgId}/rental_requests`, req.id), { status: 'rejected' });
+                         onClick={() => {
+                           if(window.confirm("Reject this request?")) {
+                             handleDeclineRequest(req);
                            }
                          }}
                          style={{ padding: '0.8rem', background: '#333', color: '#ff4444', border: 'none', borderRadius: '10px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem' }}
