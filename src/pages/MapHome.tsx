@@ -1231,18 +1231,18 @@ function MapHome() {
           </section>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-            <section className="form-group"><label>Voltage</label><input type="number" disabled={isRenting} style={{ opacity: isRenting ? 0.5 : 1 }} value={specs.voltage} onChange={e => { setSpecs(p => ({ ...p, voltage: parseFloat(e.target.value) || '' })); markDirty(); }} /></section>
-            <section className="form-group"><label>Capacity (Ah)</label><input type="number" disabled={isRenting} style={{ opacity: isRenting ? 0.5 : 1 }} value={specs.capacityAh} onChange={e => { setSpecs(p => ({ ...p, capacityAh: parseFloat(e.target.value) || '' })); markDirty(); }} /></section>
+            <section className="form-group"><label>Voltage</label><input type="number" disabled={isRenting} style={{ opacity: isRenting ? 0.5 : 1 }} value={specs.voltage} onChange={e => { setSpecs(p => ({ ...p, voltage: e.target.value === '' ? '' : parseFloat(e.target.value) })); markDirty(); }} /></section>
+            <section className="form-group"><label>Capacity (Ah)</label><input type="number" disabled={isRenting} style={{ opacity: isRenting ? 0.5 : 1 }} value={specs.capacityAh} onChange={e => { setSpecs(p => ({ ...p, capacityAh: e.target.value === '' ? '' : parseFloat(e.target.value) })); markDirty(); }} /></section>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
-            <section className="form-group"><label>Bike Weight (lbs)</label><input type="number" disabled={isRenting} style={{ opacity: isRenting ? 0.5 : 1 }} value={specs.bikeWeightLbs} onChange={e => { setSpecs(p => ({ ...p, bikeWeightLbs: parseFloat(e.target.value) || '' })); markDirty(); }} /></section>
-            <section className="form-group"><label>Rider Weight (lbs)</label><input type="number" value={riderWeight} onChange={e => { setRiderWeight(parseFloat(e.target.value) || ''); markDirty(); }} /></section>
+            <section className="form-group"><label>Bike Weight (lbs)</label><input type="number" disabled={isRenting} style={{ opacity: isRenting ? 0.5 : 1 }} value={specs.bikeWeightLbs} onChange={e => { setSpecs(p => ({ ...p, bikeWeightLbs: e.target.value === '' ? '' : parseFloat(e.target.value) })); markDirty(); }} /></section>
+            <section className="form-group"><label>Rider Weight (lbs)</label><input type="number" value={riderWeight} onChange={e => { setRiderWeight(e.target.value === '' ? '' : parseFloat(e.target.value)); markDirty(); }} /></section>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
-            <section className="form-group"><label>Nominal Motor Rating (Watts)</label><input type="number" disabled={isRenting} style={{ opacity: isRenting ? 0.5 : 1 }} value={specs.motorWatts} onChange={e => { setSpecs(p => ({ ...p, motorWatts: parseFloat(e.target.value) || '' })); markDirty(); }} /></section>
-            <section className="form-group"><label>Tire PSI</label><input type="number" disabled={isRenting} style={{ opacity: isRenting ? 0.5 : 1 }} value={specs.tirePSI || 30} onChange={e => { setSpecs(p => ({ ...p, tirePSI: parseFloat(e.target.value) || '' })); markDirty(); }} /></section>
+            <section className="form-group"><label>Nominal Motor Rating (Watts)</label><input type="number" disabled={isRenting} style={{ opacity: isRenting ? 0.5 : 1 }} value={specs.motorWatts} onChange={e => { setSpecs(p => ({ ...p, motorWatts: e.target.value === '' ? '' : parseFloat(e.target.value) })); markDirty(); }} /></section>
+            <section className="form-group"><label>Tire PSI</label><input type="number" disabled={isRenting} style={{ opacity: isRenting ? 0.5 : 1 }} value={specs.tirePSI || 30} onChange={e => { setSpecs(p => ({ ...p, tirePSI: e.target.value === '' ? '' : parseFloat(e.target.value) })); markDirty(); }} /></section>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem', marginTop: '1rem' }}>
@@ -1256,7 +1256,7 @@ function MapHome() {
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem', marginTop: '1rem' }}>
             <section className="form-group"><label>Target Average Speed (mph)</label>
-              <input type="number" min="1" max="100" value={targetSpeed} onChange={e => { setTargetSpeed(parseFloat(e.target.value) || 0); markDirty(); }} style={{ width: '100%', padding: '0.8rem', background: '#111', border: '1px solid #333', borderRadius: '12px', color: '#ff6600', fontWeight: 'bold', fontSize: '1.2rem', textAlign: 'center' }} />
+              <input type="number" min="1" max="100" value={targetSpeed} onChange={e => { setTargetSpeed(e.target.value === '' ? '' : parseFloat(e.target.value)); markDirty(); }} style={{ width: '100%', padding: '0.8rem', background: '#111', border: '1px solid #333', borderRadius: '12px', color: '#ff6600', fontWeight: 'bold', fontSize: '1.2rem', textAlign: 'center' }} />
             </section>
           </div>
 
@@ -1295,7 +1295,7 @@ function MapHome() {
               <button className={batteryInputMode === 'percent' ? 'active' : ''} onClick={() => handleToggleBatteryMode('percent')}>%</button>
               <button className={batteryInputMode === 'voltage' ? 'active' : ''} onClick={() => handleToggleBatteryMode('voltage')}>V</button>
             </div>
-            <input type="number" value={batteryInputMode === 'percent' ? startBattery : startVoltage} onChange={e => { if (batteryInputMode === 'percent') setStartBattery(parseFloat(e.target.value) || ''); else setStartVoltage(parseFloat(e.target.value) || ''); markDirty(); }} />
+            <input type="number" value={batteryInputMode === 'percent' ? startBattery : startVoltage} onChange={e => { if (batteryInputMode === 'percent') setStartBattery(e.target.value === '' ? '' : parseFloat(e.target.value)); else setStartVoltage(e.target.value === '' ? '' : parseFloat(e.target.value)); markDirty(); }} />
           </section>
 
           <button onClick={handleCalculate} style={{ width: '100%', padding: '1rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold', marginTop: '1rem' }}>UPDATE ROUTE</button>
