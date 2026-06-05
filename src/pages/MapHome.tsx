@@ -709,9 +709,26 @@ function MapHome() {
 
     // --- RANGE POLYGON LOGIC (No Destination Entered) ---
     if (!currentDest.trim()) {
-       const originCoords = currentOrigin.includes(',') 
-         ? { lat: parseFloat(currentOrigin.split(',')[0]), lng: parseFloat(currentOrigin.split(',')[1]) }
-         : userLocation || center;
+       let originCoords = userLocation || center;
+       const parts = currentOrigin.split(',');
+       const parsedLat = parseFloat(parts[0]);
+       const parsedLng = parts.length > 1 ? parseFloat(parts[1]) : NaN;
+       
+       if (!isNaN(parsedLat) && !isNaN(parsedLng)) {
+         originCoords = { lat: parsedLat, lng: parsedLng };
+       } else {
+         try {
+           const geocoder = new window.google.maps.Geocoder();
+           const res = await geocoder.geocode({ address: currentOrigin });
+           if (res.results[0]) {
+             originCoords = { lat: res.results[0].geometry.location.lat(), lng: res.results[0].geometry.location.lng() };
+           }
+         } catch (e) {
+           console.error("Geocoding failed:", e);
+           showToast("Could not locate the starting address.");
+           return;
+         }
+       }
 
        try {
          // 1. Fetch Local Weather for Wind
