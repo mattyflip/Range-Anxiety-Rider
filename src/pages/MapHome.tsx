@@ -1578,7 +1578,7 @@ function MapHome() {
           bike={currentTripBike}
           predictedWh={tripPredictedWh}
           distanceMiles={actualDistanceMiles}
-          avgSpeedMph={targetSpeed}
+          avgSpeedMph={Number(targetSpeed) || 18}
           startBattery={tripStartBattery}
           elevationGainFt={tripElevationGain}
           temperatureC={tripTemperatureC}
