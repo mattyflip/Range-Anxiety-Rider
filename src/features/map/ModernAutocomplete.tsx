@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 interface ModernAutocompleteProps {
   placeholder?: string;
@@ -8,79 +8,78 @@ interface ModernAutocompleteProps {
 }
 
 const ModernAutocomplete: React.FC<ModernAutocompleteProps> = ({ 
+  placeholder = "Enter a location",
   onPlaceSelected,
   value,
   style 
 }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const autocompleteRef = useRef<any>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+  const [inputValue, setInputValue] = useState(value || "");
 
   useEffect(() => {
-    const init = async () => {
-      if (!containerRef.current || !window.google) return;
+    if (!inputRef.current || !window.google) return;
 
-      try {
-        const { PlaceAutocompleteElement } = await google.maps.importLibrary("places") as any;
-        
-        const autocomplete = new PlaceAutocompleteElement();
-        autocompleteRef.current = autocomplete;
-        
-        // Style the inner input to match our app's look
-        // The PlaceAutocompleteElement is a web component, so we might need to inject styles or use parts
-        autocomplete.style.width = '100%';
-        
-        containerRef.current.innerHTML = '';
-        containerRef.current.appendChild(autocomplete);
+    try {
+      // Initialize classic Autocomplete
+      const autocomplete = new window.google.maps.places.Autocomplete(inputRef.current, {
+        fields: ['formatted_address', 'geometry', 'name'],
+      });
+      autocompleteRef.current = autocomplete;
 
-        autocomplete.addEventListener('gmp-placeselect', async (event: any) => {
-          const place = event.place;
-          if (!place) return;
+      // Listen for place selection
+      autocomplete.addListener('place_changed', () => {
+        const place = autocomplete.getPlace();
+        if (!place || !place.geometry) return;
 
-          await place.fetchFields({ fields: ['formattedAddress', 'location'] });
-          
-          if (place.formattedAddress) {
-            onPlaceSelected(
-              place.formattedAddress, 
-              place.location?.lat(), 
-              place.location?.lng()
-            );
-          }
-        });
-
-        // Set initial value if provided
-        if (value) {
-           autocomplete.value = value;
-        }
-
-      } catch (err) {
-        console.error("Failed to load PlaceAutocompleteElement:", err);
+        const address = place.formatted_address || place.name || "";
+        setInputValue(address);
+        onPlaceSelected(
+          address, 
+          place.geometry.location?.lat(), 
+          place.geometry.location?.lng()
+        );
+      });
+    } catch (err) {
+      console.error("Failed to load Autocomplete:", err);
+    }
+    
+    // Cleanup event listeners if component unmounts
+    return () => {
+      if (autocompleteRef.current) {
+        window.google.maps.event.clearInstanceListeners(autocompleteRef.current);
       }
     };
+  }, [onPlaceSelected]);
 
-    init();
-  }, []);
-
-  // Sync value prop changes
+  // Sync external value changes if necessary
   useEffect(() => {
-    if (autocompleteRef.current && value !== undefined) {
-      autocompleteRef.current.value = value;
+    if (value !== undefined && value !== inputValue) {
+      setInputValue(value);
     }
   }, [value]);
 
   return (
-    <div 
-      ref={containerRef}
-      style={{
-        width: '100%',
-        background: '#111',
-        border: '1px solid #333',
-        color: 'white',
-        borderRadius: '8px',
-        fontSize: '0.85rem',
-        overflow: 'hidden',
-        ...style
-      }}
-    />
+    <div style={{ width: '100%', ...style }}>
+      <input 
+        ref={inputRef}
+        type="text"
+        placeholder={placeholder}
+        value={inputValue}
+        onChange={(e) => setInputValue(e.target.value)}
+        style={{
+          width: '100%',
+          background: '#111',
+          border: '1px solid #333',
+          color: 'white',
+          borderRadius: '8px',
+          padding: '12px 16px',
+          fontSize: '0.95rem',
+          outline: 'none',
+          boxSizing: 'border-box'
+        }}
+      />
+    </div>
   );
 };
 
