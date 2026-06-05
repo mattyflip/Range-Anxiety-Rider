@@ -961,13 +961,43 @@ function MapHome() {
         routes: [{
           overview_path: decodedPath.map(p => new google.maps.LatLng(p.lat, p.lng)),
           overview_polyline: { points: encodedPolyline },
-          legs: topRoute.originalRoute.legs.map((leg: any) => ({
-            distance: { value: leg.distanceMeters, text: `${(leg.distanceMeters * 0.000621371).toFixed(1)} mi` },
-            duration: { value: parseInt(leg.duration), text: leg.duration },
-            start_location: new google.maps.LatLng(leg.startLocation.latLng.latitude, leg.startLocation.latLng.longitude),
-            end_location: new google.maps.LatLng(leg.endLocation.latLng.latitude, leg.endLocation.latLng.longitude),
-            steps: [] 
-          }))
+          legs: topRoute.originalRoute.legs.map((leg: any) => {
+            // Parse duration from Routes API v2 format ("1234s" -> seconds)
+            const durationSec = parseInt(leg.duration) || 0;
+            const durationMin = Math.round(durationSec / 60);
+            const durationText = durationMin >= 60
+              ? `${Math.floor(durationMin / 60)}h ${durationMin % 60}m`
+              : `${durationMin} min`;
+
+            // Map Routes API v2 steps to legacy DirectionsService format
+            const mappedSteps = (leg.steps || []).map((step: any) => ({
+              instructions: step.navigationInstruction?.instructions || '',
+              start_location: new google.maps.LatLng(
+                step.startLocation?.latLng?.latitude || 0,
+                step.startLocation?.latLng?.longitude || 0
+              ),
+              end_location: new google.maps.LatLng(
+                step.endLocation?.latLng?.latitude || 0,
+                step.endLocation?.latLng?.longitude || 0
+              ),
+              distance: {
+                value: step.distanceMeters || 0,
+                text: `${((step.distanceMeters || 0) * 0.000621371).toFixed(1)} mi`
+              },
+              duration: {
+                value: parseInt(step.staticDuration || '0'),
+                text: ''
+              }
+            }));
+
+            return {
+              distance: { value: leg.distanceMeters, text: `${(leg.distanceMeters * 0.000621371).toFixed(1)} mi` },
+              duration: { value: durationSec, text: durationText },
+              start_location: new google.maps.LatLng(leg.startLocation.latLng.latitude, leg.startLocation.latLng.longitude),
+              end_location: new google.maps.LatLng(leg.endLocation.latLng.latitude, leg.endLocation.latLng.longitude),
+              steps: mappedSteps
+            };
+          })
         }]
       };
 

@@ -52,7 +52,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     return res.status(200).json({
       wind_speed: data.wind.speed,
-      wind_deg: data.wind.deg,
+      wind_degree: data.wind.deg,
       temp: data.main.temp,
       description: data.weather[0].description
     });
