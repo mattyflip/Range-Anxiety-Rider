@@ -24,6 +24,29 @@ import type { Bike, LiveUnit, Organization, SavedBike, BikeSpecs } from '../type
 import { useUserData } from '../hooks/useUserData';
 import { useBikeLibrary } from '../hooks/useBikeLibrary';
 import { calculateRangePolygon, calculateBurnRate, calculateHeadwind } from '../utils/physics';
+import Toast, { type ToastType } from '../shared/ui/Toast';
+
+interface GoogleRouteStep {
+  navigationInstruction?: { instructions: string };
+  startLocation?: { latLng: { latitude: number; longitude: number } };
+  endLocation?: { latLng: { latitude: number; longitude: number } };
+  distanceMeters?: number;
+  staticDuration?: string;
+}
+
+interface GoogleRouteLeg {
+  duration: string;
+  distanceMeters: number;
+  startLocation: { latLng: { latitude: number; longitude: number } };
+  endLocation: { latLng: { latitude: number; longitude: number } };
+  steps: GoogleRouteStep[];
+}
+
+interface GoogleRoute {
+  polyline: { encodedPolyline: string };
+  distanceMeters: number;
+  legs: GoogleRouteLeg[];
+}
 
 const LIBRARIES: ("places" | "geometry" | "marker")[] = ["places", "geometry", "marker"];
 
@@ -106,8 +129,9 @@ function MapHome() {
   const [throttleMode, setThrottleMode] = useState<'eco' | 'normal' | 'sport'>('normal');
   
   const [response, setResponse] = useState<google.maps.DirectionsResult | null>(null);
-  const [selectedRouteIndex] = useState(0);
+  const [selectedRouteIndex, setSelectedRouteIndex] = useState(0);
   const [metrics, setMetrics] = useState<RouteMetrics | null>(null);
+  const [allAnalyzedRoutes, setAllAnalyzedRoutes] = useState<Array<{ mockResult: google.maps.DirectionsResult & { decodedPath: {lat: number, lng: number}[] }; metrics: RouteMetrics }>>([]);
   const [pois, setPois] = useState<POI[]>([]);
   const [selectedPoi, setSelectedPoi] = useState<POI | null>(null);
   
@@ -136,6 +160,12 @@ function MapHome() {
   const [mapCenter, setMapCenter] = useState<google.maps.LatLngLiteral>(center);
   const [loading, setLoading] = useState(true);
   const [showRouteReplay, setShowRouteReplay] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastType, setToastType] = useState<ToastType>('info');
+  const showToast = useCallback((msg: string, type: ToastType = 'error') => {
+    setToastMessage(msg);
+    setToastType(type);
+  }, []);
 
   // Trip Tracking for Calibration
   const [tripStartBattery, setTripStartBattery] = useState<number>(100);
@@ -340,7 +370,7 @@ function MapHome() {
               mapRef.current.setZoom(14);
            }
         } else if (data && typeof data.origin === 'string' && data.origin.trim()) {
-          const wps = data.waypoints?.filter((w: any) => typeof w === 'string') || [];
+          const wps = data.waypoints?.filter((w: unknown) => typeof w === 'string') || [];
           setLocations([data.origin, data.destination, wps[0] || '', wps[1] || '', wps[2] || '']);
           if (typeof data.isRoundTrip === 'boolean') setIsRoundTrip(data.isRoundTrip);
           setResponse(null);
@@ -372,7 +402,7 @@ function MapHome() {
   useEffect(() => {
     if (!response || !response.routes[selectedRouteIndex]) return;
     const polyline = response.routes[selectedRouteIndex].overview_polyline;
-    const points = (polyline as any).points || polyline;
+    const points = (polyline as { points?: string }).points || polyline;
     fetch(`/api/static-map?polyline=${encodeURIComponent(points)}`).then(r => r.blob()).then(blob => {
       const reader = new FileReader(); reader.onloadend = () => setMapSnapshot(reader.result as string); reader.readAsDataURL(blob);
     }).catch(console.error);
@@ -616,7 +646,7 @@ function MapHome() {
       const chargingPois = await res.json();
       
       if (chargingPois.length === 0) {
-        alert("No charging stations found within 5 miles of your depletion point.");
+        showToast("No charging stations found within 5 miles of your depletion point.");
         setIsFindingRescue(false);
         return;
       }
@@ -626,7 +656,7 @@ function MapHome() {
       setShowChargingRescue(true);
     } catch (err) {
       console.error("Rescue search failed:", err);
-      alert("Failed to find nearby charging stations.");
+      showToast("Failed to find nearby charging stations.");
     } finally {
       setIsFindingRescue(false);
     }
@@ -663,13 +693,15 @@ function MapHome() {
     }
 
     if (!currentOrigin) {
-       alert("Please enable location services or enter a starting point.");
+       showToast("Please enable location services or enter a starting point.");
        return;
     }
 
     setResponse(null); 
     setMetrics(null); 
     setPois([]); 
+    setAllAnalyzedRoutes([]);
+    setSelectedRouteIndex(0);
     setSettingsDirty(false); 
     setShowMobileMenu(false);
 
@@ -745,7 +777,7 @@ function MapHome() {
          }
        } catch (err) {
          console.error("Polygon generation failed:", err);
-         alert("Could not generate range polygon. Check your connection.");
+         showToast("Could not generate range polygon. Check your connection.");
        }
        return;
     }
@@ -796,7 +828,7 @@ function MapHome() {
       }
 
       // Process ALL returned routes through the physics engine to find the most efficient one
-      const analyzedRoutes = (await Promise.all(routesData.routes.map(async (route: any) => {
+      const analyzedRoutes = (await Promise.all(routesData.routes.map(async (route: GoogleRoute) => {
         try {
           const encodedPolyline = route.polyline.encodedPolyline;
           const totalDistanceMeters = route.distanceMeters || 0;
@@ -933,7 +965,7 @@ function MapHome() {
       }
 
       // Sort routes: 1. Most Battery Left, 2. Shortest Distance
-      analyzedRoutes.sort((a: any, b: any) => {
+      analyzedRoutes.sort((a: { metrics: RouteMetrics }, b: { metrics: RouteMetrics }) => {
         if (b.metrics.batteryPercentRemaining !== a.metrics.batteryPercentRemaining) {
           return b.metrics.batteryPercentRemaining - a.metrics.batteryPercentRemaining;
         }
@@ -945,75 +977,84 @@ function MapHome() {
       if (analyzedRoutes.length > 1) analyzedRoutes[1].metrics.label = "Alternative 1";
       if (analyzedRoutes.length > 2) analyzedRoutes[2].metrics.label = "Alternative 2";
 
-      const topRoute = analyzedRoutes[0];
-      const encodedPolyline = topRoute.originalRoute.polyline.encodedPolyline;
-      
-      let decodedPath: any[] = [];
-      try {
-        decodedPath = decode(encodedPolyline).map(([lat, lng]) => ({ lat, lng }));
-      } catch (e) {
-        console.error("Polyline decoding failed for top route:", e);
-        throw new Error("Could not display route. Try a different path.");
-      }
-      
-      const mockResult: any = {
-        request: { travelMode: 'BICYCLING' },
-        routes: [{
-          overview_path: decodedPath.map(p => new google.maps.LatLng(p.lat, p.lng)),
-          overview_polyline: { points: encodedPolyline },
-          legs: topRoute.originalRoute.legs.map((leg: any) => {
-            // Parse duration from Routes API v2 format ("1234s" -> seconds)
-            const durationSec = parseInt(leg.duration) || 0;
-            const durationMin = Math.round(durationSec / 60);
-            const durationText = durationMin >= 60
-              ? `${Math.floor(durationMin / 60)}h ${durationMin % 60}m`
-              : `${durationMin} min`;
-
-            // Map Routes API v2 steps to legacy DirectionsService format
-            const mappedSteps = (leg.steps || []).map((step: any) => ({
-              instructions: step.navigationInstruction?.instructions || '',
-              start_location: new google.maps.LatLng(
-                step.startLocation?.latLng?.latitude || 0,
-                step.startLocation?.latLng?.longitude || 0
-              ),
-              end_location: new google.maps.LatLng(
-                step.endLocation?.latLng?.latitude || 0,
-                step.endLocation?.latLng?.longitude || 0
-              ),
-              distance: {
-                value: step.distanceMeters || 0,
-                text: `${((step.distanceMeters || 0) * 0.000621371).toFixed(1)} mi`
-              },
-              duration: {
-                value: parseInt(step.staticDuration || '0'),
-                text: ''
-              }
-            }));
-
-            return {
-              distance: { value: leg.distanceMeters, text: `${(leg.distanceMeters * 0.000621371).toFixed(1)} mi` },
-              duration: { value: durationSec, text: durationText },
-              start_location: new google.maps.LatLng(leg.startLocation.latLng.latitude, leg.startLocation.latLng.longitude),
-              end_location: new google.maps.LatLng(leg.endLocation.latLng.latitude, leg.endLocation.latLng.longitude),
-              steps: mappedSteps
-            };
-          })
-        }]
+      // Build a mockResult for every analyzed route
+      const buildMockResult = (route: { originalRoute: GoogleRoute }): (google.maps.DirectionsResult & { decodedPath?: {lat: number, lng: number}[] }) | null => {
+        const encodedPolyline = route.originalRoute.polyline.encodedPolyline;
+        let decodedPath: { lat: number, lng: number }[] = [];
+        try {
+          decodedPath = decode(encodedPolyline).map(([lat, lng]) => ({ lat, lng }));
+        } catch (e) {
+          console.error("Polyline decoding failed:", e);
+          return null;
+        }
+        const result: unknown = {
+          request: { travelMode: 'BICYCLING' },
+          decodedPath,
+          routes: [{
+            overview_path: decodedPath.map(p => new google.maps.LatLng(p.lat, p.lng)),
+            overview_polyline: { points: encodedPolyline },
+            legs: route.originalRoute.legs.map((leg: GoogleRouteLeg) => {
+              const durationSec = parseInt(leg.duration) || 0;
+              const durationMin = Math.round(durationSec / 60);
+              const durationText = durationMin >= 60
+                ? `${Math.floor(durationMin / 60)}h ${durationMin % 60}m`
+                : `${durationMin} min`;
+              const mappedSteps = (leg.steps || []).map((step: GoogleRouteStep) => ({
+                instructions: step.navigationInstruction?.instructions || '',
+                start_location: new google.maps.LatLng(
+                  step.startLocation?.latLng?.latitude || 0,
+                  step.startLocation?.latLng?.longitude || 0
+                ),
+                end_location: new google.maps.LatLng(
+                  step.endLocation?.latLng?.latitude || 0,
+                  step.endLocation?.latLng?.longitude || 0
+                ),
+                distance: {
+                  value: step.distanceMeters || 0,
+                  text: `${((step.distanceMeters || 0) * 0.000621371).toFixed(1)} mi`
+                },
+                duration: {
+                  value: parseInt(step.staticDuration || '0'),
+                  text: ''
+                }
+              }));
+              return {
+                distance: { value: leg.distanceMeters, text: `${(leg.distanceMeters * 0.000621371).toFixed(1)} mi` },
+                duration: { value: durationSec, text: durationText },
+                start_location: new google.maps.LatLng(leg.startLocation.latLng.latitude, leg.startLocation.latLng.longitude),
+                end_location: new google.maps.LatLng(leg.endLocation.latLng.latitude, leg.endLocation.latLng.longitude),
+                steps: mappedSteps
+              };
+            })
+          }]
+        };
+        return result as (google.maps.DirectionsResult & { decodedPath: {lat: number, lng: number}[] });
       };
 
-      setResponse(mockResult);
-      setMetrics(topRoute.metrics);
+      const builtRoutes = analyzedRoutes
+        .map((r: { mockResult: google.maps.DirectionsResult & { decodedPath?: {lat: number, lng: number}[] }, metrics: RouteMetrics }) => ({ mockResult: buildMockResult(r as any), metrics: r.metrics }))
+        .filter((r): r is { mockResult: google.maps.DirectionsResult & { decodedPath: {lat: number, lng: number}[] }, metrics: RouteMetrics } => r.mockResult !== null);
 
-      // Focus the map on the route
-      if (mapRef.current && decodedPath.length > 0) {
+      if (builtRoutes.length === 0) {
+        throw new Error("Could not display any routes.");
+      }
+
+      setAllAnalyzedRoutes(builtRoutes);
+      setSelectedRouteIndex(0);
+      setResponse(builtRoutes[0].mockResult);
+      setMetrics(builtRoutes[0].metrics);
+
+      // Focus the map on the best route
+      const topDecodedPath = builtRoutes[0].mockResult.decodedPath;
+      if (mapRef.current && topDecodedPath.length > 0) {
         const bounds = new google.maps.LatLngBounds();
-        decodedPath.forEach(p => bounds.extend(p));
+        (topDecodedPath || []).forEach((p: { lat: number, lng: number }) => bounds.extend(p));
         mapRef.current.fitBounds(bounds, { top: 50, right: 50, bottom: 50, left: window.innerWidth > 768 ? 350 : 50 });
       }
 
-    } catch (e: any) {
+    } catch (err: unknown) { const e = err as Error;
       console.error("Route calculation failed:", e);
-      alert("Could not calculate route. Please try different locations.");
+      showToast("Could not calculate route. Please try different locations.");
     }
   };
 
@@ -1028,15 +1069,15 @@ function MapHome() {
       });
       const data = await res.json();
       if (data.url) window.location.href = data.url;
-      else alert(`Checkout failed: ${data.error || 'Please try again.'}`);
-    } catch (e: any) { alert(`Checkout failed: ${e.message || 'Unknown error'}`); }
+      else showToast(`Checkout failed: ${data.error || 'Please try again.'}`);
+    } catch (e: unknown) { showToast(`Checkout failed: ${e instanceof Error ? e.message : 'Unknown error'}`); }
   };
 
   const onMapLoad = useCallback((map: google.maps.Map) => { mapRef.current = map; }, []);
 
   const locateMe = () => {
     if (!window.isSecureContext && window.location.hostname !== 'localhost') {
-      alert("Location services require a secure connection (HTTPS). Please ensure you are using a secure URL.");
+      showToast("Location services require a secure connection (HTTPS). Please ensure you are using a secure URL.");
       return;
     }
 
@@ -1056,7 +1097,7 @@ function MapHome() {
         handleSuccess,
         (err) => {
           if (err.code === 1) { // PERMISSION_DENIED
-            alert("Location access denied. Please check your browser settings and ensure you've granted permission for this site to access your location.");
+            showToast("Location access denied. Please check your browser settings and ensure you've granted permission for this site to access your location.");
           } else if (err.code === 3) { // TIMEOUT
             // Fallback to low accuracy
             console.warn("High accuracy location timed out, falling back to low accuracy...");
@@ -1064,27 +1105,27 @@ function MapHome() {
               handleSuccess,
               (fallbackErr) => {
                  if (fallbackErr.code === 3) {
-                   alert("Location request timed out completely. Try again or check your device settings.");
+                   showToast("Location request timed out completely. Try again or check your device settings.");
                  } else {
-                   alert("Location error (fallback): " + fallbackErr.message);
+                   showToast("Location error (fallback): " + fallbackErr.message);
                  }
               },
               { enableHighAccuracy: false, timeout: 5000, maximumAge: 30000 }
             );
           } else {
-            alert("Location error: " + err.message);
+            showToast("Location error: " + err.message);
           }
         },
         { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 }
       );
     } else {
-      alert("Geolocation is not supported by your browser.");
+      showToast("Geolocation is not supported by your browser.");
     }
   };
 
   const searchPOIs = async (category: string) => {
     if (!isLoaded || !mapRef.current) return;
-    if (category === 'charging' && !isPro) { alert("PRO required."); return; }
+    if (category === 'charging' && !isPro) { showToast("PRO required."); return; }
     const service = new google.maps.places.PlacesService(mapRef.current!);
     service.textSearch({ location: mapRef.current!.getCenter()!, radius: 5000, query: category }, (results, status) => {
       if (status === google.maps.places.PlacesServiceStatus.OK && results) {
@@ -1100,7 +1141,7 @@ function MapHome() {
     const updated = [...savedBikes, newBike];
     setSavedBikes(updated);
     try { await updateDoc(doc(db, "users", user.uid), { bikes: updated }); } catch (e) { console.error('Non-critical map/telemetry error:', e); }
-    setNewBikeName(''); alert("Bike saved!");
+    setNewBikeName(''); showToast("Bike saved!", "success");
   };
 
   const shareToCommunity = async () => {
@@ -1121,7 +1162,7 @@ function MapHome() {
         caption: `Rode ${metrics.distanceMiles.toFixed(1)} miles!`, likes: [], commentsEnabled: true, createdAt: serverTimestamp(),
         tripData: { origin: trip.origin, destination: trip.destination, waypoints: trip.waypoints, isRoundTrip }
       });
-      alert("Shared!"); setShowSharePreview(false);
+      showToast("Shared!", "success"); setShowSharePreview(false);
     } catch (e) { console.error('Non-critical map/telemetry error:', e); }
   };
 
@@ -1330,6 +1371,64 @@ function MapHome() {
 
           <button onClick={handleCalculate} style={{ width: '100%', padding: '1rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold', marginTop: '1rem' }}>UPDATE ROUTE</button>
 
+          {/* Route Alternatives Picker */}
+          {allAnalyzedRoutes.length > 1 && (
+            <div style={{ marginTop: '1.5rem' }}>
+              <div style={{ color: '#666', fontSize: '0.65rem', textTransform: 'uppercase', marginBottom: '0.6rem', letterSpacing: '0.08em' }}>Route Options</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {allAnalyzedRoutes.map((r, i) => {
+                  const isSelected = i === selectedRouteIndex;
+                  const routeColors = ['#ff6600', '#4285F4', '#34a853'];
+                  const routeIcons = ['⚡', '🔵', '🟢'];
+                  return (
+                    <button
+                      key={i}
+                      onClick={() => {
+                        setSelectedRouteIndex(i);
+                        setResponse(r.mockResult);
+                        setMetrics(r.metrics);
+                        // Re-fit bounds for the newly selected route
+                        if (mapRef.current && r.mockResult.decodedPath && r.mockResult.decodedPath.length > 0) {
+                          const bounds = new google.maps.LatLngBounds();
+                          (r.mockResult.decodedPath || []).forEach((p: { lat: number, lng: number }) => bounds.extend(p));
+                          mapRef.current.fitBounds(bounds, { top: 50, right: 50, bottom: 50, left: window.innerWidth > 768 ? 350 : 50 });
+                        }
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '0.8rem 1rem',
+                        background: isSelected ? `rgba(${i === 0 ? '255,102,0' : i === 1 ? '66,133,244' : '52,168,83'},0.12)` : '#111',
+                        border: isSelected ? `1.5px solid ${routeColors[i] || '#888'}` : '1px solid #2a2a2a',
+                        borderRadius: '12px',
+                        color: 'white',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <span style={{ fontSize: '0.8rem' }}>{routeIcons[i] || '📍'}</span>
+                          <span style={{ fontWeight: 700, fontSize: '0.75rem', color: isSelected ? routeColors[i] : '#aaa' }}>
+                            {r.metrics.label || `Route ${i + 1}`}
+                          </span>
+                        </div>
+                        <span style={{ fontWeight: 900, fontSize: '0.85rem', color: r.metrics.deathPoint ? '#ff4444' : (isSelected ? routeColors[i] : '#ccc') }}>
+                          {r.metrics.deathPoint ? '🪫 Dead' : `${r.metrics.batteryPercentRemaining.toFixed(0)}% left`}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', gap: '1rem', marginTop: '0.3rem' }}>
+                        <span style={{ color: '#666', fontSize: '0.65rem' }}>{r.metrics.distanceMiles.toFixed(1)} mi</span>
+                        <span style={{ color: '#666', fontSize: '0.65rem' }}>⛰️ {Math.round(r.metrics.elevationGainFeet)} ft</span>
+                        <span style={{ color: '#666', fontSize: '0.65rem' }}>{Math.floor(r.metrics.durationMin/60)}h {Math.round(r.metrics.durationMin%60)}m</span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {metrics && (
             <div className="card metrics-card" style={{ marginTop: '1.5rem', borderLeft: metrics.deathPoint ? '4px solid #ff4444' : '4px solid #ff6600', padding: '1.5rem', background: '#1a1a1a', borderRadius: '16px' }}>
               <div style={{ color: metrics.deathPoint ? '#ff4444' : '#ff6600', fontWeight: 800, fontSize: '0.8rem', textTransform: 'uppercase' }}>
@@ -1445,7 +1544,7 @@ function MapHome() {
             }}
             options={{ mapId: import.meta.env.VITE_GOOGLE_MAP_ID || 'DEMO_MAP_ID', disableDefaultUI: true }}
           >
-            {rangePolygonPoints && (
+            {rangePolygonPoints && !trip.destination && (
               <Polygon
                 paths={rangePolygonPoints}
                 options={{
@@ -1472,15 +1571,35 @@ function MapHome() {
               </AdvancedMarker>
             )}
 
-            {/* Robust Route Rendering with Polyline */}
+            {/* Alternative Routes (rendered behind the selected route) */}
+            {allAnalyzedRoutes.map((r, i) => {
+              if (i === selectedRouteIndex) return null; // skip selected — rendered below
+              const altColors = ['#4285F4', '#34a853', '#aa44ff'];
+              const path = r.mockResult?.routes[0]?.overview_path;
+              if (!path) return null;
+              return (
+                <Polyline
+                  key={`alt-${i}`}
+                  path={path}
+                  options={{
+                    strokeColor: altColors[i] || '#888',
+                    strokeOpacity: 0.45,
+                    strokeWeight: 5,
+                    geodesic: true,
+                  }}
+                />
+              );
+            })}
+
+            {/* Selected Route Rendering */}
             {response && response.routes[0]?.overview_path && (
               <>
                 <Polyline
                   path={response.routes[0].overview_path}
                   options={{
                     strokeColor: '#ff6600',
-                    strokeOpacity: 0.8,
-                    strokeWeight: 6,
+                    strokeOpacity: 0.9,
+                    strokeWeight: 7,
                     geodesic: true,
                   }}
                 />
@@ -1632,11 +1751,13 @@ function MapHome() {
 
       {showRouteReplay && response && response.routes[selectedRouteIndex] && (
         <RouteReplay3D 
-          polyline={response.routes[selectedRouteIndex].overview_polyline as any} 
+          polyline={response.routes[selectedRouteIndex].overview_polyline} 
           onClose={() => setShowRouteReplay(false)}
           maptilerKey={import.meta.env.VITE_MAPTILER_KEY}
         />
       )}
+
+      {toastMessage && <Toast message={toastMessage} type={toastType} onClose={() => setToastMessage(null)} />}
 
       {showGroupRidePaywall && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.95)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(10px)' }}>
