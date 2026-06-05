@@ -160,6 +160,7 @@ function MapHome() {
   const [mapCenter, setMapCenter] = useState<google.maps.LatLngLiteral>(center);
   const [loading, setLoading] = useState(true);
   const [showRouteReplay, setShowRouteReplay] = useState(false);
+  const [isCalculating, setIsCalculating] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [toastType, setToastType] = useState<ToastType>('info');
   const showToast = useCallback((msg: string, type: ToastType = 'error') => {
@@ -697,6 +698,7 @@ function MapHome() {
        return;
     }
 
+    setIsCalculating(true);
     setResponse(null); 
     setMetrics(null); 
     setPois([]); 
@@ -726,6 +728,7 @@ function MapHome() {
          } catch (e) {
            console.error("Geocoding failed:", e);
            showToast("Could not locate the starting address.");
+           setIsCalculating(false);
            return;
          }
        }
@@ -795,6 +798,8 @@ function MapHome() {
        } catch (err) {
          console.error("Polygon generation failed:", err);
          showToast("Could not generate range polygon. Check your connection.");
+       } finally {
+         setIsCalculating(false);
        }
        return;
     }
@@ -828,7 +833,8 @@ function MapHome() {
         headers: {
           'Content-Type': 'application/json',
           'X-Goog-Api-Key': import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',
-          'X-Goog-FieldMask': 'routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline,routes.legs'
+          'X-Goog-FieldMask': 'routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline,routes.legs',
+          'Cache-Control': 'no-cache'
         },
         body: JSON.stringify(body)
       });
@@ -941,9 +947,9 @@ function MapHome() {
             heading = google.maps.geometry.spherical.computeHeading(start, end);
           }
 
-          const calcRes = await fetch('/api/calculate-range', {
+          const calcRes = await fetch(`/api/calculate-range?_t=${Date.now()}`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
             body: JSON.stringify({
               type: 'route',
               specs, riderWeightLbs: riderWeight, throttleMode, batteryPercent: startBattery,
@@ -1072,6 +1078,8 @@ function MapHome() {
     } catch (err: unknown) { const e = err as Error;
       console.error("Route calculation failed:", e);
       showToast("Could not calculate route. Please try different locations.");
+    } finally {
+      setIsCalculating(false);
     }
   };
 
@@ -1378,15 +1386,31 @@ function MapHome() {
           </section>
 
           <section className="form-group" style={{ marginTop: '1rem' }}>
-            <label>Battery Entry</label>
+            <label>Current Battery Level</label>
             <div className="mode-toggle">
               <button className={batteryInputMode === 'percent' ? 'active' : ''} onClick={() => handleToggleBatteryMode('percent')}>%</button>
               <button className={batteryInputMode === 'voltage' ? 'active' : ''} onClick={() => handleToggleBatteryMode('voltage')}>V</button>
             </div>
-            <input type="number" value={batteryInputMode === 'percent' ? startBattery : startVoltage} onChange={e => { if (batteryInputMode === 'percent') setStartBattery(e.target.value === '' ? '' : parseFloat(e.target.value)); else setStartVoltage(e.target.value === '' ? '' : parseFloat(e.target.value)); markDirty(); }} />
+            <input type="number" value={batteryInputMode === 'percent' ? startBattery : startVoltage} onChange={e => {
+              const valStr = e.target.value;
+              const val = valStr === '' ? '' : parseFloat(valStr);
+              const { min, max } = getBatteryLevels(Number(specs.voltage));
+              if (batteryInputMode === 'percent') {
+                setStartBattery(val);
+                if (val !== '') setStartVoltage(Number((min + (val / 100) * (max - min)).toFixed(1)));
+                else setStartVoltage('');
+              } else {
+                setStartVoltage(val);
+                if (val !== '') setStartBattery(Math.min(100, Math.max(0, Number((((val - min) / (max - min)) * 100).toFixed(0)))));
+                else setStartBattery('');
+              }
+              markDirty(); 
+            }} />
           </section>
 
-          <button onClick={handleCalculate} style={{ width: '100%', padding: '1rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold', marginTop: '1rem' }}>UPDATE ROUTE</button>
+          <button onClick={handleCalculate} disabled={isCalculating} style={{ width: '100%', padding: '1rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold', marginTop: '1rem', opacity: isCalculating ? 0.5 : 1 }}>
+            {isCalculating ? 'CALCULATING...' : 'UPDATE ROUTE'}
+          </button>
 
           {/* Route Alternatives Picker */}
           {allAnalyzedRoutes.length > 1 && (
