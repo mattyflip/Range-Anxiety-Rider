@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { GoogleMap, useJsApiLoader, Polyline, InfoWindowF, Autocomplete, Polygon } from '@react-google-maps/api'
+import { GoogleMap, useJsApiLoader, Polyline, InfoWindowF, Polygon } from '@react-google-maps/api'
+import ModernAutocomplete from '../features/map/ModernAutocomplete'
 import { toPng } from 'html-to-image'
 import { decode } from '@googlemaps/polyline-codec'
 import { db, storage } from '../firebase'
@@ -166,7 +167,6 @@ function MapHome() {
   
   // Reorderable locations state - The SINGLE source of truth for the trip
   const [locations, setLocations] = useState<string[]>(['', '', '', '', '']);
-  const autocompleteRefs = useRef<(google.maps.places.Autocomplete | null)[]>([]);
 
   // Derived Trip Details
   const trip = useMemo<TripDetails>(() => {
@@ -179,19 +179,6 @@ function MapHome() {
       waypoints: filtered.slice(1, filtered.length - 1)
     };
   }, [locations]);
-
-  const onAutocompleteLoad = (index: number, autocomplete: google.maps.places.Autocomplete) => {
-    autocompleteRefs.current[index] = autocomplete;
-  };
-
-  const onPlaceChanged = (index: number) => {
-    const autocomplete = autocompleteRefs.current[index];
-    if (autocomplete) {
-      const place = autocomplete.getPlace();
-      const addr = place.formatted_address || place.name;
-      if (addr) updateLocation(index, addr);
-    }
-  };
 
   const updateLocation = (index: number, value: string) => {
     const newLocs = [...locations];
@@ -235,7 +222,7 @@ function MapHome() {
                 setShopLocation({ lat: oData.location.lat, lng: oData.location.lng });
               }
             }
-          });
+          }, (err) => console.error("Firestore unsubOrg error:", err));
 
           unsubBikes = onSnapshot(query(collection(db, `organizations/${d.orgId}/bikes`)), (s) => {
              const bikes = s.docs.map(doc => ({ id: doc.id, ...doc.data() } as Bike));
@@ -261,12 +248,12 @@ function MapHome() {
              } else if (bikes.length > 0 && !selectedBikeId) {
                setSelectedBikeId(bikes[0].id);
              }
-          });
+          }, (err) => console.error("Firestore unsubBikes error:", err));
 
           if (role === 'fleet') {
             unsubLive = onSnapshot(query(collection(db, `organizations/${d.orgId}/live_units`)), (s) => {
               setLiveUnits(s.docs.map(doc => ({ id: doc.id, ...doc.data() } as LiveUnit)));
-            });
+            }, (err) => console.error("Firestore unsubLive error:", err));
           }
         }
         setLoading(false);
@@ -1022,7 +1009,7 @@ function MapHome() {
     }
 
     if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition((pos) => {
+      const handleSuccess = (pos: GeolocationPosition) => {
         const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         setUserLocation(loc);
         if (mapRef.current) {
@@ -1030,15 +1017,34 @@ function MapHome() {
           mapRef.current.panTo(loc);
           mapRef.current.setZoom(11); // 10 mile radius approx
         }
-      }, (err) => {
-        if (err.code === 1) { // PERMISSION_DENIED
-          alert("Location access denied. Please check your browser settings and ensure you've granted permission for this site to access your location.");
-        } else if (err.code === 3) { // TIMEOUT
-          alert("Location request timed out. Try again or check your device settings.");
-        } else {
-          alert("Location error: " + err.message);
-        }
-      }, { enableHighAccuracy: true, timeout: 10000 });
+      };
+
+      // Try High Accuracy First
+      navigator.geolocation.getCurrentPosition(
+        handleSuccess,
+        (err) => {
+          if (err.code === 1) { // PERMISSION_DENIED
+            alert("Location access denied. Please check your browser settings and ensure you've granted permission for this site to access your location.");
+          } else if (err.code === 3) { // TIMEOUT
+            // Fallback to low accuracy
+            console.warn("High accuracy location timed out, falling back to low accuracy...");
+            navigator.geolocation.getCurrentPosition(
+              handleSuccess,
+              (fallbackErr) => {
+                 if (fallbackErr.code === 3) {
+                   alert("Location request timed out completely. Try again or check your device settings.");
+                 } else {
+                   alert("Location error (fallback): " + fallbackErr.message);
+                 }
+              },
+              { enableHighAccuracy: false, timeout: 5000, maximumAge: 30000 }
+            );
+          } else {
+            alert("Location error: " + err.message);
+          }
+        },
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 }
+      );
     } else {
       alert("Geolocation is not supported by your browser.");
     }
@@ -1207,9 +1213,11 @@ function MapHome() {
               return (
                 <div key={index} style={{ display: 'flex', gap: '0.4rem', marginTop: index > 0 ? '0.5rem' : '0', alignItems: 'center' }}>
                   <div style={{ flex: 1, display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-                    <Autocomplete onLoad={(auto) => onAutocompleteLoad(index, auto)} onPlaceChanged={() => onPlaceChanged(index)}>
-                        <input type="text" placeholder={index === 0 ? "Start" : `Stop ${index}`} value={loc} onChange={e => updateLocation(index, e.target.value)} style={{ flex: 1 }} />
-                    </Autocomplete>
+                    <ModernAutocomplete 
+                      placeholder={index === 0 ? "Start" : `Stop ${index}`} 
+                      value={loc} 
+                      onPlaceSelected={(addr) => updateLocation(index, addr)} 
+                    />
                   </div>
                 </div>
               );

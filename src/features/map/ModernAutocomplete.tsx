@@ -13,54 +13,72 @@ const ModernAutocomplete: React.FC<ModernAutocompleteProps> = ({
   value,
   style 
 }) => {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const autocompleteRef = useRef<any>(null);
 
   useEffect(() => {
-    if (!inputRef.current || !window.google || !window.google.maps || !window.google.maps.places) return;
+    const init = async () => {
+      if (!containerRef.current || !window.google) return;
 
-    autocompleteRef.current = new google.maps.places.Autocomplete(inputRef.current, {
-      fields: ['formatted_address', 'geometry'],
-      types: ['address']
-    });
+      try {
+        const { PlaceAutocompleteElement } = await google.maps.importLibrary("places") as google.maps.PlacesLibrary;
+        
+        const autocomplete = new PlaceAutocompleteElement();
+        autocompleteRef.current = autocomplete;
+        
+        // Style the inner input to match our app's look
+        // The PlaceAutocompleteElement is a web component, so we might need to inject styles or use parts
+        autocomplete.style.width = '100%';
+        
+        containerRef.current.innerHTML = '';
+        containerRef.current.appendChild(autocomplete);
 
-    autocompleteRef.current.addListener('place_changed', () => {
-      const place = autocompleteRef.current?.getPlace();
-      if (place?.formatted_address) {
-        const lat = place.geometry?.location?.lat();
-        const lng = place.geometry?.location?.lng();
-        onPlaceSelected(place.formatted_address, lat, lng);
-      }
-    });
+        autocomplete.addEventListener('gmp-placeselect', async (event: any) => {
+          const place = event.place;
+          if (!place) return;
 
-    return () => {
-      if (window.google) {
-        google.maps.event.clearInstanceListeners(autocompleteRef.current!);
+          await place.fetchFields({ fields: ['formattedAddress', 'location'] });
+          
+          if (place.formattedAddress) {
+            onPlaceSelected(
+              place.formattedAddress, 
+              place.location?.lat(), 
+              place.location?.lng()
+            );
+          }
+        });
+
+        // Set initial value if provided
+        if (value) {
+           autocomplete.value = value;
+        }
+
+      } catch (err) {
+        console.error("Failed to load PlaceAutocompleteElement:", err);
       }
     };
+
+    init();
   }, []);
 
-  // Sync internal input value with the 'value' prop
+  // Sync value prop changes
   useEffect(() => {
-    if (inputRef.current && value !== undefined && inputRef.current.value !== value) {
-      inputRef.current.value = value;
+    if (autocompleteRef.current && value !== undefined) {
+      autocompleteRef.current.value = value;
     }
   }, [value]);
 
   return (
-    <input
-      ref={inputRef}
-      type="text"
-      placeholder={placeholder}
-      onChange={(e) => onPlaceSelected(e.target.value)}
+    <div 
+      ref={containerRef}
       style={{
         width: '100%',
-        padding: '0.8rem',
         background: '#111',
         border: '1px solid #333',
         color: 'white',
         borderRadius: '8px',
         fontSize: '0.85rem',
+        overflow: 'hidden',
         ...style
       }}
     />
