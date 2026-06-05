@@ -8,7 +8,6 @@ interface ModernAutocompleteProps {
 }
 
 const ModernAutocomplete: React.FC<ModernAutocompleteProps> = ({ 
-  placeholder, 
   onPlaceSelected,
   value,
   style 
@@ -21,7 +20,7 @@ const ModernAutocomplete: React.FC<ModernAutocompleteProps> = ({
       if (!containerRef.current || !window.google) return;
 
       try {
-        const { PlaceAutocompleteElement } = await google.maps.importLibrary("places") as google.maps.PlacesLibrary;
+        const { PlaceAutocompleteElement } = await google.maps.importLibrary("places") as any;
         
         const autocomplete = new PlaceAutocompleteElement();
         autocompleteRef.current = autocomplete;
