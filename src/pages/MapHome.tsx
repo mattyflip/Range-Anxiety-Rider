@@ -100,7 +100,7 @@ function MapHome() {
   const [startVoltage, setStartVoltage] = useState<number | ''>(54.6);
   
   const [riderWeight, setRiderWeight] = useState<number | ''>(180);
-  const [targetSpeed, setTargetSpeed] = useState<number>(18);
+  const [targetSpeed, setTargetSpeed] = useState<number | ''>(18);
   const [driveMode, setDriveMode] = useState<'throttle' | 'pas'>('throttle');
   const [pedalAssistLevel, setPedalAssistLevel] = useState<number>(3);
   const [throttleMode, setThrottleMode] = useState<'eco' | 'normal' | 'sport'>('normal');
@@ -673,6 +673,8 @@ function MapHome() {
     setSettingsDirty(false); 
     setShowMobileMenu(false);
 
+    const calcSpeed = Number(targetSpeed) || 18;
+
     // --- RANGE POLYGON LOGIC (No Destination Entered) ---
     if (!currentDest.trim()) {
        const originCoords = currentOrigin.includes(',') 
@@ -688,7 +690,7 @@ function MapHome() {
          const initialPoints = calculateRangePolygon(
            originCoords,
            wind,
-           { specs: mapToPhysicsSpecs(specs), riderWeightLbs: riderWeight || 180, throttleMode, speedMph: targetSpeed, slope: 0, headwindMph: 0, driveMode, pedalAssistLevel },
+           { specs: mapToPhysicsSpecs(specs), riderWeightLbs: riderWeight || 180, throttleMode, speedMph: calcSpeed, slope: 0, headwindMph: 0, driveMode, pedalAssistLevel },
            isRoundTrip
          );
 
@@ -724,13 +726,13 @@ function MapHome() {
 
          setMetrics({
             distanceMiles: avgDist,
-            durationMin: (avgDist / targetSpeed) * 60,
+            durationMin: (avgDist / calcSpeed) * 60,
             elevationGainFeet: 0,
             elevationLossFeet: 0,
             estimatedWh: 0,
             efficiencyWhMi: 0,
             batteryPercentRemaining: 0,
-            recommendedSpeedMph: targetSpeed,
+            recommendedSpeedMph: calcSpeed,
             label: isRoundTrip ? "Est. Return Zone" : "Est. Range Zone",
             windConditions: { speed: wind.speed, direction: wind.direction, headwindComponent: 0 }
          } as RouteMetrics);
@@ -801,7 +803,7 @@ function MapHome() {
           const distanceMiles = totalDistanceMeters * 0.000621371;
           
           // Use user's target speed for realistic pace
-          const speedMph = targetSpeed;
+          const speedMph = calcSpeed;
           const realisticDurationSeconds = (distanceMiles / speedMph) * 3600;
 
           const [eRes, wRes] = await Promise.all([
