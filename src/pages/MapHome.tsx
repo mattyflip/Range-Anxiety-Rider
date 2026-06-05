@@ -300,7 +300,7 @@ function MapHome() {
         }
       });
       if (hasPoints) {
-        mapRef.current.fitBounds(bounds, { top: 50, right: 50, bottom: 50, left: 350 });
+        mapRef.current.fitBounds(bounds, { top: 50, right: 50, bottom: 50, left: window.innerWidth > 768 ? 350 : 50 });
       }
     }
   }, [userRole, shopLocation, liveUnits.length]);
@@ -741,7 +741,7 @@ function MapHome() {
             mapRef.current.panTo(originCoords);
             const bounds = new google.maps.LatLngBounds();
             validatedPoints.forEach(p => bounds.extend(p));
-            mapRef.current.fitBounds(bounds, { top: 50, right: 50, bottom: 50, left: 350 });
+            mapRef.current.fitBounds(bounds, { top: 50, right: 50, bottom: 50, left: window.innerWidth > 768 ? 350 : 50 });
          }
        } catch (err) {
          console.error("Polygon generation failed:", err);
@@ -1008,7 +1008,7 @@ function MapHome() {
       if (mapRef.current && decodedPath.length > 0) {
         const bounds = new google.maps.LatLngBounds();
         decodedPath.forEach(p => bounds.extend(p));
-        mapRef.current.fitBounds(bounds, { top: 50, right: 50, bottom: 50, left: 350 });
+        mapRef.current.fitBounds(bounds, { top: 50, right: 50, bottom: 50, left: window.innerWidth > 768 ? 350 : 50 });
       }
 
     } catch (e: any) {
