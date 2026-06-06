@@ -1886,10 +1886,10 @@ function MapHome() {
             </div>
           )}
 
-          <div style={{ position: 'fixed', bottom: '5rem', left: '50%', transform: 'translateX(-50%)', zIndex: 100001, display: 'flex', flexDirection: 'row', gap: '0.8rem', background: 'rgba(0,0,0,0.5)', padding: '0.6rem 1rem', borderRadius: '40px', backdropFilter: 'blur(5px)', border: '1px solid rgba(255,255,255,0.1)' }}>
+          <div className="bottom-map-controls">
             <button 
               onClick={locateMe}
-              style={{ width: '50px', height: '50px', borderRadius: '50%', background: 'none', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+              style={{ width: '50px', height: '50px', borderRadius: '50%', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
               title="Locate Me"
             >
               <img src={orangePin} alt="Locate" style={{ width: '45px', height: '45px', objectFit: 'contain' }} />
@@ -1900,7 +1900,7 @@ function MapHome() {
                 if (showMobileMenu && settingsDirty) handleCalculate(true);
                 else setShowMobileMenu(!showMobileMenu);
               }} 
-              style={{ height: '50px', padding: '0 1.5rem', borderRadius: '40px', background: '#ff6600', color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '0.85rem', boxShadow: '0 4px 12px rgba(0,0,0,0.4)', textTransform: 'uppercase', whiteSpace: 'nowrap' }}
+              style={{ height: '50px', padding: '0 1.5rem', borderRadius: '40px', background: '#ff6600', color: 'white', border: 'none', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '0.85rem', boxShadow: '0 4px 12px rgba(0,0,0,0.4)', textTransform: 'uppercase', whiteSpace: 'nowrap' }}
             >
               {getMobileToggleLabel()}
             </button>

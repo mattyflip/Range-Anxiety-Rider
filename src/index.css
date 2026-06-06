@@ -287,6 +287,24 @@ main {
   from { transform: translateY(-100%); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
 }
+.bottom-map-controls {
+  position: fixed;
+  bottom: 5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100001;
+  display: flex;
+  flex-direction: row;
+  gap: 0.8rem;
+  padding: 0.6rem 1rem;
+  border-radius: 40px;
+}
+
+@media (min-width: 801px) {
+  .bottom-map-controls {
+    left: calc(350px + (100vw - 350px) / 2);
+  }
+}
 
 @media (max-width: 800px) {
   .desktop-only {
@@ -307,7 +325,12 @@ main {
   }
 
   .mobile-toggle-btn {
-    display: block;
+    display: flex !important;
+  }
+  .bottom-map-controls {
+    background: rgba(0,0,0,0.5);
+    backdrop-filter: blur(5px);
+    border: 1px solid rgba(255,255,255,0.1);
   }
 
   header {
