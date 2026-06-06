@@ -1875,7 +1875,11 @@ function MapHome() {
                 <Polyline
                   key={`alt-${i}`}
                   path={path}
-                  onClick={() => setSelectedRouteIndex(i)}
+                  onClick={() => {
+                    setSelectedRouteIndex(i);
+                    setResponse(allAnalyzedRoutes[i].mockResult);
+                    setMetrics(allAnalyzedRoutes[i].metrics);
+                  }}
                   options={{
                     strokeColor: altColors[i] || '#888',
                     strokeOpacity: 0.6,
