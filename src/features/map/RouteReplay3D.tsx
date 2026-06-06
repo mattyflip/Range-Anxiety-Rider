@@ -41,6 +41,10 @@ const RouteReplay3D: React.FC<RouteReplay3DProps> = ({
 
     const coords = routeData.geometry.coordinates;
     let index = 0;
+    
+    // We want the flyover to take roughly 15-20 seconds total.
+    // So we'll take about 100 steps, each 150ms.
+    const stepSize = Math.max(1, Math.floor(coords.length / 100));
 
     const animate = () => {
       if (index >= coords.length - 1) {
@@ -49,7 +53,9 @@ const RouteReplay3D: React.FC<RouteReplay3DProps> = ({
       }
 
       const current = coords[index];
-      const next = coords[index + 1];
+      let nextIndex = index + stepSize;
+      if (nextIndex >= coords.length) nextIndex = coords.length - 1;
+      const next = coords[nextIndex];
 
       // Calculate bearing between points
       const bearing = calculateBearing(current[1], current[0], next[1], next[0]);
@@ -58,12 +64,13 @@ const RouteReplay3D: React.FC<RouteReplay3DProps> = ({
         center: [next[0], next[1]],
         bearing: bearing,
         pitch: 65,
-        duration: 1000,
+        duration: 150,
+        easing: (t) => t, // Linear easing for smooth continuous motion
         essential: true
       });
 
-      index++;
-      setTimeout(animate, 1000);
+      index = nextIndex;
+      setTimeout(animate, 150);
     };
 
     animate();
