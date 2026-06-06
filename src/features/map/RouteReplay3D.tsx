@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import Map, { Source, Layer } from 'react-map-gl/maplibre';
+import Map, { Source, Layer, Marker } from 'react-map-gl/maplibre';
 import type { MapRef } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { polylineToGeoJSON } from '../../utils/mapUtils';
@@ -8,17 +8,22 @@ interface RouteReplay3DProps {
   polyline: string;
   onClose: () => void;
   maptilerKey?: string;
+  userPhotoURL?: string;
 }
 
 const RouteReplay3D: React.FC<RouteReplay3DProps> = ({ 
   polyline, 
   onClose, 
-  maptilerKey 
+  maptilerKey,
+  userPhotoURL
 }) => {
   console.log('RouteReplay3D received polyline:', polyline);
   const mapRef = useRef<MapRef>(null);
   const [routeData] = useState(() => polylineToGeoJSON(polyline));
   const [isAnimating, setIsAnimating] = useState(false);
+  const [bikePosition, setBikePosition] = useState<[number, number] | null>(
+    routeData ? [routeData.geometry.coordinates[0][0], routeData.geometry.coordinates[0][1]] : null
+  );
 
   // MapTiler Satellite + Terrain
   const isKeyValid = maptilerKey && maptilerKey !== 'get_your_own_key';
@@ -42,6 +47,7 @@ const RouteReplay3D: React.FC<RouteReplay3DProps> = ({
     const animate = () => {
       if (index >= coords.length - 1) {
         setIsAnimating(false);
+        setBikePosition([coords[coords.length - 1][0], coords[coords.length - 1][1]]);
         return;
       }
 
@@ -62,6 +68,7 @@ const RouteReplay3D: React.FC<RouteReplay3DProps> = ({
         essential: true
       });
 
+      setBikePosition([next[0], next[1]]);
       index = nextIndex;
       setTimeout(animate, 150);
     };
@@ -153,6 +160,34 @@ const RouteReplay3D: React.FC<RouteReplay3DProps> = ({
                 }}
               />
             </Source>
+          )}
+
+          {/* Bike Location Marker */}
+          {bikePosition && (
+            <Marker longitude={bikePosition[0]} latitude={bikePosition[1]} anchor="bottom">
+              <div style={{
+                background: '#ff6600',
+                padding: '3px',
+                borderRadius: '50%',
+                boxShadow: '0 4px 10px rgba(0,0,0,0.5)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: '2px solid white'
+              }}>
+                {userPhotoURL ? (
+                  <img 
+                    src={userPhotoURL} 
+                    alt="Rider" 
+                    style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }}
+                  />
+                ) : (
+                  <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#444', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>
+                    🚲
+                  </div>
+                )}
+              </div>
+            </Marker>
           )}
         </Map>
       </div>

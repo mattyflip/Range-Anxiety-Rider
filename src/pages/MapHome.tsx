@@ -2124,6 +2124,7 @@ function MapHome() {
           polyline={response.routes[0].overview_polyline} 
           onClose={() => setShowRouteReplay(false)}
           maptilerKey={import.meta.env.VITE_MAPTILER_KEY}
+          userPhotoURL={userData?.profilePic || ''}
         />
       )}
 
