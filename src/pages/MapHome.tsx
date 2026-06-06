@@ -133,7 +133,6 @@ function MapHome() {
   const [metrics, setMetrics] = useState<RouteMetrics | null>(null);
   const [allAnalyzedRoutes, setAllAnalyzedRoutes] = useState<Array<{ mockResult: google.maps.DirectionsResult & { decodedPath: {lat: number, lng: number}[] }; metrics: RouteMetrics }>>([]);
   const [pois, setPois] = useState<POI[]>([]);
-  const [selectedPoi, setSelectedPoi] = useState<POI | null>(null);
   
   const [showSharePreview, setShowSharePreview] = useState(false);
   const [userRole, setUserRole] = useState<'rider' | 'fleet'>('rider');
@@ -1260,6 +1259,32 @@ function MapHome() {
     });
   };
 
+  const handlePoiClick = (p: POI) => {
+    if (!mapRef.current) return;
+    const service = new google.maps.places.PlacesService(mapRef.current);
+    service.getDetails({ placeId: p.id, fields: ['name', 'formatted_address', 'rating', 'user_ratings_total', 'website', 'formatted_phone_number', 'opening_hours', 'photos'] }, (place, status) => {
+      if (status === google.maps.places.PlacesServiceStatus.OK && place) {
+        setClickedMapLocation({
+          lat: p.position.lat, 
+          lng: p.position.lng, 
+          placeId: p.id, 
+          address: place.formatted_address || p.address,
+          details: {
+            name: place.name,
+            rating: place.rating,
+            user_ratings_total: place.user_ratings_total,
+            website: place.website,
+            formatted_phone_number: place.formatted_phone_number,
+            isOpen: place.opening_hours?.isOpen ? place.opening_hours.isOpen() : undefined,
+            photoUrl: place.photos && place.photos.length > 0 ? place.photos[0].getUrl({ maxWidth: 200, maxHeight: 150 }) : undefined
+          }
+        });
+      } else {
+        setClickedMapLocation({ lat: p.position.lat, lng: p.position.lng, placeId: p.id, address: p.address, details: { name: p.name } });
+      }
+    });
+  };
+
   const saveCurrentBike = async () => {
     if (!user) { setShowAuthModal(true); return; }
     if (!newBikeName) return;
@@ -1943,19 +1968,10 @@ function MapHome() {
             })}
 
             {pois.map(p => (
-                <AdvancedMarker key={p.id} position={p.position} onClick={() => setSelectedPoi(p)}>
+                <AdvancedMarker key={p.id} position={p.position} onClick={() => handlePoiClick(p)}>
                   <div style={{ background: p.type === 'charging' ? '#34a853' : '#4285F4', padding: '4px', borderRadius: '50%', border: '2px solid white', width: '30px', height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>{p.type === 'charging' ? '⚡' : '📍'}</div>
                 </AdvancedMarker>
             ))}
-
-            {selectedPoi && (
-                <InfoWindowF position={selectedPoi.position} onCloseClick={() => setSelectedPoi(null)}>
-                  <div style={{ color: 'black', padding: '0.4rem' }}>
-                    <div style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{selectedPoi.name}</div>
-                    <div style={{ fontSize: '0.75rem', color: '#444' }}>{selectedPoi.address}</div>
-                  </div>
-                </InfoWindowF>
-            )}
             {clickedMapLocation && (
               <InfoWindowF
                 key={clickedMapLocation.placeId || `${clickedMapLocation.lat}-${clickedMapLocation.lng}`}
