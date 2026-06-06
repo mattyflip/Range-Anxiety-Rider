@@ -2121,7 +2121,7 @@ function MapHome() {
 
       {showRouteReplay && response && response.routes[0] && (
         <RouteReplay3D 
-          polyline={(response.routes[0].overview_polyline as any).points || response.routes[0].overview_polyline} 
+          polyline={response.routes[0].overview_polyline} 
           onClose={() => setShowRouteReplay(false)}
           maptilerKey={import.meta.env.VITE_MAPTILER_KEY}
         />

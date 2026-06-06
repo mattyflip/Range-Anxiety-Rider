@@ -15,6 +15,7 @@ const RouteReplay3D: React.FC<RouteReplay3DProps> = ({
   onClose, 
   maptilerKey 
 }) => {
+  console.log('RouteReplay3D received polyline:', polyline);
   const mapRef = useRef<MapRef>(null);
   const [routeData] = useState(() => polylineToGeoJSON(polyline));
   const [isAnimating, setIsAnimating] = useState(false);
@@ -25,15 +26,7 @@ const RouteReplay3D: React.FC<RouteReplay3DProps> = ({
     ? `https://api.maptiler.com/maps/hybrid/style.json?key=${maptilerKey}`
     : '';
 
-  useEffect(() => {
-    if (!routeData || !mapRef.current || !isKeyValid) return;
 
-    // Center map on the start of the route
-    const firstCoord = routeData.geometry.coordinates[0];
-    mapRef.current.setCenter([firstCoord[0], firstCoord[1]]);
-    mapRef.current.setZoom(14);
-    mapRef.current.setPitch(60);
-  }, [routeData]);
 
   const startFlyover = () => {
     if (!routeData || isAnimating) return;
@@ -117,13 +110,21 @@ const RouteReplay3D: React.FC<RouteReplay3DProps> = ({
           ref={mapRef}
           mapStyle={styleUrl}
           initialViewState={{
-            longitude: -122.4,
-            latitude: 37.8,
+            longitude: routeData ? routeData.geometry.coordinates[0][0] : -122.4,
+            latitude: routeData ? routeData.geometry.coordinates[0][1] : 37.8,
             zoom: 14,
             pitch: 60
           }}
           maxPitch={85}
           terrain={isKeyValid ? { source: 'terrainSource', exaggeration: 1.5 } : undefined}
+          onLoad={() => {
+            if (routeData && mapRef.current) {
+              const firstCoord = routeData.geometry.coordinates[0];
+              mapRef.current.setCenter([firstCoord[0], firstCoord[1]]);
+              mapRef.current.setZoom(14);
+              mapRef.current.setPitch(60);
+            }
+          }}
         >
           {/* 3D Terrain Source */}
           {isKeyValid && (

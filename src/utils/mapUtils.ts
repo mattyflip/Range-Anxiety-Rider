@@ -6,10 +6,12 @@ import { decode } from '@googlemaps/polyline-codec';
  * @param polyline The encoded polyline string from Google Maps API.
  * @returns A GeoJSON Feature object.
  */
-export const polylineToGeoJSON = (polyline: string) => {
-  if (!polyline || typeof polyline !== 'string') return null;
+export const polylineToGeoJSON = (polyline: any) => {
+  if (!polyline) return null;
+  const polylineStr = typeof polyline === 'string' ? polyline : (polyline.points || polyline.encodedPolyline);
+  if (!polylineStr || typeof polylineStr !== 'string') return null;
   try {
-    const coords = decode(polyline);
+    const coords = decode(polylineStr);
     if (!coords || coords.length === 0) return null;
     
     // Google polyline returns [lat, lng], GeoJSON requires [lng, lat]
