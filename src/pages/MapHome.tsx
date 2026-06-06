@@ -169,6 +169,19 @@ function MapHome() {
     markDirty();
     setClickedMapLocation(null);
   };
+
+  const moveLocation = (index: number, direction: -1 | 1) => {
+    const newLocs = [...locations];
+    const targetIndex = index + direction;
+    if (targetIndex < 0 || targetIndex >= newLocs.length || newLocs[index].trim() === '' || newLocs[targetIndex].trim() === '') return;
+    
+    const temp = newLocs[index];
+    newLocs[index] = newLocs[targetIndex];
+    newLocs[targetIndex] = temp;
+    
+    setLocations(newLocs);
+    markDirty();
+  };
   const [savedBikes, setSavedBikes] = useState<SavedBike[]>([]);
   const [newBikeName, setNewBikeName] = useState('');
   const [showToSPage, setShowToSPage] = useState(false);
@@ -1443,6 +1456,22 @@ function MapHome() {
                         >
                           <img src={orangePin} alt="Current Location" style={{ width: '24px', height: '24px', objectFit: 'contain' }} />
                         </button>
+                      )}
+                      {loc.trim() !== '' && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginLeft: '2px' }}>
+                          <button 
+                            onClick={(e) => { e.preventDefault(); moveLocation(index, -1); }}
+                            disabled={index === 0}
+                            style={{ background: 'none', border: 'none', color: index === 0 ? '#444' : '#bbb', cursor: index === 0 ? 'default' : 'pointer', padding: 0, fontSize: '1rem', lineHeight: '1' }}
+                            title="Move Up"
+                          >▲</button>
+                          <button 
+                            onClick={(e) => { e.preventDefault(); moveLocation(index, 1); }}
+                            disabled={index === locations.length - 1 || locations[index + 1].trim() === ''}
+                            style={{ background: 'none', border: 'none', color: index === locations.length - 1 || locations[index + 1].trim() === '' ? '#444' : '#bbb', cursor: index === locations.length - 1 || locations[index + 1].trim() === '' ? 'default' : 'pointer', padding: 0, fontSize: '1rem', lineHeight: '1' }}
+                            title="Move Down"
+                          >▼</button>
+                        </div>
                       )}
                     </div>
                   </div>
