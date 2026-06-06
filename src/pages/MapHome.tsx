@@ -1322,7 +1322,7 @@ function MapHome() {
       <NavBar user={user} onShowInstall={() => setShowInstallTutorial(true)} onShowAuth={() => setShowAuthModal(true)} />
       
       {/* Persistent Controls - Now includes scrollable POI bar for mobile */}
-      <div style={{ position: 'fixed', bottom: '5rem', left: '50%', transform: 'translateX(-50%)', zIndex: 100001, display: 'flex', flexDirection: 'column', gap: '0.8rem', width: 'auto', maxWidth: '95vw', alignItems: 'center' }}>
+      <div style={{ position: 'fixed', bottom: '5rem', left: '50%', transform: 'translateX(-50%)', zIndex: 1000, display: 'flex', flexDirection: 'column', gap: '0.8rem', width: 'auto', maxWidth: '95vw', alignItems: 'center' }}>
         
         {/* POI Fast Search Bar */}
         <div className="poi-bar" style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', padding: '0.5rem', width: '100%', maxWidth: '500px', scrollbarWidth: 'none', msOverflowStyle: 'none', maskImage: 'linear-gradient(to right, transparent, black 10%, black 90%, transparent)' }}>
@@ -1740,7 +1740,7 @@ function MapHome() {
             </div>
           )}
 
-          <div style={{ position: 'fixed', bottom: '5rem', left: '50%', transform: 'translateX(-50%)', zIndex: 100001, display: 'flex', flexDirection: 'row', gap: '0.8rem', background: 'rgba(0,0,0,0.5)', padding: '0.6rem 1rem', borderRadius: '40px', backdropFilter: 'blur(5px)', border: '1px solid rgba(255,255,255,0.1)' }}>
+          <div style={{ position: 'fixed', bottom: '5rem', left: '50%', transform: 'translateX(-50%)', zIndex: 1000, display: 'flex', flexDirection: 'row', gap: '0.8rem', background: 'rgba(0,0,0,0.5)', padding: '0.6rem 1rem', borderRadius: '40px', backdropFilter: 'blur(5px)', border: '1px solid rgba(255,255,255,0.1)' }}>
             <button 
               onClick={locateMe}
               style={{ width: '50px', height: '50px', borderRadius: '50%', background: 'none', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
