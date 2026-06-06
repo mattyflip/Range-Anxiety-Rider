@@ -41,7 +41,26 @@ const CalibrationModal: React.FC<CalibrationModalProps> = ({
   onComplete
 }) => {
   const [endBattery, setEndBattery] = useState<number>(Math.max(0, startBattery - 10));
+  const [endVoltage, setEndVoltage] = useState<number | ''>('');
+  const [batteryInputMode, setBatteryInputMode] = useState<'percent' | 'voltage'>('percent');
   const [isSaving, setIsSaving] = useState(false);
+
+  const getBatteryLevels = (v: number) => {
+    if (v === 48) return { min: 39, max: 54.6 };
+    if (v === 52) return { min: 42, max: 58.8 };
+    if (v === 36) return { min: 30, max: 42 };
+    if (v === 72) return { min: 60, max: 84 };
+    return { min: v * 0.8, max: v * 1.15 };
+  };
+
+  // Calculate start voltage for display
+  const { min, max } = getBatteryLevels(Number(bike?.specs?.voltage) || 48);
+  const startVoltage = Number((min + (startBattery / 100) * (max - min)).toFixed(1));
+
+  // Sync initial endVoltage
+  React.useEffect(() => {
+    setEndVoltage(Number((min + (endBattery / 100) * (max - min)).toFixed(1)));
+  }, []);
 
   const calculateVariance = (arr: number[]) => {
     if (arr.length === 0) return 0;
@@ -190,16 +209,48 @@ const CalibrationModal: React.FC<CalibrationModalProps> = ({
         <p style={{ color: '#aaa', fontSize: '0.85rem', marginBottom: '1.5rem' }}>Help Watt-Son learn your bike's actual efficiency.</p>
         
         <div style={{ background: '#222', padding: '1.5rem', borderRadius: '16px', marginBottom: '1.5rem', textAlign: 'left' }}>
-          <label style={{ color: '#888', fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: 900 }}>Ending Battery %</label>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <label style={{ color: '#888', fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: 900 }}>Ending Battery Level</label>
+            <div className="mode-toggle" style={{ display: 'flex', gap: '0.2rem', background: '#111', padding: '0.2rem', borderRadius: '8px' }}>
+              <button 
+                className={batteryInputMode === 'percent' ? 'active' : ''} 
+                onClick={() => setBatteryInputMode('percent')}
+                style={{ padding: '0.2rem 0.6rem', border: 'none', background: batteryInputMode === 'percent' ? '#333' : 'transparent', color: batteryInputMode === 'percent' ? 'white' : '#666', borderRadius: '6px', fontSize: '0.7rem' }}
+              >%</button>
+              <button 
+                className={batteryInputMode === 'voltage' ? 'active' : ''} 
+                onClick={() => setBatteryInputMode('voltage')}
+                style={{ padding: '0.2rem 0.6rem', border: 'none', background: batteryInputMode === 'voltage' ? '#333' : 'transparent', color: batteryInputMode === 'voltage' ? 'white' : '#666', borderRadius: '6px', fontSize: '0.7rem' }}
+              >V</button>
+            </div>
+          </div>
+          
           <input 
             type="number" 
-            value={endBattery} 
-            onChange={(e) => setEndBattery(Math.min(startBattery, Math.max(0, parseFloat(e.target.value) || 0)))}
+            value={batteryInputMode === 'percent' ? endBattery : endVoltage} 
+            onChange={(e) => {
+              const valStr = e.target.value;
+              const val = valStr === '' ? '' : parseFloat(valStr);
+              if (batteryInputMode === 'percent') {
+                const newPercent = val === '' ? 0 : Math.min(startBattery, Math.max(0, val));
+                setEndBattery(newPercent);
+                if (val !== '') setEndVoltage(Number((min + (newPercent / 100) * (max - min)).toFixed(1)));
+                else setEndVoltage('');
+              } else {
+                setEndVoltage(val);
+                if (val !== '') {
+                  const calculatedPercent = (((val - min) / (max - min)) * 100);
+                  setEndBattery(Math.min(startBattery, Math.max(0, Number(calculatedPercent.toFixed(0)))));
+                } else {
+                  setEndBattery(0);
+                }
+              }
+            }}
             style={{ width: '100%', padding: '1rem', background: '#111', border: '1px solid #333', borderRadius: '12px', color: 'white', fontSize: '1.5rem', fontWeight: 'bold', marginTop: '0.5rem', textAlign: 'center' }}
           />
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '1rem', fontSize: '0.7rem' }}>
-            <span style={{ color: '#666' }}>Started at: {startBattery}%</span>
-            <span style={{ color: '#ff6600' }}>Used: {startBattery - endBattery}%</span>
+            <span style={{ color: '#666' }}>Started at: {batteryInputMode === 'percent' ? `${startBattery}%` : `${startVoltage}V`}</span>
+            <span style={{ color: '#ff6600' }}>Used: {batteryInputMode === 'percent' ? `${startBattery - endBattery}%` : `${startVoltage - (Number(endVoltage) || 0)}V`}</span>
           </div>
         </div>
 

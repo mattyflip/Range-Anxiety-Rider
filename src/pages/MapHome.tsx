@@ -143,6 +143,7 @@ function MapHome() {
   const [showGroupRidePaywall, setShowGroupRidePaywall] = useState(false);
   const [bikeSearchQuery, setBikeSearchQuery] = useState("");
   const [showBikeResults, setShowBikeResults] = useState(false);
+  const [pendingActionAfterCalibration, setPendingActionAfterCalibration] = useState<'share' | null>(null);
   const [savedBikes, setSavedBikes] = useState<SavedBike[]>([]);
   const [newBikeName, setNewBikeName] = useState('');
   const [showToSPage, setShowToSPage] = useState(false);
@@ -543,7 +544,14 @@ function MapHome() {
         batteryPercentRemaining: startBattery ? Number(startBattery) - (startBattery * 0.1) : 0, // Mock for share card
         recommendedSpeedMph: realTimeSpeedMph
     });
-    setShowSharePreview(true);
+    
+    // Trigger Calibration if trip was significant (> 0.2 miles)
+    if (user && actualDistanceMiles > 0.2 && currentTripBike) {
+      setPendingActionAfterCalibration('share');
+      setShowCalibrationModal(true);
+    } else {
+      setShowSharePreview(true);
+    }
   };
 
   useEffect(() => {
@@ -1893,7 +1901,13 @@ function MapHome() {
           stopCount={stopCount}
           speedHistory={speedHistory}
           orgId={userData?.orgId}
-          onClose={() => setShowCalibrationModal(false)}
+          onClose={() => {
+            setShowCalibrationModal(false);
+            if (pendingActionAfterCalibration === 'share') {
+              setShowSharePreview(true);
+              setPendingActionAfterCalibration(null);
+            }
+          }}
           onComplete={(newFactor) => {
             setShowCalibrationModal(false);
             // Update local state to reflect the new factor immediately
@@ -1902,6 +1916,10 @@ function MapHome() {
               ...prev,
               specs: { ...prev.specs, calibrationFactor: newFactor }
             } : null);
+            if (pendingActionAfterCalibration === 'share') {
+              setShowSharePreview(true);
+              setPendingActionAfterCalibration(null);
+            }
           }}
         />
       )}
