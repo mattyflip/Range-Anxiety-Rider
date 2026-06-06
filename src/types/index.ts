@@ -232,6 +232,7 @@ export interface Organization {
     lng: number;
     address?: string;
   };
+  perimeter?: { lat: number; lng: number }[];
   hours?: {
     open: string;
     close: string;

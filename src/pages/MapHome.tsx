@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { GoogleMap, useJsApiLoader, Polyline, InfoWindowF, Polygon } from '@react-google-maps/api'
+import { GoogleMap, useJsApiLoader, Polyline, InfoWindowF, PolygonF, DrawingManagerF } from '@react-google-maps/api'
 import ModernAutocomplete from '../features/map/ModernAutocomplete'
 import { toPng } from 'html-to-image'
 import { decode } from '@googlemaps/polyline-codec'
@@ -48,7 +48,7 @@ interface GoogleRoute {
   legs: GoogleRouteLeg[];
 }
 
-const LIBRARIES: ("places" | "geometry" | "marker")[] = ["places", "geometry", "marker"];
+const LIBRARIES: ("places" | "geometry" | "marker" | "drawing")[] = ["places", "geometry", "marker", "drawing"];
 
 interface GroupRide {
   id: string;
@@ -237,8 +237,10 @@ function MapHome() {
   const [selectedBikeId, setSelectedBikeId] = useState<string>('');
   const [shopLocation, setShopLocation] = useState<google.maps.LatLngLiteral | null>(null);
   const [orgOwnerId, setOrgOwnerId] = useState<string | null>(null);
+  const [shopPerimeter, setShopPerimeter] = useState<google.maps.LatLngLiteral[] | null>(null);
+  const [isDrawingPerimeter, setIsDrawingPerimeter] = useState(false);
+  const [messageRiderTarget, setMessageRiderTarget] = useState<LiveUnit | null>(null);
   const lastAlertTime = useRef<{ [key: string]: number }>({});
-  
   // Reorderable locations state - The SINGLE source of truth for the trip
   const [locations, setLocations] = useState<string[]>(['', '', '', '', '']);
 
@@ -295,6 +297,9 @@ function MapHome() {
               if (oData.location?.lat && oData.location?.lng) {
                 setShopLocation({ lat: oData.location.lat, lng: oData.location.lng });
               }
+              if (oData.perimeter) {
+                setShopPerimeter(oData.perimeter);
+              }
             }
           }, (err) => console.error("Firestore unsubOrg error:", err));
 
@@ -329,6 +334,39 @@ function MapHome() {
               setLiveUnits(s.docs.map(doc => ({ id: doc.id, ...doc.data() } as LiveUnit)));
             }, (err) => console.error("Firestore unsubLive error:", err));
           }
+        } else if (d.activeRental?.shopId) {
+          // Rider without an org, but has an active rental
+          unsubOrg = onSnapshot(doc(db, "organizations", d.activeRental.shopId), (oSnap) => {
+            if (oSnap.exists()) {
+              const oData = oSnap.data() as Organization;
+              setOrgOwnerId(oData.ownerId);
+              if (oData.perimeter) {
+                setShopPerimeter(oData.perimeter);
+              }
+            }
+          }, (err) => console.error("Firestore unsubOrg rental error:", err));
+
+          unsubBikes = onSnapshot(query(collection(db, `organizations/${d.activeRental.shopId}/bikes`)), (s) => {
+             const bikes = s.docs.map(doc => ({ id: doc.id, ...doc.data() } as Bike));
+             setShopBikes(bikes);
+             const assigned = bikes.find(b => b.currentRiderId === user.uid && b.status === 'rented');
+             if (assigned) {
+               setSelectedBikeId(assigned.id);
+               if (assigned.specs && !settingsDirty) {
+                 setSpecs({
+                   voltage: assigned.specs.voltage || 48,
+                   capacityAh: assigned.specs.capacityAh || 15,
+                   motorWatts: assigned.specs.motorWatts || 750,
+                   bikeWeightLbs: assigned.specs.bikeWeightLbs || 65,
+                   tirePSI: assigned.specs.tirePSI || 30,
+                   tireType: (assigned.specs.tireType as any) || 'all-terrain'
+                 });
+                 setStartBattery(assigned.specs.currentBatteryPercent || 100);
+               }
+             } else {
+               setSelectedBikeId('');
+             }
+          }, (err) => console.error("Firestore unsubBikes rental error:", err));
         }
         setLoading(false);
 
@@ -458,7 +496,8 @@ function MapHome() {
       const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
       setUserLocation(loc);
       const speed = (pos.coords.speed || 0) * 2.23694;
-      if (userData?.orgId && selectedBikeId) {
+      const targetShopId = userData?.orgId || userData?.activeRental?.shopId;
+      if (targetShopId && selectedBikeId) {
         try {
           const bike = shopBikes.find(b => b.id === selectedBikeId);
           if (bike && bike.status === 'rented' && bike.currentRiderId === user.uid) {
@@ -483,7 +522,7 @@ function MapHome() {
                   throttleMode
                 })
              }).then(r => r.json());
-             await setDoc(doc(db, `organizations/${userData.orgId}/live_units`, user.uid), {
+             await setDoc(doc(db, `organizations/${targetShopId}/live_units`, user.uid), {
                 unitName: bike.unitId, riderName: userData.username || 'Rider', bikeId: bike.id, position: loc,
                 battery: bike.specs?.currentBatteryPercent || 100, milesRemaining: calcRes.remainingMiles || 0,
                 speed: speed, elevationFt: eRes.results?.[0]?.elevation * 3.28084 || 0, windMph: wRes.wind_speed || 0,
@@ -500,6 +539,16 @@ function MapHome() {
                   createNotification(orgOwnerId, user.uid, userData.username || "Rider", 'fleet_alert', user.uid, `🪫 LOW BATTERY: ${bike.unitId} is at ${bat}%! Rider: ${userData.username || user.email} (${user.email})`);
                   lastAlertTime.current['battery'] = now;
                }
+               if (shopPerimeter && shopPerimeter.length > 2) {
+                 const googlePoly = new google.maps.Polygon({ paths: shopPerimeter });
+                 const googleLoc = new google.maps.LatLng(loc.lat, loc.lng);
+                 const isInside = google.maps.geometry.poly.containsLocation(googleLoc, googlePoly);
+                 if (!isInside && (!lastAlertTime.current['geofence'] || now - lastAlertTime.current['geofence'] > 300000)) {
+                   showToast("🚨 You are outside the shop's allowed riding zone!");
+                   createNotification(orgOwnerId, user.uid, userData.username || "Rider", 'fleet_alert', user.uid, `🚨 BOUNDARY ALERT: ${bike.unitId} is outside the allowed riding zone! Rider: ${userData.username || user.email}`);
+                   lastAlertTime.current['geofence'] = now;
+                 }
+               }
              }
           }
         } catch (e) { console.error('Non-critical map/telemetry error:', e); }
@@ -514,7 +563,7 @@ function MapHome() {
       }
     }, null, { enableHighAccuracy: true });
     return () => navigator.geolocation.clearWatch(watchId);
-  }, [user, userData, selectedBikeId, shopBikes, activeRide, orgOwnerId, riderWeight, driveMode, pedalAssistLevel, throttleMode]);
+  }, [user, userData, selectedBikeId, shopBikes, activeRide, orgOwnerId, riderWeight, driveMode, pedalAssistLevel, throttleMode, shopPerimeter]);
 
   const speak = (text: string) => {
     if ('speechSynthesis' in window) {
@@ -1405,12 +1454,57 @@ function MapHome() {
             </div>
           )}
 
-          {userRole === 'fleet' && (
-            <div style={{ marginBottom: '1.5rem', background: '#222', padding: '1rem', borderRadius: '16px', border: '1px solid #ff6600' }}>
-               <div style={{ color: '#ff6600', fontWeight: 900, fontSize: '0.8rem', textTransform: 'uppercase' }}>Fleet Overview</div>
-               <div style={{ fontSize: '0.7rem', color: '#888', marginTop: '0.4rem' }}>Tracking {liveUnits.length} active rentals in the field.</div>
+          {userRole === 'fleet' ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div style={{ background: '#222', padding: '1rem', borderRadius: '16px', border: '1px solid #ff6600' }}>
+                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                   <div style={{ color: '#ff6600', fontWeight: 900, fontSize: '0.8rem', textTransform: 'uppercase' }}>Fleet Overview</div>
+                   <button 
+                     onClick={() => setIsDrawingPerimeter(!isDrawingPerimeter)}
+                     style={{ background: isDrawingPerimeter ? '#ff6600' : 'transparent', color: isDrawingPerimeter ? 'white' : '#ff6600', border: '1px solid #ff6600', borderRadius: '8px', padding: '0.3rem 0.6rem', fontSize: '0.7rem', fontWeight: 'bold', cursor: 'pointer' }}
+                   >
+                     {isDrawingPerimeter ? 'Cancel Drawing' : 'Draw Perimeter'}
+                   </button>
+                 </div>
+                 <div style={{ fontSize: '0.7rem', color: '#888', marginTop: '0.4rem' }}>Tracking {liveUnits.length} active rentals.</div>
+              </div>
+
+              <div style={{ background: '#1a1a1a', borderRadius: '12px', border: '1px solid #333', overflow: 'hidden' }}>
+                <div style={{ background: '#222', padding: '0.8rem', fontWeight: 'bold', fontSize: '0.85rem', borderBottom: '1px solid #333' }}>
+                  Live Units Feed
+                </div>
+                <div style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+                  {liveUnits.length === 0 ? (
+                    <div style={{ padding: '1rem', textAlign: 'center', color: '#666', fontSize: '0.8rem' }}>No active units.</div>
+                  ) : (
+                    liveUnits.map(lu => (
+                      <div 
+                        key={lu.id} 
+                        onClick={() => {
+                           if (mapRef.current) {
+                             mapRef.current.panTo(lu.position);
+                             mapRef.current.setZoom(15);
+                             setMessageRiderTarget(lu);
+                           }
+                        }}
+                        style={{ padding: '0.8rem', borderBottom: '1px solid #222', cursor: 'pointer', transition: 'background 0.2s' }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.3rem' }}>
+                          <span style={{ fontWeight: 'bold', color: 'white' }}>{lu.unitName}</span>
+                          <span style={{ color: lu.battery < 20 ? '#ff4444' : '#34a853', fontWeight: 'bold' }}>{lu.battery}%</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#888' }}>
+                          <span>Rider: {lu.riderName || 'Unknown'}</span>
+                          <span>{lu.speed ? lu.speed.toFixed(0) : 0} mph</span>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
             </div>
-          )}
+          ) : (
+            <>
 
           <div style={{ display: 'flex', background: '#111', borderRadius: '12px', padding: '4px', marginBottom: '1.5rem', border: '1px solid #333' }}>
             <button
@@ -1705,6 +1799,8 @@ function MapHome() {
               <button onClick={startNavigation} style={{ width: '100%', padding: '1.2rem', background: 'linear-gradient(to bottom, #ff8800, #ff6600)', color: 'white', border: 'none', borderRadius: '16px', fontWeight: 900, fontSize: '1.2rem', boxShadow: '0 4px 15px rgba(255,102,0,0.4)' }}>🏁 START TRIP</button>
             </div>
           )}
+          </>
+          )}
         </aside>
 
         <main style={{ flex: 1, position: 'relative' }}>
@@ -1854,7 +1950,7 @@ function MapHome() {
             options={{ mapId: import.meta.env.VITE_GOOGLE_MAP_ID || 'DEMO_MAP_ID', disableDefaultUI: true }}
           >
             {rangePolygonPoints && !trip.destination && (
-              <Polygon
+              <PolygonF
                 paths={rangePolygonPoints}
                 options={{
                   strokeColor: '#ff6600',
@@ -2027,6 +2123,80 @@ function MapHome() {
                     }}
                   >
                     Add to Route
+                  </button>
+                </div>
+              </InfoWindowF>
+            )}
+
+            {shopPerimeter && (
+              <PolygonF
+                paths={shopPerimeter}
+                options={{
+                  fillColor: '#ff6600',
+                  fillOpacity: 0.1,
+                  strokeColor: '#ff6600',
+                  strokeOpacity: 0.8,
+                  strokeWeight: 2,
+                  clickable: false,
+                  zIndex: 1
+                }}
+              />
+            )}
+            
+            {userRole === 'fleet' && isDrawingPerimeter && (
+              <DrawingManagerF
+                onPolygonComplete={(polygon) => {
+                  const path = polygon.getPath();
+                  const coords: {lat: number, lng: number}[] = [];
+                  for (let i = 0; i < path.getLength(); i++) {
+                    coords.push({ lat: path.getAt(i).lat(), lng: path.getAt(i).lng() });
+                  }
+                  setShopPerimeter(coords);
+                  polygon.setMap(null); // Remove the drawn polygon as PolygonF will render it
+                  setIsDrawingPerimeter(false);
+                  
+                  if (userData?.orgId) {
+                    updateDoc(doc(db, "organizations", userData.orgId), { perimeter: coords })
+                      .then(() => showToast("Perimeter saved successfully", "success"))
+                      .catch((err) => showToast("Failed to save perimeter: " + err.message, "error"));
+                  }
+                }}
+                options={{
+                  drawingControl: false,
+                  drawingMode: google.maps.drawing.OverlayType.POLYGON,
+                  polygonOptions: {
+                    fillColor: '#ff6600',
+                    fillOpacity: 0.3,
+                    strokeWeight: 2,
+                    clickable: false,
+                    editable: true,
+                    zIndex: 1
+                  }
+                }}
+              />
+            )}
+
+            {userRole === 'fleet' && messageRiderTarget && (
+              <InfoWindowF
+                position={messageRiderTarget.position}
+                onCloseClick={() => setMessageRiderTarget(null)}
+              >
+                <div style={{ color: 'black', padding: '0.4rem', minWidth: '150px' }}>
+                  <div style={{ fontWeight: 'bold', fontSize: '1rem', marginBottom: '4px' }}>{messageRiderTarget.unitName}</div>
+                  <div style={{ fontSize: '0.8rem', color: '#444', marginBottom: '8px' }}>Rider: {messageRiderTarget.riderName || 'Unknown'}</div>
+                  <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: messageRiderTarget.battery < 20 ? '#ff4444' : '#34a853' }}>Battery: {messageRiderTarget.battery}%</div>
+                  <div style={{ fontSize: '0.8rem', marginBottom: '8px' }}>Speed: {messageRiderTarget.speed?.toFixed(0) || 0} mph</div>
+                  <button
+                    onClick={() => {
+                      const msg = window.prompt("Enter message to send to rider:");
+                      if (msg && msg.trim() && user) {
+                         createNotification(messageRiderTarget.id, user.uid, userData?.orgName || "Shop HQ", 'fleet_alert', user.uid, `Message from Shop: ${msg}`);
+                         showToast("Message sent to rider!");
+                      }
+                    }}
+                    style={{ width: '100%', padding: '0.4rem', background: '#4285F4', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+                  >
+                    Send Message
                   </button>
                 </div>
               </InfoWindowF>
