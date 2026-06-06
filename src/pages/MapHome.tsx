@@ -1767,6 +1767,8 @@ function MapHome() {
             center={userRole === 'fleet' ? (shopLocation || center) : mapCenter} 
             zoom={12} 
             onClick={(e) => {
+              if (e.stop) e.stop(); // Prevent default POI popup from Google
+              setClickedMapLocation(null);
               if (e.latLng) {
                 const lat = e.latLng.lat();
                 const lng = e.latLng.lng();
@@ -1951,6 +1953,7 @@ function MapHome() {
             )}
             {clickedMapLocation && (
               <InfoWindowF
+                key={clickedMapLocation.placeId || `${clickedMapLocation.lat}-${clickedMapLocation.lng}`}
                 position={{ lat: clickedMapLocation.lat, lng: clickedMapLocation.lng }}
                 onCloseClick={() => setClickedMapLocation(null)}
               >
