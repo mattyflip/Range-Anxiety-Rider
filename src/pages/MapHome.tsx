@@ -1423,6 +1423,27 @@ function MapHome() {
                         value={loc} 
                         onPlaceSelected={(addr) => updateLocation(index, addr)} 
                       />
+                      {index === 0 && (
+                        <button 
+                          onClick={(e) => {
+                            e.preventDefault();
+                            const pos = userLocation || mapCenter;
+                            if (!pos) return;
+                            const geocoder = new google.maps.Geocoder();
+                            geocoder.geocode({ location: pos }, (results, status) => {
+                              if (status === 'OK' && results && results[0]) {
+                                updateLocation(0, results[0].formatted_address);
+                              } else {
+                                updateLocation(0, `${pos.lat.toFixed(4)}, ${pos.lng.toFixed(4)}`);
+                              }
+                            });
+                          }}
+                          style={{ background: '#222', border: '1px solid #444', borderRadius: '8px', cursor: 'pointer', padding: '0.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, height: '40px', width: '40px' }}
+                          title="Use Current Location"
+                        >
+                          <img src={orangePin} alt="Current Location" style={{ width: '24px', height: '24px', objectFit: 'contain' }} />
+                        </button>
+                      )}
                     </div>
                   </div>
                 );
