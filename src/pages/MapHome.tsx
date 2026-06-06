@@ -188,6 +188,11 @@ function MapHome() {
   // Range Polygon State
   const [rangePolygonPoints, setRangePolygonPoints] = useState<google.maps.LatLngLiteral[] | null>(null);
 
+  // Free Ride Tracking State
+  const [tripMode, setTripMode] = useState<'plan' | 'track'>('plan');
+  const [isTrackingFreeRide, setIsTrackingFreeRide] = useState(false);
+  const [breadcrumbTrail, setBreadcrumbTrail] = useState<google.maps.LatLngLiteral[]>([]);
+
   // --- FLEET / B2B SPECIFIC STATE ---
   const [liveUnits, setLiveUnits] = useState<LiveUnit[]>([]);
   const [shopBikes, setShopBikes] = useState<Bike[]>([]);
@@ -484,6 +489,7 @@ function MapHome() {
   const startNavigation = () => {
     if (!response || !metrics) return;
     setIsNavigating(true); setCurrentLegIndex(0); setCurrentStepIndex(0); setHasAnnouncedNextStep(false); setShowMobileMenu(false);
+    setIsTrackingFreeRide(false);
     
     // TRACKING FOR CALIBRATION
     setTripStartBattery(Number(startBattery) || 100);
@@ -502,6 +508,21 @@ function MapHome() {
     if (mapRef.current) { mapRef.current.setZoom(18); mapRef.current.setTilt(45); }
   };
 
+  const startFreeTracking = () => {
+    setIsTrackingFreeRide(true);
+    setIsNavigating(false);
+    setShowMobileMenu(false);
+    setBreadcrumbTrail(userLocation ? [userLocation] : []);
+    setActualDistanceMiles(0);
+    setLastNavLocation(userLocation);
+    setRealTimeSpeedMph(0);
+    if (mapRef.current) {
+       mapRef.current.setZoom(18);
+       mapRef.current.setTilt(45);
+       if (userLocation) mapRef.current.panTo(userLocation);
+    }
+  };
+
   const stopNavigation = () => {
     setIsNavigating(false);
     if (mapRef.current) { mapRef.current.setTilt(0); }
@@ -512,8 +533,21 @@ function MapHome() {
     }
   };
 
+  const stopFreeTracking = () => {
+    setIsTrackingFreeRide(false);
+    if (mapRef.current) { mapRef.current.setTilt(0); }
+    // Prepare mock metrics for share
+    setMetrics({
+        distanceMiles: actualDistanceMiles,
+        durationMin: 0, elevationGainFeet: 0, elevationLossFeet: 0, estimatedWh: 0, efficiencyWhMi: realTimeWhMi,
+        batteryPercentRemaining: startBattery ? Number(startBattery) - (startBattery * 0.1) : 0, // Mock for share card
+        recommendedSpeedMph: realTimeSpeedMph
+    });
+    setShowSharePreview(true);
+  };
+
   useEffect(() => {
-    if (!isNavigating || !response) return;
+    if (!isNavigating && !isTrackingFreeRide) return;
     const watchId = navigator.geolocation.watchPosition((pos) => {
       const uLoc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
 
@@ -559,31 +593,46 @@ function MapHome() {
         setRealTimeRemainingMiles(currentWh / instantaneousBurnRate * currentSpeedMph);
       }
 
-      const route = response.routes[selectedRouteIndex];
-      const leg = route.legs[currentLegIndex];
-      const step = leg.steps[currentStepIndex];
-      // Note: Continuous panTo removed to allow free movement as requested
-      const endLoc = { lat: step.end_location.lat(), lng: step.end_location.lng() };
-      const distMeters = google.maps.geometry.spherical.computeDistanceBetween(new google.maps.LatLng(uLoc.lat, uLoc.lng), new google.maps.LatLng(endLoc.lat, endLoc.lng));
-      const distFeet = distMeters * 3.28084;
-      setNextStepDist(distFeet > 528 ? `${(distFeet/5280).toFixed(1)} mi` : `${Math.round(distFeet)} ft`);
-      if (distFeet < 300 && !hasAnnouncedNextStep) {
-        speak(`In 300 feet, ${step.instructions.replace(/<[^>]*>?/gm, '')}`);
-        setHasAnnouncedNextStep(true);
+      if (isTrackingFreeRide) {
+         setBreadcrumbTrail(prev => {
+             if (prev.length === 0) return [uLoc];
+             const lastP = prev[prev.length - 1];
+             if (google.maps.geometry.spherical.computeDistanceBetween(
+                new google.maps.LatLng(lastP.lat, lastP.lng),
+                new google.maps.LatLng(uLoc.lat, uLoc.lng)
+             ) > 5) return [...prev, uLoc];
+             return prev;
+         });
+         if (mapRef.current) mapRef.current.panTo(uLoc);
       }
-      if (distFeet < 60) {
-        if (currentStepIndex < leg.steps.length - 1) {
-          setCurrentStepIndex(currentStepIndex + 1); setHasAnnouncedNextStep(false);
-          speak(leg.steps[currentStepIndex+1].instructions.replace(/<[^>]*>?/gm, ''));
-        } else if (currentLegIndex < route.legs.length - 1) {
-          setCurrentLegIndex(currentLegIndex + 1); setCurrentStepIndex(0); setHasAnnouncedNextStep(false);
-        } else {
-          speak("You have arrived at your destination."); stopNavigation();
+
+      if (isNavigating && response) {
+        const route = response.routes[selectedRouteIndex];
+        const leg = route.legs[currentLegIndex];
+        const step = leg.steps[currentStepIndex];
+        // Note: Continuous panTo removed to allow free movement as requested
+        const endLoc = { lat: step.end_location.lat(), lng: step.end_location.lng() };
+        const distMeters = google.maps.geometry.spherical.computeDistanceBetween(new google.maps.LatLng(uLoc.lat, uLoc.lng), new google.maps.LatLng(endLoc.lat, endLoc.lng));
+        const distFeet = distMeters * 3.28084;
+        setNextStepDist(distFeet > 528 ? `${(distFeet/5280).toFixed(1)} mi` : `${Math.round(distFeet)} ft`);
+        if (distFeet < 300 && !hasAnnouncedNextStep) {
+          speak(`In 300 feet, ${step.instructions.replace(/<[^>]*>?/gm, '')}`);
+          setHasAnnouncedNextStep(true);
+        }
+        if (distFeet < 60) {
+          if (currentStepIndex < leg.steps.length - 1) {
+            setCurrentStepIndex(currentStepIndex + 1); setHasAnnouncedNextStep(false);
+            speak(leg.steps[currentStepIndex+1].instructions.replace(/<[^>]*>?/gm, ''));
+          } else if (currentLegIndex < route.legs.length - 1) {
+            setCurrentLegIndex(currentLegIndex + 1); setCurrentStepIndex(0); setHasAnnouncedNextStep(false);
+          } else {
+            speak("You have arrived at your destination."); stopNavigation();
+          }
         }
       }
     }, null, { enableHighAccuracy: true });
     return () => navigator.geolocation.clearWatch(watchId);
-  }, [isNavigating, response, currentLegIndex, currentStepIndex, hasAnnouncedNextStep, selectedRouteIndex, lastNavLocation]);
+  }, [isNavigating, isTrackingFreeRide, response, currentLegIndex, currentStepIndex, hasAnnouncedNextStep, selectedRouteIndex, lastNavLocation]);
 
   // --- AUTO-STOP INACTIVITY TIMER ---
   useEffect(() => {
@@ -1290,6 +1339,21 @@ function MapHome() {
             </div>
           )}
 
+          <div style={{ display: 'flex', background: '#111', borderRadius: '12px', padding: '4px', marginBottom: '1.5rem', border: '1px solid #333' }}>
+            <button
+              onClick={() => setTripMode('plan')}
+              style={{ flex: 1, padding: '0.6rem', border: 'none', background: tripMode === 'plan' ? '#ff6600' : 'transparent', color: tripMode === 'plan' ? 'white' : '#888', borderRadius: '8px', fontWeight: 900, fontSize: '0.8rem', transition: 'all 0.2s' }}
+            >
+              🗺️ PLAN MY TRIP
+            </button>
+            <button
+              onClick={() => setTripMode('track')}
+              style={{ flex: 1, padding: '0.6rem', border: 'none', background: tripMode === 'track' ? '#34a853' : 'transparent', color: tripMode === 'track' ? 'white' : '#888', borderRadius: '8px', fontWeight: 900, fontSize: '0.8rem', transition: 'all 0.2s' }}
+            >
+              ⏱️ TRACK MY RIDE
+            </button>
+          </div>
+
           <div className="form-group"><label>Units</label><div className="mode-toggle">
             <button className={unitSystem === 'imperial' ? 'active' : ''} onClick={() => setUnitSystem('imperial')}>Imperial</button>
             <button className={unitSystem === 'metric' ? 'active' : ''} onClick={() => setUnitSystem('metric')}>Metric</button>
@@ -1309,27 +1373,29 @@ function MapHome() {
             </div>
           </section>
 
-          <section className="form-group">
-            <label>Route</label>
-            {locations.map((loc, index) => {
-              if (index >= 2 && locations[index - 1].trim() === '') return null;
-              return (
-                <div key={index} style={{ display: 'flex', gap: '0.4rem', marginTop: index > 0 ? '0.5rem' : '0', alignItems: 'center' }}>
-                  <div style={{ flex: 1, display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-                    <ModernAutocomplete 
-                      placeholder={index === 0 ? "Start" : `Stop ${index}`} 
-                      value={loc} 
-                      onPlaceSelected={(addr) => updateLocation(index, addr)} 
-                    />
+          {tripMode === 'plan' && (
+            <section className="form-group">
+              <label>Route</label>
+              {locations.map((loc, index) => {
+                if (index >= 2 && locations[index - 1].trim() === '') return null;
+                return (
+                  <div key={index} style={{ display: 'flex', gap: '0.4rem', marginTop: index > 0 ? '0.5rem' : '0', alignItems: 'center' }}>
+                    <div style={{ flex: 1, display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                      <ModernAutocomplete 
+                        placeholder={index === 0 ? "Start" : `Stop ${index}`} 
+                        value={loc} 
+                        onPlaceSelected={(addr) => updateLocation(index, addr)} 
+                      />
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-            <div className="mode-toggle" style={{ marginTop: '1rem' }}>
-              <button className={!isRoundTrip ? 'active' : ''} onClick={() => { setIsRoundTrip(false); markDirty(); }}>One Way</button>
-              <button className={isRoundTrip ? 'active' : ''} onClick={() => { setIsRoundTrip(true); markDirty(); }}>Round Trip</button>
-            </div>
-          </section>
+                );
+              })}
+              <div className="mode-toggle" style={{ marginTop: '1rem' }}>
+                <button className={!isRoundTrip ? 'active' : ''} onClick={() => { setIsRoundTrip(false); markDirty(); }}>One Way</button>
+                <button className={isRoundTrip ? 'active' : ''} onClick={() => { setIsRoundTrip(true); markDirty(); }}>Round Trip</button>
+              </div>
+            </section>
+          )}
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <section className="form-group"><label>Voltage</label><input type="number" disabled={isRenting} style={{ opacity: isRenting ? 0.5 : 1 }} value={specs.voltage} onChange={e => { setSpecs(p => ({ ...p, voltage: e.target.value === '' ? '' : parseFloat(e.target.value) })); markDirty(); }} /></section>
@@ -1413,9 +1479,15 @@ function MapHome() {
             }} />
           </section>
 
-          <button onClick={handleCalculate} disabled={isCalculating} style={{ width: '100%', padding: '1rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold', marginTop: '1rem', opacity: isCalculating ? 0.5 : 1 }}>
-            {isCalculating ? 'CALCULATING...' : 'UPDATE ROUTE'}
-          </button>
+          {tripMode === 'plan' ? (
+            <button onClick={handleCalculate} disabled={isCalculating} style={{ width: '100%', padding: '1rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold', marginTop: '1rem', opacity: isCalculating ? 0.5 : 1 }}>
+              {isCalculating ? 'CALCULATING...' : 'UPDATE ROUTE'}
+            </button>
+          ) : (
+            <button onClick={startFreeTracking} style={{ width: '100%', padding: '1.2rem', background: 'linear-gradient(to bottom, #34a853, #2e9148)', color: 'white', border: 'none', borderRadius: '16px', fontWeight: 900, fontSize: '1.2rem', marginTop: '1rem', boxShadow: '0 4px 15px rgba(52,168,83,0.4)' }}>
+              🏁 START TRACKING
+            </button>
+          )}
 
           {/* Route Alternatives Picker */}
           {allAnalyzedRoutes.length > 1 && (
@@ -1526,6 +1598,30 @@ function MapHome() {
         </aside>
 
         <main style={{ flex: 1, position: 'relative' }}>
+          {isTrackingFreeRide && (
+            <div className="nav-overlay" style={{ background: '#1a1a1a', border: '2px solid #34a853', borderRadius: '20px', padding: '1.2rem', boxShadow: '0 10px 40px rgba(0,0,0,0.8)', display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ color: 'white', fontWeight: 'bold' }}>Free Ride Tracking</div>
+                  <button onClick={stopFreeTracking} style={{ background: '#ff4444', color: 'white', border: 'none', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>⏹</button>
+                </div>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', borderTop: '1px solid #333', paddingTop: '1rem', marginTop: '0.4rem' }}>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ color: '#888', fontSize: '0.6rem', textTransform: 'uppercase' }}>Speed</div>
+                    <div style={{ color: '#34a853', fontSize: '1.5rem', fontWeight: 900 }}>{realTimeSpeedMph.toFixed(0)} <span style={{ fontSize: '0.6rem', fontWeight: 400 }}>{unitSystem === 'imperial' ? 'MPH' : 'KMH'}</span></div>
+                  </div>
+                  <div style={{ textAlign: 'center', borderLeft: '1px solid #333', borderRight: '1px solid #333' }}>
+                    <div style={{ color: '#888', fontSize: '0.6rem', textTransform: 'uppercase' }}>Distance</div>
+                    <div style={{ color: '#00ccff', fontSize: '1.2rem', fontWeight: 900 }}>{actualDistanceMiles.toFixed(1)} <span style={{ fontSize: '0.6rem', fontWeight: 400 }}>{unitSystem === 'imperial' ? 'mi' : 'km'}</span></div>
+                  </div>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ color: '#888', fontSize: '0.6rem', textTransform: 'uppercase' }}>Remaining</div>
+                    <div style={{ color: '#ff6600', fontSize: '1.2rem', fontWeight: 900 }}>{realTimeRemainingMiles.toFixed(1)} <span style={{ fontSize: '0.6rem', fontWeight: 400 }}>{unitSystem === 'imperial' ? 'mi' : 'km'}</span></div>
+                  </div>
+                </div>
+            </div>
+          )}
+
           {isNavigating && response && (
             <div className="nav-overlay" style={{ background: '#1a1a1a', border: '2px solid #ff6600', borderRadius: '20px', padding: '1.2rem', boxShadow: '0 10px 40px rgba(0,0,0,0.8)', display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1605,6 +1701,14 @@ function MapHome() {
                   clickable: false,
                   zIndex: 1
                 }}
+              />
+            )}
+
+            {/* Free Ride Breadcrumb Trail */}
+            {breadcrumbTrail.length > 0 && (
+              <Polyline
+                path={breadcrumbTrail}
+                options={{ strokeColor: '#34a853', strokeOpacity: 0.8, strokeWeight: 6, zIndex: 5 }}
               />
             )}
 
