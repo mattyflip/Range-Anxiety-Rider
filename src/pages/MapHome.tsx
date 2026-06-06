@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { GoogleMap, useJsApiLoader, Polyline, InfoWindowF, PolygonF, DrawingManagerF } from '@react-google-maps/api'
+import { GoogleMap, useJsApiLoader, Polyline, InfoWindowF, PolygonF } from '@react-google-maps/api'
 import ModernAutocomplete from '../features/map/ModernAutocomplete'
 import { toPng } from 'html-to-image'
 import { decode } from '@googlemaps/polyline-codec'
@@ -48,7 +48,7 @@ interface GoogleRoute {
   legs: GoogleRouteLeg[];
 }
 
-const LIBRARIES: ("places" | "geometry" | "marker" | "drawing")[] = ["places", "geometry", "marker", "drawing"];
+const LIBRARIES: ("places" | "geometry" | "marker")[] = ["places", "geometry", "marker"];
 
 interface GroupRide {
   id: string;
@@ -239,6 +239,7 @@ function MapHome() {
   const [orgOwnerId, setOrgOwnerId] = useState<string | null>(null);
   const [shopPerimeter, setShopPerimeter] = useState<google.maps.LatLngLiteral[] | null>(null);
   const [isDrawingPerimeter, setIsDrawingPerimeter] = useState(false);
+  const [drawingPerimeterPoints, setDrawingPerimeterPoints] = useState<google.maps.LatLngLiteral[]>([]);
   const [messageRiderTarget, setMessageRiderTarget] = useState<LiveUnit | null>(null);
   const lastAlertTime = useRef<{ [key: string]: number }>({});
   // Reorderable locations state - The SINGLE source of truth for the trip
@@ -1459,13 +1460,39 @@ function MapHome() {
               <div style={{ background: '#222', padding: '1rem', borderRadius: '16px', border: '1px solid #ff6600' }}>
                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                    <div style={{ color: '#ff6600', fontWeight: 900, fontSize: '0.8rem', textTransform: 'uppercase' }}>Fleet Overview</div>
-                   <button 
-                     onClick={() => setIsDrawingPerimeter(!isDrawingPerimeter)}
-                     style={{ background: isDrawingPerimeter ? '#ff6600' : 'transparent', color: isDrawingPerimeter ? 'white' : '#ff6600', border: '1px solid #ff6600', borderRadius: '8px', padding: '0.3rem 0.6rem', fontSize: '0.7rem', fontWeight: 'bold', cursor: 'pointer' }}
-                   >
-                     {isDrawingPerimeter ? 'Cancel Drawing' : 'Draw Perimeter'}
-                   </button>
+                   {isDrawingPerimeter ? (
+                     <div style={{ display: 'flex', gap: '0.4rem' }}>
+                       <button onClick={() => setDrawingPerimeterPoints(drawingPerimeterPoints.slice(0, -1))} style={{ background: '#444', color: 'white', border: 'none', borderRadius: '4px', padding: '0.3rem', fontSize: '0.7rem', cursor: 'pointer' }}>Undo</button>
+                       <button onClick={() => {
+                          setIsDrawingPerimeter(false);
+                          setDrawingPerimeterPoints([]);
+                       }} style={{ background: '#444', color: 'white', border: 'none', borderRadius: '4px', padding: '0.3rem', fontSize: '0.7rem', cursor: 'pointer' }}>Cancel</button>
+                       <button onClick={() => {
+                          if (drawingPerimeterPoints.length > 2) {
+                            setShopPerimeter(drawingPerimeterPoints);
+                            setIsDrawingPerimeter(false);
+                            if (userData?.orgId) {
+                              updateDoc(doc(db, "organizations", userData.orgId), { perimeter: drawingPerimeterPoints })
+                                .then(() => showToast("Perimeter saved successfully", "success"))
+                                .catch((err) => showToast("Failed to save perimeter: " + err.message, "error"));
+                            }
+                          } else {
+                            showToast("Draw at least 3 points");
+                          }
+                       }} style={{ background: '#34a853', color: 'white', border: 'none', borderRadius: '4px', padding: '0.3rem', fontSize: '0.7rem', cursor: 'pointer' }}>Save</button>
+                     </div>
+                   ) : (
+                     <button 
+                       onClick={() => { setIsDrawingPerimeter(true); setDrawingPerimeterPoints(shopPerimeter || []); }}
+                       style={{ background: 'transparent', color: '#ff6600', border: '1px solid #ff6600', borderRadius: '8px', padding: '0.3rem 0.6rem', fontSize: '0.7rem', fontWeight: 'bold', cursor: 'pointer' }}
+                     >
+                       Draw Perimeter
+                     </button>
+                   )}
                  </div>
+                 {isDrawingPerimeter && (
+                   <div style={{ fontSize: '0.7rem', color: '#ff6600', marginTop: '0.5rem' }}>Click on the map to draw your shop's allowed riding boundaries.</div>
+                 )}
                  <div style={{ fontSize: '0.7rem', color: '#888', marginTop: '0.4rem' }}>Tracking {liveUnits.length} active rentals.</div>
               </div>
 
@@ -1886,6 +1913,12 @@ function MapHome() {
             center={userRole === 'fleet' ? (shopLocation || center) : mapCenter} 
             zoom={12} 
             onClick={(e) => {
+              if (userRole === 'fleet' && isDrawingPerimeter) {
+                if (e.latLng) {
+                   setDrawingPerimeterPoints([...drawingPerimeterPoints, { lat: e.latLng.lat(), lng: e.latLng.lng() }]);
+                }
+                return;
+              }
               if (e.stop) e.stop(); // Prevent default POI popup from Google
               setClickedMapLocation(null);
               if (e.latLng) {
@@ -2128,7 +2161,7 @@ function MapHome() {
               </InfoWindowF>
             )}
 
-            {shopPerimeter && (
+            {shopPerimeter && !isDrawingPerimeter && (
               <PolygonF
                 paths={shopPerimeter}
                 options={{
@@ -2143,37 +2176,19 @@ function MapHome() {
               />
             )}
             
-            {userRole === 'fleet' && isDrawingPerimeter && (
-              <DrawingManagerF
-                onPolygonComplete={(polygon) => {
-                  const path = polygon.getPath();
-                  const coords: {lat: number, lng: number}[] = [];
-                  for (let i = 0; i < path.getLength(); i++) {
-                    coords.push({ lat: path.getAt(i).lat(), lng: path.getAt(i).lng() });
-                  }
-                  setShopPerimeter(coords);
-                  polygon.setMap(null); // Remove the drawn polygon as PolygonF will render it
-                  setIsDrawingPerimeter(false);
-                  
-                  if (userData?.orgId) {
-                    updateDoc(doc(db, "organizations", userData.orgId), { perimeter: coords })
-                      .then(() => showToast("Perimeter saved successfully", "success"))
-                      .catch((err) => showToast("Failed to save perimeter: " + err.message, "error"));
-                  }
-                }}
-                options={{
-                  drawingControl: false,
-                  drawingMode: google.maps.drawing.OverlayType.POLYGON,
-                  polygonOptions: {
-                    fillColor: '#ff6600',
-                    fillOpacity: 0.3,
-                    strokeWeight: 2,
-                    clickable: false,
-                    editable: true,
-                    zIndex: 1
-                  }
-                }}
-              />
+            {userRole === 'fleet' && isDrawingPerimeter && drawingPerimeterPoints.length > 0 && (
+              <>
+                <Polyline 
+                  path={drawingPerimeterPoints}
+                  options={{ strokeColor: '#ff6600', strokeWeight: 3, zIndex: 2 }}
+                />
+                {drawingPerimeterPoints.length > 2 && (
+                  <PolygonF
+                    paths={drawingPerimeterPoints}
+                    options={{ fillColor: '#ff6600', fillOpacity: 0.3, strokeColor: '#ff6600', strokeWeight: 2, clickable: false, zIndex: 1 }}
+                  />
+                )}
+              </>
             )}
 
             {userRole === 'fleet' && messageRiderTarget && (
