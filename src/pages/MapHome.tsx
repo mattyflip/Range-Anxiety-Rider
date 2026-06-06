@@ -681,10 +681,10 @@ function MapHome() {
     ]);
     
     // Auto-recalculate
-    setTimeout(() => handleCalculate(), 500);
+    setTimeout(() => handleCalculate(true), 500);
   };
 
-  const handleCalculate = async () => { 
+  const handleCalculate = async (forceHideMenu: boolean | React.MouseEvent = false) => { 
     let currentOrigin = trip.origin;
     const currentDest = trip.destination;
     
@@ -698,6 +698,8 @@ function MapHome() {
        return;
     }
 
+    const shouldHideMenu = forceHideMenu === true || response === null;
+
     setIsCalculating(true);
     setResponse(null); 
     setMetrics(null); 
@@ -705,7 +707,7 @@ function MapHome() {
     setAllAnalyzedRoutes([]);
     setSelectedRouteIndex(0);
     setSettingsDirty(false); 
-    setShowMobileMenu(false);
+    if (shouldHideMenu) setShowMobileMenu(false);
 
     const calcSpeed = Number(targetSpeed) || 18;
 
@@ -1251,7 +1253,10 @@ function MapHome() {
           </button>
           <button 
             className="mobile-toggle-btn" 
-            onClick={() => setShowMobileMenu(!showMobileMenu)} 
+            onClick={() => {
+              if (showMobileMenu && settingsDirty) handleCalculate(true);
+              else setShowMobileMenu(!showMobileMenu);
+            }} 
             style={{ height: '50px', padding: '0 1.5rem', borderRadius: '40px', background: '#ff6600', color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '0.85rem', boxShadow: '0 4px 12px rgba(0,0,0,0.4)', textTransform: 'uppercase', whiteSpace: 'nowrap' }}
           >
             {getMobileToggleLabel()}
@@ -1556,7 +1561,10 @@ function MapHome() {
             </button>
             <button 
               className="mobile-toggle-btn" 
-              onClick={() => setShowMobileMenu(!showMobileMenu)} 
+              onClick={() => {
+                if (showMobileMenu && settingsDirty) handleCalculate(true);
+                else setShowMobileMenu(!showMobileMenu);
+              }} 
               style={{ height: '50px', padding: '0 1.5rem', borderRadius: '40px', background: '#ff6600', color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '0.85rem', boxShadow: '0 4px 12px rgba(0,0,0,0.4)', textTransform: 'uppercase', whiteSpace: 'nowrap' }}
             >
               {getMobileToggleLabel()}
