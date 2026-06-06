@@ -144,6 +144,22 @@ function MapHome() {
   const [bikeSearchQuery, setBikeSearchQuery] = useState("");
   const [showBikeResults, setShowBikeResults] = useState(false);
   const [pendingActionAfterCalibration, setPendingActionAfterCalibration] = useState<'share' | null>(null);
+  const [clickedMapLocation, setClickedMapLocation] = useState<{ lat: number, lng: number, placeId?: string, address?: string } | null>(null);
+
+  const handleAddLocationToRoute = (addr: string) => {
+    const newLocs = [...locations];
+    const firstEmpty = newLocs.findIndex(l => l.trim() === '');
+    if (firstEmpty !== -1) {
+      newLocs[firstEmpty] = addr;
+    } else {
+      newLocs.push(addr);
+    }
+    setLocations(newLocs);
+    setTripMode('plan');
+    setShowMobileMenu(true);
+    markDirty();
+    setClickedMapLocation(null);
+  };
   const [savedBikes, setSavedBikes] = useState<SavedBike[]>([]);
   const [newBikeName, setNewBikeName] = useState('');
   const [showToSPage, setShowToSPage] = useState(false);
@@ -1610,6 +1626,12 @@ function MapHome() {
         </aside>
 
         <main style={{ flex: 1, position: 'relative' }}>
+          <div style={{ position: 'absolute', top: '1.5rem', left: '50%', transform: 'translateX(-50%)', zIndex: 100, width: '90%', maxWidth: '400px' }}>
+            <ModernAutocomplete 
+              placeholder="Search map..." 
+              onPlaceSelected={(addr) => handleAddLocationToRoute(addr)} 
+            />
+          </div>
           {isTrackingFreeRide && (
             <div className="nav-overlay" style={{ background: '#1a1a1a', border: '2px solid #34a853', borderRadius: '20px', padding: '1.2rem', boxShadow: '0 10px 40px rgba(0,0,0,0.8)', display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1685,6 +1707,24 @@ function MapHome() {
             mapContainerStyle={{ width: '100%', height: '100%' }} 
             center={userRole === 'fleet' ? (shopLocation || center) : mapCenter} 
             zoom={12} 
+            onClick={(e) => {
+              if (e.latLng) {
+                const lat = e.latLng.lat();
+                const lng = e.latLng.lng();
+                const placeId = (e as any).placeId;
+                
+                const geocoder = new google.maps.Geocoder();
+                geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+                  if (status === 'OK' && results && results[0]) {
+                    setClickedMapLocation({
+                      lat, lng, placeId, address: results[0].formatted_address
+                    });
+                  } else {
+                    setClickedMapLocation({ lat, lng, placeId, address: `${lat.toFixed(4)}, ${lng.toFixed(4)}` });
+                  }
+                });
+              }
+            }}
             onLoad={onMapLoad}
             onIdle={() => {
               if (mapRef.current && userRole !== 'fleet') {
@@ -1821,6 +1861,37 @@ function MapHome() {
                     <div style={{ fontSize: '0.75rem', color: '#444' }}>{selectedPoi.address}</div>
                   </div>
                 </InfoWindowF>
+            )}
+            {clickedMapLocation && (
+              <InfoWindowF
+                position={{ lat: clickedMapLocation.lat, lng: clickedMapLocation.lng }}
+                onCloseClick={() => setClickedMapLocation(null)}
+              >
+                <div style={{ padding: '0.5rem', maxWidth: '200px', color: '#111' }}>
+                  <p style={{ margin: '0 0 0.5rem 0', fontWeight: 'bold', fontSize: '0.9rem' }}>
+                    {clickedMapLocation.address || 'Selected Location'}
+                  </p>
+                  <button
+                    onClick={() => {
+                      if (clickedMapLocation.address) {
+                        handleAddLocationToRoute(clickedMapLocation.address);
+                      }
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '0.5rem',
+                      background: '#ff6600',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontWeight: 'bold',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Add to Route
+                  </button>
+                </div>
+              </InfoWindowF>
             )}
           </GoogleMap>
 
