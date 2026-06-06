@@ -144,7 +144,16 @@ function MapHome() {
   const [bikeSearchQuery, setBikeSearchQuery] = useState("");
   const [showBikeResults, setShowBikeResults] = useState(false);
   const [pendingActionAfterCalibration, setPendingActionAfterCalibration] = useState<'share' | null>(null);
-  const [clickedMapLocation, setClickedMapLocation] = useState<{ lat: number, lng: number, placeId?: string, address?: string } | null>(null);
+  interface POIDetails {
+    name?: string;
+    rating?: number;
+    user_ratings_total?: number;
+    website?: string;
+    formatted_phone_number?: string;
+    isOpen?: boolean;
+    photoUrl?: string;
+  }
+  const [clickedMapLocation, setClickedMapLocation] = useState<{ lat: number, lng: number, placeId?: string, address?: string, details?: POIDetails } | null>(null);
 
   const handleAddLocationToRoute = (addr: string) => {
     const newLocs = [...locations];
@@ -1713,16 +1722,30 @@ function MapHome() {
                 const lng = e.latLng.lng();
                 const placeId = (e as any).placeId;
                 
-                const geocoder = new google.maps.Geocoder();
-                geocoder.geocode({ location: { lat, lng } }, (results, status) => {
-                  if (status === 'OK' && results && results[0]) {
-                    setClickedMapLocation({
-                      lat, lng, placeId, address: results[0].formatted_address
-                    });
-                  } else {
-                    setClickedMapLocation({ lat, lng, placeId, address: `${lat.toFixed(4)}, ${lng.toFixed(4)}` });
-                  }
-                });
+                if (placeId && mapRef.current) {
+                  const service = new google.maps.places.PlacesService(mapRef.current);
+                  service.getDetails({ placeId, fields: ['name', 'formatted_address', 'rating', 'user_ratings_total', 'website', 'formatted_phone_number', 'opening_hours', 'photos'] }, (place, status) => {
+                    if (status === google.maps.places.PlacesServiceStatus.OK && place) {
+                      setClickedMapLocation({
+                        lat, lng, placeId, 
+                        address: place.formatted_address || `${lat.toFixed(4)}, ${lng.toFixed(4)}`,
+                        details: {
+                          name: place.name,
+                          rating: place.rating,
+                          user_ratings_total: place.user_ratings_total,
+                          website: place.website,
+                          formatted_phone_number: place.formatted_phone_number,
+                          isOpen: place.opening_hours?.isOpen ? place.opening_hours.isOpen() : undefined,
+                          photoUrl: place.photos && place.photos.length > 0 ? place.photos[0].getUrl({ maxWidth: 200, maxHeight: 150 }) : undefined
+                        }
+                      });
+                    } else {
+                      setClickedMapLocation({ lat, lng, placeId, address: `${lat.toFixed(4)}, ${lng.toFixed(4)}` });
+                    }
+                  });
+                } else {
+                  setClickedMapLocation({ lat, lng, placeId, address: `${lat.toFixed(4)}, ${lng.toFixed(4)}` });
+                }
               }
             }}
             onLoad={onMapLoad}
@@ -1868,24 +1891,51 @@ function MapHome() {
                 onCloseClick={() => setClickedMapLocation(null)}
               >
                 <div style={{ padding: '0.5rem', maxWidth: '200px', color: '#111' }}>
-                  <p style={{ margin: '0 0 0.5rem 0', fontWeight: 'bold', fontSize: '0.9rem' }}>
-                    {clickedMapLocation.address || 'Selected Location'}
+                  {clickedMapLocation.details?.photoUrl && (
+                    <img 
+                      src={clickedMapLocation.details.photoUrl} 
+                      alt="POI" 
+                      style={{ width: '100%', height: '100px', objectFit: 'cover', borderRadius: '8px', marginBottom: '0.5rem' }}
+                    />
+                  )}
+                  <p style={{ margin: '0 0 0.2rem 0', fontWeight: 'bold', fontSize: '1rem', lineHeight: '1.2' }}>
+                    {clickedMapLocation.details?.name || clickedMapLocation.address || 'Selected Location'}
                   </p>
+                  
+                  {clickedMapLocation.details?.rating && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', marginBottom: '0.4rem', fontSize: '0.8rem' }}>
+                      <span style={{ color: '#ffcc00' }}>★</span>
+                      <span style={{ fontWeight: 'bold' }}>{clickedMapLocation.details.rating}</span>
+                      <span style={{ color: '#666' }}>({clickedMapLocation.details.user_ratings_total})</span>
+                    </div>
+                  )}
+
+                  <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: '#555', lineHeight: '1.3' }}>
+                    {clickedMapLocation.details?.name ? clickedMapLocation.address : ''}
+                  </p>
+
+                  {clickedMapLocation.details?.isOpen !== undefined && (
+                    <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', fontWeight: 'bold', color: clickedMapLocation.details.isOpen ? '#34a853' : '#ea4335' }}>
+                      {clickedMapLocation.details.isOpen ? 'Open Now' : 'Closed'}
+                    </p>
+                  )}
+
                   <button
                     onClick={() => {
                       if (clickedMapLocation.address) {
-                        handleAddLocationToRoute(clickedMapLocation.address);
+                        handleAddLocationToRoute(clickedMapLocation.details?.name ? `${clickedMapLocation.details.name}, ${clickedMapLocation.address}` : clickedMapLocation.address);
                       }
                     }}
                     style={{
                       width: '100%',
-                      padding: '0.5rem',
+                      padding: '0.6rem',
                       background: '#ff6600',
                       color: 'white',
                       border: 'none',
                       borderRadius: '8px',
                       fontWeight: 'bold',
-                      cursor: 'pointer'
+                      cursor: 'pointer',
+                      marginTop: '0.2rem'
                     }}
                   >
                     Add to Route
