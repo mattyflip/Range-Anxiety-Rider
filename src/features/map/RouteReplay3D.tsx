@@ -38,42 +38,85 @@ const RouteReplay3D: React.FC<RouteReplay3DProps> = ({
     setIsAnimating(true);
 
     const coords = routeData.geometry.coordinates;
-    let index = 0;
-    
-    // We want the flyover to take roughly 15-20 seconds total.
-    // So we'll take about 100 steps, each 150ms.
-    const stepSize = Math.max(1, Math.floor(coords.length / 100));
+    if (coords.length < 2) {
+      setIsAnimating(false);
+      return;
+    }
 
-    const animate = () => {
-      if (index >= coords.length - 1) {
+    // Haversine distance for smooth pacing
+    const haversine = (lon1: number, lat1: number, lon2: number, lat2: number) => {
+      const R = 6371e3;
+      const p1 = lat1 * Math.PI / 180;
+      const p2 = lat2 * Math.PI / 180;
+      const dp = (lat2 - lat1) * Math.PI / 180;
+      const dl = (lon2 - lon1) * Math.PI / 180;
+      const a = Math.sin(dp / 2) * Math.sin(dp / 2) + Math.cos(p1) * Math.cos(p2) * Math.sin(dl / 2) * Math.sin(dl / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    };
+
+    const segments: number[] = [];
+    let totalDistance = 0;
+    for (let i = 0; i < coords.length - 1; i++) {
+      const dist = Math.max(0.1, haversine(coords[i][0], coords[i][1], coords[i+1][0], coords[i+1][1]));
+      segments.push(dist);
+      totalDistance += dist;
+    }
+
+    let startTime: number | null = null;
+    const durationMs = 15000; // 15 seconds for the entire route
+    let lastBearing = calculateBearing(coords[0][1], coords[0][0], coords[1][1], coords[1][0]);
+
+    const animate = (timestamp: number) => {
+      if (!startTime) startTime = timestamp;
+      const progress = (timestamp - startTime) / durationMs;
+
+      if (progress >= 1) {
         setIsAnimating(false);
-        setBikePosition([coords[coords.length - 1][0], coords[coords.length - 1][1]]);
+        const last = coords[coords.length - 1];
+        setBikePosition([last[0], last[1]]);
         return;
       }
 
-      const current = coords[index];
-      let nextIndex = index + stepSize;
-      if (nextIndex >= coords.length) nextIndex = coords.length - 1;
-      const next = coords[nextIndex];
+      const targetDistance = progress * totalDistance;
+      let accumulated = 0;
+      let currentIndex = 0;
 
-      // Calculate bearing between points
-      const bearing = calculateBearing(current[1], current[0], next[1], next[0]);
+      for (let i = 0; i < segments.length; i++) {
+        if (accumulated + segments[i] >= targetDistance) {
+          currentIndex = i;
+          break;
+        }
+        accumulated += segments[i];
+      }
 
-      mapRef.current?.easeTo({
-        center: [next[0], next[1]],
-        bearing: bearing,
+      const segmentStart = coords[currentIndex];
+      const segmentEnd = coords[currentIndex + 1] || segmentStart;
+      const segmentDist = segments[currentIndex] || 1;
+      const segmentProgress = (targetDistance - accumulated) / segmentDist;
+
+      const currentLng = segmentStart[0] + (segmentEnd[0] - segmentStart[0]) * segmentProgress;
+      const currentLat = segmentStart[1] + (segmentEnd[1] - segmentStart[1]) * segmentProgress;
+
+      setBikePosition([currentLng, currentLat]);
+
+      // Calculate bearing and smooth it
+      let targetBearing = calculateBearing(segmentStart[1], segmentStart[0], segmentEnd[1], segmentEnd[0]);
+      if (targetBearing - lastBearing > 180) targetBearing -= 360;
+      if (targetBearing - lastBearing < -180) targetBearing += 360;
+      lastBearing = lastBearing + (targetBearing - lastBearing) * 0.1; // Smooth interpolation
+
+      mapRef.current?.jumpTo({
+        center: [currentLng, currentLat],
+        bearing: lastBearing,
         pitch: 65,
-        duration: 150,
-        easing: (t) => t, // Linear easing for smooth continuous motion
-        essential: true
+        zoom: 16.5 // Nice close 3D follow perspective
       });
 
-      setBikePosition([next[0], next[1]]);
-      index = nextIndex;
-      setTimeout(animate, 150);
+      requestAnimationFrame(animate);
     };
 
-    animate();
+    requestAnimationFrame(animate);
   };
 
   const calculateBearing = (lat1: number, lon1: number, lat2: number, lon2: number) => {
