@@ -445,8 +445,8 @@ function MapHome() {
   }, [userData?.homeRegion]);
 
   useEffect(() => {
-    if (!response || !response.routes[selectedRouteIndex]) return;
-    const polyline = response.routes[selectedRouteIndex].overview_polyline;
+    if (!response || !response.routes[0]) return;
+    const polyline = response.routes[0].overview_polyline;
     const points = (polyline as { points?: string }).points || polyline;
     fetch(`/api/static-map?polyline=${encodeURIComponent(points)}`).then(r => r.blob()).then(blob => {
       const reader = new FileReader(); reader.onloadend = () => setMapSnapshot(reader.result as string); reader.readAsDataURL(blob);
@@ -542,7 +542,7 @@ function MapHome() {
     setIsCurrentlyStopped(false);
     setSpeedHistory([]);
 
-    const firstStep = response.routes[selectedRouteIndex].legs[0].steps[0];
+    const firstStep = response.routes[0].legs[0].steps[0];
     speak(`Starting trip. ${firstStep.instructions.replace(/<[^>]*>?/gm, '')}`);
     if (mapRef.current) { mapRef.current.setZoom(18); mapRef.current.setTilt(45); }
   };
@@ -653,7 +653,7 @@ function MapHome() {
       }
 
       if (isNavigating && response) {
-        const route = response.routes[selectedRouteIndex];
+        const route = response.routes[0];
         const leg = route.legs[currentLegIndex];
         const step = leg.steps[currentStepIndex];
         // Note: Continuous panTo removed to allow free movement as requested
@@ -2119,9 +2119,9 @@ function MapHome() {
         />
       )}
 
-      {showRouteReplay && response && response.routes[selectedRouteIndex] && (
+      {showRouteReplay && response && response.routes[0] && (
         <RouteReplay3D 
-          polyline={response.routes[selectedRouteIndex].overview_polyline} 
+          polyline={response.routes[0].overview_polyline} 
           onClose={() => setShowRouteReplay(false)}
           maptilerKey={import.meta.env.VITE_MAPTILER_KEY}
         />
