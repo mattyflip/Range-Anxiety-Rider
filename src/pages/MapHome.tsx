@@ -832,6 +832,69 @@ function MapHome() {
     setTimeout(() => handleCalculate(true), 500);
   };
 
+  // Fleet Bike Range Calculator
+  useEffect(() => {
+    if (userRole !== 'fleet') return;
+    
+    if (!messageRiderTarget) {
+      setRangePolygonPoints(null);
+      return;
+    }
+
+    const calcBikeRange = async () => {
+      try {
+        const originCoords = messageRiderTarget.position;
+        const wRes = await fetch(`/api/weather?lat=${originCoords.lat}&lng=${originCoords.lng}`).then(r => r.json());
+        const wind = { speed: wRes.wind_speed || 0, direction: wRes.wind_degree || 0 };
+        
+        const matchedBike = shopBikes.find(b => b.id === messageRiderTarget.bikeId);
+        const bikeSpecs = matchedBike?.specs || specs;
+        
+        const physicsSpecs = mapToPhysicsSpecs(bikeSpecs as any);
+        physicsSpecs.currentBatteryPercent = messageRiderTarget.battery;
+
+        const initialPoints = calculateRangePolygon(
+          originCoords,
+          wind,
+          { 
+            specs: physicsSpecs, 
+            riderWeightLbs: riderWeight || 180, 
+            throttleMode, 
+            speedMph: targetSpeed ? Number(targetSpeed) : 18, 
+            slope: 0, 
+            headwindMph: 0, 
+            driveMode, 
+            pedalAssistLevel 
+          },
+          false
+        );
+
+        const elevator = new window.google.maps.ElevationService();
+        const elevationRes = await elevator.getElevationForLocations({
+          locations: initialPoints.map(p => new window.google.maps.LatLng(p.lat, p.lng))
+        });
+
+        const validatedPoints = initialPoints.map((p, i) => {
+          const elev = elevationRes.results[i]?.elevation || 0;
+          if (elev <= 0) {
+            return {
+              lat: p.lat * 0.3 + originCoords.lat * 0.7,
+              lng: p.lng * 0.3 + originCoords.lng * 0.7
+            };
+          }
+          return p;
+        });
+
+        setRangePolygonPoints(validatedPoints);
+      } catch (err) {
+        console.error("Failed to calc bike range", err);
+      }
+    };
+
+    calcBikeRange();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messageRiderTarget, userRole]);
+
   const handleCalculate = async (forceHideMenu: boolean | React.MouseEvent = false) => { 
     let currentOrigin = trip.origin;
     const currentDest = trip.destination;
@@ -1921,6 +1984,9 @@ function MapHome() {
               }
               if (e.stop) e.stop(); // Prevent default POI popup from Google
               setClickedMapLocation(null);
+              if (userRole === 'fleet') {
+                setMessageRiderTarget(null);
+              }
               if (e.latLng) {
                 const lat = e.latLng.lat();
                 const lng = e.latLng.lng();
@@ -1982,7 +2048,7 @@ function MapHome() {
             }}
             options={{ mapId: import.meta.env.VITE_GOOGLE_MAP_ID || 'DEMO_MAP_ID', disableDefaultUI: true }}
           >
-            {rangePolygonPoints && !trip.destination && (
+            {rangePolygonPoints && !trip.destination && (userRole !== 'fleet' || messageRiderTarget) && (
               <PolygonF
                 paths={rangePolygonPoints}
                 options={{
