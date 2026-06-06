@@ -69,8 +69,8 @@ const RouteReplay3D: React.FC<RouteReplay3DProps> = ({
   });
 
   // Animation Engine Refs
-  const requestRef = useRef<number>();
-  const lastTimeRef = useRef<number>();
+  const requestRef = useRef<number>(0);
+  const lastTimeRef = useRef<number | undefined>(undefined);
   const progressRef = useRef(0);
   const bearingRef = useRef<number>(
     routeMetrics ? calculateBearing(routeMetrics.coords[0][1], routeMetrics.coords[0][0], routeMetrics.coords[1][1], routeMetrics.coords[1][0]) : 0
