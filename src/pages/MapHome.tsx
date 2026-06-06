@@ -1875,11 +1875,14 @@ function MapHome() {
                 <Polyline
                   key={`alt-${i}`}
                   path={path}
+                  onClick={() => setSelectedRouteIndex(i)}
                   options={{
                     strokeColor: altColors[i] || '#888',
-                    strokeOpacity: 0.45,
-                    strokeWeight: 5,
+                    strokeOpacity: 0.6,
+                    strokeWeight: 7,
                     geodesic: true,
+                    clickable: true,
+                    zIndex: 5
                   }}
                 />
               );
@@ -1888,14 +1891,14 @@ function MapHome() {
             {/* Selected Route Rendering */}
             {response && response.routes[0]?.overview_path && (
               <>
-                <Polyline
-                  path={response.routes[0].overview_path}
-                  options={{
-                    strokeColor: '#ff6600',
-                    strokeOpacity: 0.9,
-                    strokeWeight: 7,
-                    geodesic: true,
-                  }}
+                {/* Dark outline for contrast */}
+                <Polyline 
+                  path={response.routes[0].overview_path} 
+                  options={{ strokeColor: '#000000', strokeOpacity: 0.6, strokeWeight: 8, geodesic: true, zIndex: 10, clickable: false }} 
+                />
+                <Polyline 
+                  path={response.routes[0].overview_path} 
+                  options={{ strokeColor: '#ff6600', strokeOpacity: 1.0, strokeWeight: 5, geodesic: true, zIndex: 11, clickable: false }} 
                 />
                 {/* Start Marker */}
                 <AdvancedMarker position={{ lat: response.routes[0].overview_path[0].lat(), lng: response.routes[0].overview_path[0].lng() }}>
