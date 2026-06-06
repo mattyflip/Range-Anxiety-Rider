@@ -614,9 +614,13 @@ function MapHome() {
         const endLoc = { lat: step.end_location.lat(), lng: step.end_location.lng() };
         const distMeters = google.maps.geometry.spherical.computeDistanceBetween(new google.maps.LatLng(uLoc.lat, uLoc.lng), new google.maps.LatLng(endLoc.lat, endLoc.lng));
         const distFeet = distMeters * 3.28084;
-        setNextStepDist(distFeet > 528 ? `${(distFeet/5280).toFixed(1)} mi` : `${Math.round(distFeet)} ft`);
+        if (unitSystem === 'metric') {
+          setNextStepDist(distMeters > 500 ? `${(distMeters/1000).toFixed(1)} km` : `${Math.round(distMeters)} m`);
+        } else {
+          setNextStepDist(distFeet > 528 ? `${(distFeet/5280).toFixed(1)} mi` : `${Math.round(distFeet)} ft`);
+        }
         if (distFeet < 300 && !hasAnnouncedNextStep) {
-          speak(`In 300 feet, ${step.instructions.replace(/<[^>]*>?/gm, '')}`);
+          speak(`In ${unitSystem === 'metric' ? Math.round(distMeters) + ' meters' : '300 feet'}, ${step.instructions.replace(/<[^>]*>?/gm, '')}`);
           setHasAnnouncedNextStep(true);
         }
         if (distFeet < 60) {
@@ -632,7 +636,7 @@ function MapHome() {
       }
     }, null, { enableHighAccuracy: true });
     return () => navigator.geolocation.clearWatch(watchId);
-  }, [isNavigating, isTrackingFreeRide, response, currentLegIndex, currentStepIndex, hasAnnouncedNextStep, selectedRouteIndex, lastNavLocation]);
+  }, [isNavigating, isTrackingFreeRide, response, currentLegIndex, currentStepIndex, hasAnnouncedNextStep, selectedRouteIndex, lastNavLocation, unitSystem]);
 
   // --- AUTO-STOP INACTIVITY TIMER ---
   useEffect(() => {
@@ -1536,8 +1540,8 @@ function MapHome() {
                         </span>
                       </div>
                       <div style={{ display: 'flex', gap: '1rem', marginTop: '0.3rem' }}>
-                        <span style={{ color: '#666', fontSize: '0.65rem' }}>{r.metrics.distanceMiles.toFixed(1)} mi</span>
-                        <span style={{ color: '#666', fontSize: '0.65rem' }}>⛰️ {Math.round(r.metrics.elevationGainFeet)} ft</span>
+                        <span style={{ color: '#666', fontSize: '0.65rem' }}>{(unitSystem === 'imperial' ? r.metrics.distanceMiles : r.metrics.distanceMiles * 1.60934).toFixed(1)} {unitSystem === 'imperial' ? 'mi' : 'km'}</span>
+                        <span style={{ color: '#666', fontSize: '0.65rem' }}>⛰️ {Math.round(unitSystem === 'imperial' ? r.metrics.elevationGainFeet : r.metrics.elevationGainFeet * 0.3048)} {unitSystem === 'imperial' ? 'ft' : 'm'}</span>
                         <span style={{ color: '#666', fontSize: '0.65rem' }}>{Math.floor(r.metrics.durationMin/60)}h {Math.round(r.metrics.durationMin%60)}m</span>
                       </div>
                     </button>
@@ -1581,11 +1585,11 @@ function MapHome() {
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '12px', marginBottom: '1.5rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#666' }}>Travel Time:</span><span style={{ fontWeight: 'bold', color: 'white' }}>{Math.floor(metrics.durationMin/60)}h {Math.round(metrics.durationMin%60)}m</span></div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#666' }}>Distance:</span><span style={{ fontWeight: 'bold', color: 'white' }}>{metrics.distanceMiles.toFixed(1)} mi</span></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#666' }}>Distance:</span><span style={{ fontWeight: 'bold', color: 'white' }}>{(unitSystem === 'imperial' ? metrics.distanceMiles : metrics.distanceMiles * 1.60934).toFixed(1)} {unitSystem === 'imperial' ? 'mi' : 'km'}</span></div>
                 <div style={{ borderTop: '1px solid #333', margin: '0.5rem 0' }}></div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#666' }}>⛰️ Elevation Gain:</span><span style={{ color: '#ffbb33', fontWeight: 'bold' }}>{Math.round(metrics.elevationGainFeet)} ft</span></div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#666' }}>🔋 Efficiency:</span><span style={{ color: '#00ccff', fontWeight: 'bold' }}>{metrics.efficiencyWhMi.toFixed(1)} Wh/mi</span></div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#666' }}>🌬️ Wind:</span><span style={{ color: '#4caf50', fontWeight: 'bold' }}>{metrics.windConditions?.speed.toFixed(1)} mph</span></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#666' }}>⛰️ Elevation Gain:</span><span style={{ color: '#ffbb33', fontWeight: 'bold' }}>{Math.round(unitSystem === 'imperial' ? metrics.elevationGainFeet : metrics.elevationGainFeet * 0.3048)} {unitSystem === 'imperial' ? 'ft' : 'm'}</span></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#666' }}>🔋 Efficiency:</span><span style={{ color: '#00ccff', fontWeight: 'bold' }}>{(unitSystem === 'imperial' ? metrics.efficiencyWhMi : metrics.efficiencyWhMi / 1.60934).toFixed(1)} Wh/{unitSystem === 'imperial' ? 'mi' : 'km'}</span></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#666' }}>🌬️ Wind:</span><span style={{ color: '#4caf50', fontWeight: 'bold' }}>{(unitSystem === 'imperial' ? metrics.windConditions?.speed : (metrics.windConditions?.speed || 0) * 1.60934)?.toFixed(1)} {unitSystem === 'imperial' ? 'mph' : 'km/h'}</span></div>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '0.5rem' }}>
@@ -1608,15 +1612,15 @@ function MapHome() {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', borderTop: '1px solid #333', paddingTop: '1rem', marginTop: '0.4rem' }}>
                   <div style={{ textAlign: 'center' }}>
                     <div style={{ color: '#888', fontSize: '0.6rem', textTransform: 'uppercase' }}>Speed</div>
-                    <div style={{ color: '#34a853', fontSize: '1.5rem', fontWeight: 900 }}>{realTimeSpeedMph.toFixed(0)} <span style={{ fontSize: '0.6rem', fontWeight: 400 }}>{unitSystem === 'imperial' ? 'MPH' : 'KMH'}</span></div>
+                    <div style={{ color: '#34a853', fontSize: '1.5rem', fontWeight: 900 }}>{(unitSystem === 'imperial' ? realTimeSpeedMph : realTimeSpeedMph * 1.60934).toFixed(0)} <span style={{ fontSize: '0.6rem', fontWeight: 400 }}>{unitSystem === 'imperial' ? 'MPH' : 'KMH'}</span></div>
                   </div>
                   <div style={{ textAlign: 'center', borderLeft: '1px solid #333', borderRight: '1px solid #333' }}>
                     <div style={{ color: '#888', fontSize: '0.6rem', textTransform: 'uppercase' }}>Distance</div>
-                    <div style={{ color: '#00ccff', fontSize: '1.2rem', fontWeight: 900 }}>{actualDistanceMiles.toFixed(1)} <span style={{ fontSize: '0.6rem', fontWeight: 400 }}>{unitSystem === 'imperial' ? 'mi' : 'km'}</span></div>
+                    <div style={{ color: '#00ccff', fontSize: '1.2rem', fontWeight: 900 }}>{(unitSystem === 'imperial' ? actualDistanceMiles : actualDistanceMiles * 1.60934).toFixed(1)} <span style={{ fontSize: '0.6rem', fontWeight: 400 }}>{unitSystem === 'imperial' ? 'mi' : 'km'}</span></div>
                   </div>
                   <div style={{ textAlign: 'center' }}>
                     <div style={{ color: '#888', fontSize: '0.6rem', textTransform: 'uppercase' }}>Remaining</div>
-                    <div style={{ color: '#ff6600', fontSize: '1.2rem', fontWeight: 900 }}>{realTimeRemainingMiles.toFixed(1)} <span style={{ fontSize: '0.6rem', fontWeight: 400 }}>{unitSystem === 'imperial' ? 'mi' : 'km'}</span></div>
+                    <div style={{ color: '#ff6600', fontSize: '1.2rem', fontWeight: 900 }}>{(unitSystem === 'imperial' ? realTimeRemainingMiles : realTimeRemainingMiles * 1.60934).toFixed(1)} <span style={{ fontSize: '0.6rem', fontWeight: 400 }}>{unitSystem === 'imperial' ? 'mi' : 'km'}</span></div>
                   </div>
                 </div>
             </div>
@@ -1633,15 +1637,15 @@ function MapHome() {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', borderTop: '1px solid #333', paddingTop: '1rem', marginTop: '0.4rem' }}>
                   <div style={{ textAlign: 'center' }}>
                     <div style={{ color: '#888', fontSize: '0.6rem', textTransform: 'uppercase' }}>Speed</div>
-                    <div style={{ color: '#ff6600', fontSize: '1.5rem', fontWeight: 900 }}>{realTimeSpeedMph.toFixed(0)} <span style={{ fontSize: '0.6rem', fontWeight: 400 }}>{unitSystem === 'imperial' ? 'MPH' : 'KMH'}</span></div>
+                    <div style={{ color: '#ff6600', fontSize: '1.5rem', fontWeight: 900 }}>{(unitSystem === 'imperial' ? realTimeSpeedMph : realTimeSpeedMph * 1.60934).toFixed(0)} <span style={{ fontSize: '0.6rem', fontWeight: 400 }}>{unitSystem === 'imperial' ? 'MPH' : 'KMH'}</span></div>
                   </div>
                   <div style={{ textAlign: 'center', borderLeft: '1px solid #333', borderRight: '1px solid #333' }}>
                     <div style={{ color: '#888', fontSize: '0.6rem', textTransform: 'uppercase' }}>Efficiency</div>
-                    <div style={{ color: '#00ccff', fontSize: '1.2rem', fontWeight: 900 }}>{realTimeWhMi.toFixed(1)} <span style={{ fontSize: '0.6rem', fontWeight: 400 }}>Wh/{unitSystem === 'imperial' ? 'mi' : 'km'}</span></div>
+                    <div style={{ color: '#00ccff', fontSize: '1.2rem', fontWeight: 900 }}>{(unitSystem === 'imperial' ? realTimeWhMi : realTimeWhMi / 1.60934).toFixed(1)} <span style={{ fontSize: '0.6rem', fontWeight: 400 }}>Wh/{unitSystem === 'imperial' ? 'mi' : 'km'}</span></div>
                   </div>
                   <div style={{ textAlign: 'center' }}>
                     <div style={{ color: '#888', fontSize: '0.6rem', textTransform: 'uppercase' }}>Remaining</div>
-                    <div style={{ color: '#34a853', fontSize: '1.2rem', fontWeight: 900 }}>{realTimeRemainingMiles.toFixed(1)} <span style={{ fontSize: '0.6rem', fontWeight: 400 }}>{unitSystem === 'imperial' ? 'mi' : 'km'}</span></div>
+                    <div style={{ color: '#34a853', fontSize: '1.2rem', fontWeight: 900 }}>{(unitSystem === 'imperial' ? realTimeRemainingMiles : realTimeRemainingMiles * 1.60934).toFixed(1)} <span style={{ fontSize: '0.6rem', fontWeight: 400 }}>{unitSystem === 'imperial' ? 'mi' : 'km'}</span></div>
                   </div>
                 </div>
             </div>
