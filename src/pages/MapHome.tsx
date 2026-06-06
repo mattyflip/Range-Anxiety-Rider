@@ -1740,11 +1740,25 @@ function MapHome() {
                         }
                       });
                     } else {
-                      setClickedMapLocation({ lat, lng, placeId, address: `${lat.toFixed(4)}, ${lng.toFixed(4)}` });
+                      const geocoder = new google.maps.Geocoder();
+                      geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+                        if (status === 'OK' && results && results[0]) {
+                          setClickedMapLocation({ lat, lng, placeId, address: results[0].formatted_address });
+                        } else {
+                          setClickedMapLocation({ lat, lng, placeId, address: `${lat.toFixed(4)}, ${lng.toFixed(4)}` });
+                        }
+                      });
                     }
                   });
                 } else {
-                  setClickedMapLocation({ lat, lng, placeId, address: `${lat.toFixed(4)}, ${lng.toFixed(4)}` });
+                  const geocoder = new google.maps.Geocoder();
+                  geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+                    if (status === 'OK' && results && results[0]) {
+                      setClickedMapLocation({ lat, lng, placeId, address: results[0].formatted_address });
+                    } else {
+                      setClickedMapLocation({ lat, lng, placeId, address: `${lat.toFixed(4)}, ${lng.toFixed(4)}` });
+                    }
+                  });
                 }
               }
             }}
