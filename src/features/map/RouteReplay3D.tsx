@@ -5,7 +5,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { polylineToGeoJSON } from '../../utils/mapUtils';
 
 interface RouteReplay3DProps {
-  polyline: string;
+  polyline: any;
   onClose: () => void;
   maptilerKey?: string;
   userPhotoURL?: string;

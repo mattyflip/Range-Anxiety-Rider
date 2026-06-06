@@ -2055,7 +2055,8 @@ function MapHome() {
              <div style={{ fontSize: '2.5rem', fontWeight: 900, color: 'white', margin: '1rem 0' }}>{metrics.batteryPercentRemaining.toFixed(0)}% Left</div>
              <p style={{ color: '#888' }}>Rode {metrics.distanceMiles.toFixed(1)} miles!</p>
           </div>
-          <div style={{ marginTop: '1rem', display: 'flex', gap: '1rem' }}>
+          <div style={{ marginTop: '1rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+            <button onClick={() => setShowRouteReplay(true)} style={{ padding: '1rem 2rem', background: '#333', color: '#ff6600', border: '1px solid #ff6600', borderRadius: '12px', fontWeight: 900 }}>3D VIEW</button>
             <button onClick={() => setShowSharePreview(false)} style={{ padding: '1rem 2rem', background: '#333', color: 'white', border: 'none', borderRadius: '12px' }}>Cancel</button>
             <button onClick={downloadShareCard} style={{ padding: '1rem 2rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px' }}>Download</button>
             <button onClick={shareToCommunity} style={{ padding: '1rem 2rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px' }}>Post</button>
@@ -2119,9 +2120,9 @@ function MapHome() {
         />
       )}
 
-      {showRouteReplay && response && response.routes[0] && (
+      {showRouteReplay && (response?.routes[0] || breadcrumbTrail.length > 0) && (
         <RouteReplay3D 
-          polyline={response.routes[0].overview_polyline} 
+          polyline={breadcrumbTrail.length > 0 ? breadcrumbTrail : response!.routes[0].overview_polyline} 
           onClose={() => setShowRouteReplay(false)}
           maptilerKey={import.meta.env.VITE_MAPTILER_KEY}
           userPhotoURL={userData?.profilePic || ''}

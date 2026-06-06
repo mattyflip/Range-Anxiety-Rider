@@ -8,6 +8,21 @@ import { decode } from '@googlemaps/polyline-codec';
  */
 export const polylineToGeoJSON = (polyline: any) => {
   if (!polyline) return null;
+
+  // Handle direct array of coordinates [{lat, lng}, ...]
+  if (Array.isArray(polyline)) {
+    if (polyline.length === 0) return null;
+    const geoJSONCoords = polyline.map(p => [p.lng, p.lat]);
+    return {
+      type: 'Feature' as const,
+      properties: {},
+      geometry: {
+        type: 'LineString' as const,
+        coordinates: geoJSONCoords
+      }
+    };
+  }
+
   const polylineStr = typeof polyline === 'string' ? polyline : (polyline.points || polyline.encodedPolyline);
   if (!polylineStr || typeof polylineStr !== 'string') return null;
   try {
