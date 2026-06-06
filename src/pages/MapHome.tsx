@@ -1311,7 +1311,7 @@ function MapHome() {
     if (showMobileMenu) return 'MAP';
     if (!response) return 'START HERE';
     if (settingsDirty) return 'UPDATE TRIP';
-    return 'TRIP SETTINGS';
+    return 'TRIP METRICS';
   };
 
   if (loading || !isLoaded) return <div style={{ color: 'white', padding: '4rem', textAlign: 'center' }}>Initializing Map Hub...</div>;
@@ -1366,6 +1366,14 @@ function MapHome() {
       <div className="main-layout" style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <aside className={`sidebar ${showMobileMenu ? 'mobile-visible' : ''}`} style={{ width: '350px', padding: '20px', background: '#1a1a1a', borderRight: '1px solid #333', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
           
+          <button
+            className="mobile-only"
+            onClick={() => setShowMobileMenu(false)}
+            style={{ marginBottom: '1.5rem', width: '100%', padding: '0.8rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 900, fontSize: '0.9rem', textTransform: 'uppercase', display: 'none', justifyContent: 'center', alignItems: 'center', gap: '8px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(255, 102, 0, 0.4)' }}
+          >
+            ← BACK TO MAP
+          </button>
+
           {userRole === 'rider' && (
             <div style={{ marginBottom: '1.5rem' }}>
               <label style={{ color: '#666', fontSize: '0.65rem', textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>Rental Status</label>
