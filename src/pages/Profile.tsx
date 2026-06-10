@@ -110,7 +110,7 @@ const Profile: React.FC = () => {
   // Review states
   const [reviews, setReviews] = useState<any[]>([]);
   const [reviewText, setReviewText] = useState('');
-  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewRating, setReviewRating] = useState(0);
 
   const isAdmin = userData?.isAdmin || false;
 
@@ -199,6 +199,10 @@ const Profile: React.FC = () => {
 
   const submitReview = async () => {
     if (!user || !userData || !profileData) return;
+    if (reviewRating === 0) {
+      alert("Please select a star rating (1-5)");
+      return;
+    }
     try {
       await setDoc(doc(db, `users/${profileData.uid}/reviews`, user.uid), {
         reviewerId: user.uid,
@@ -328,7 +332,7 @@ const Profile: React.FC = () => {
             <div style={{ background: '#1a1a1a', padding: '1.5rem', borderRadius: '20px', border: '1px solid #333', marginBottom: '2rem' }}>
                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
                   {[1,2,3,4,5].map(s => (
-                    <button key={s} onClick={() => setReviewRating(s)} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: s <= reviewRating ? '#ffcc00' : '#444' }}>⭐</button>
+                    <button key={s} onClick={() => setReviewRating(s)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: s <= reviewRating ? '#ffcc00' : '#444' }}>★</button>
                   ))}
                </div>
                <textarea 
