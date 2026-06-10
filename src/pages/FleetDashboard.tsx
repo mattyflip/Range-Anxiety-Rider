@@ -235,6 +235,21 @@ const FleetDashboard = () => {
     } catch (e) { console.error(e); }
   };
 
+  const handleDeleteBike = async (bike: Bike) => {
+    if (bike.status === 'rented') {
+      alert("You must return this bike before removing it from your fleet.");
+      return;
+    }
+    if (!userData?.orgId || !window.confirm(`Delete ${bike.unitId} from your fleet? This cannot be undone.`)) return;
+    try {
+      await deleteDoc(doc(db, `organizations/${userData.orgId}/bikes`, bike.id));
+      alert(`${bike.unitId} removed from fleet.`);
+    } catch (e) {
+      console.error(e);
+      alert("Failed to remove bike.");
+    }
+  };
+
   const handleDirectRentOut = async () => {
     if (!userData?.orgId || !bikeToAssign || !targetRiderEmail.trim()) return;
     setIsAssigning(true);
@@ -596,6 +611,7 @@ const FleetDashboard = () => {
                     </div>
 
                     <div style={{ display: 'flex', gap: '0.6rem', flex: '1 1 auto', justifyContent: 'flex-end' }}>
+                      <button onClick={() => handleDeleteBike(b)} style={{ background: '#222', border: '1px solid #333', color: '#ff4444', padding: '0.5rem 0.8rem', borderRadius: '8px', fontSize: '0.65rem', fontWeight: 'bold', cursor: 'pointer' }}>REMOVE</button>
                       <button onClick={() => openEditModal(b)} style={{ background: '#222', border: '1px solid #333', color: '#888', padding: '0.5rem 0.8rem', borderRadius: '8px', fontSize: '0.65rem', fontWeight: 'bold', cursor: 'pointer' }}>EDIT</button>
                       {b.status === 'available' ? (
                         <button onClick={() => { setBikeToAssign(b); setShowDirectAssignModal(true); }} style={{ background: 'rgba(52,168,83,0.1)', border: '1px solid #34a853', color: '#34a853', padding: '0.5rem 1rem', borderRadius: '8px', fontSize: '0.65rem', fontWeight: 'bold', cursor: 'pointer' }}>RENT OUT</button>
