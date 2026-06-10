@@ -13,6 +13,7 @@ import { useNavigate } from 'react-router-dom';
 interface BikeData {
   id: string;
   unitId?: string;
+  pricePerHour?: number;
   specs?: {
     motorWatts?: number | string;
     voltage?: number | string;
@@ -39,7 +40,7 @@ const Rent: React.FC = () => {
   const [showInstallTutorial, setShowInstallTutorial] = useState(false);
 
   // Calculate total price
-  const pricePerHour = selectedShop?.pricing?.pricePerHour || 25;
+  const pricePerHour = selectedBike?.pricePerHour || selectedShop?.pricing?.pricePerHour || 25;
   const minimumCharge = selectedShop?.pricing?.minimumCharge || 15;
   const totalPrice = Math.max(bookingForm.duration * pricePerHour, minimumCharge);
 
@@ -193,8 +194,11 @@ const Rent: React.FC = () => {
                           }}
                         >
                           <div>
-                            <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: 'white' }}>{bike.unitId}</div>
-                            <div style={{ fontSize: '0.8rem', color: '#888' }}>{bike.specs?.motorWatts}W · {bike.specs?.voltage}V · {bike.specs?.capacityAh}Ah</div>
+                            <div style={{ color: 'white', fontWeight: 'bold', fontSize: '1.2rem', marginBottom: '0.2rem' }}>{bike.unitId}</div>
+                            <div style={{ fontSize: '0.8rem', color: '#888' }}>{bike.specs?.motorWatts}W • {bike.specs?.voltage}V • {bike.specs?.capacityAh}Ah</div>
+                            <div style={{ color: '#34a853', fontWeight: 'bold', fontSize: '0.85rem', marginTop: '0.3rem' }}>
+                              ${bike.pricePerHour || selectedShop?.pricing?.pricePerHour || 25}/hr
+                            </div>
                           </div>
                           <div style={{ color: '#ff6600', fontWeight: 'bold' }}>
                             {selectedBike?.id === bike.id ? 'SELECTED' : 'SELECT'}

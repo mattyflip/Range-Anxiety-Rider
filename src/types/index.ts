@@ -60,6 +60,7 @@ export interface SavedBike {
   name: string;
   type?: string;
   imageUrl?: string;
+    pricePerHour?: number;
   specs: BikeSpecs;
 }
 
@@ -288,6 +289,7 @@ export interface Bike {
   totalOdometer?: number;
   lastMaintenanceDate?: Timestamp;
   imageUrl?: string;
+    pricePerHour?: number;
   rentedAt?: string;
 }
 

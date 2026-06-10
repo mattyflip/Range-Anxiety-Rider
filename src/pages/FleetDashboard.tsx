@@ -68,7 +68,8 @@ const FleetDashboard = () => {
     targetSpeedMph: '20',
     controllerAmps: '',
     cycleCount: '0',
-    imageUrl: ''
+    imageUrl: '',
+    pricePerHour: ''
   });
 
   // Auth & Org Initialization
@@ -413,7 +414,7 @@ const FleetDashboard = () => {
         finalCapacityAh = finalCapacityAh / v;
       }
 
-      await setDoc(doc(db, `organizations/${userData.orgId}/bikes`, bikeId), {
+      const updatePayload: any = {
         unitId: bikeForm.unitId,
         imageUrl: bikeForm.imageUrl || '',
         specs: {
@@ -427,14 +428,23 @@ const FleetDashboard = () => {
           driveMode: bikeForm.driveMode,
           bikeWeightLbs: parseFloat(bikeForm.bikeWeightLbs),
           targetSpeedMph: parseFloat(bikeForm.targetSpeedMph),
-          controllerAmps: bikeForm.controllerAmps ? parseFloat(bikeForm.controllerAmps) : null,
+          controllerAmps: parseFloat(bikeForm.controllerAmps) || null,
           cycleCount: parseInt(bikeForm.cycleCount) || 0,
           currentBatteryPercent: editingBike?.specs?.currentBatteryPercent || 100
         },
         status: editingBike?.status || 'available',
         updatedAt: new Date().toISOString()
-      }, { merge: true });
+      };
+
+      if (bikeForm.pricePerHour.trim()) {
+        updatePayload.pricePerHour = parseFloat(bikeForm.pricePerHour);
+      } else {
+        updatePayload.pricePerHour = null;
+      }
+
+      await setDoc(doc(db, `organizations/${userData.orgId}/bikes`, bikeId), updatePayload, { merge: true });
       setShowShowBikeModal(false);
+      alert(editingBike ? "Bike specs updated." : "New bike registered.");
       setEditingBike(null);
     } catch (e) { console.error(e); }
   };
@@ -454,7 +464,8 @@ const FleetDashboard = () => {
       targetSpeedMph: bike.specs.targetSpeedMph?.toString() || '20',
       controllerAmps: bike.specs.controllerAmps?.toString() || '',
       cycleCount: bike.specs.cycleCount?.toString() || '0',
-      imageUrl: bike.imageUrl || ''
+      imageUrl: bike.imageUrl || '',
+      pricePerHour: bike.pricePerHour?.toString() || ''
     });
     setShowShowBikeModal(true);
   };
@@ -507,7 +518,7 @@ const FleetDashboard = () => {
               📧 TEST EMAIL
             </button>
             <button 
-              onClick={() => { setEditingBike(null); setBikeForm({ unitId: '', voltage: '48', capacityAh: '15', capacityUnit: 'Ah', motorWatts: '750', tirePSI: '30', tireType: 'all-terrain', driveMode: 'both', bikeWeightLbs: '65', targetSpeedMph: '20', controllerAmps: '', cycleCount: '0', imageUrl: '' }); setShowShowBikeModal(true); }}
+              onClick={() => { setEditingBike(null); setBikeForm({ unitId: '', voltage: '48', capacityAh: '15', capacityUnit: 'Ah', motorWatts: '750', tirePSI: '30', tireType: 'all-terrain', driveMode: 'both', bikeWeightLbs: '65', targetSpeedMph: '20', controllerAmps: '', cycleCount: '0', imageUrl: '', pricePerHour: '' }); setShowShowBikeModal(true); }}
               style={{ padding: '0.8rem 1.5rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }}
             >
               + REGISTER BIKE
@@ -805,6 +816,10 @@ const FleetDashboard = () => {
                  <div>
                    <label style={{ display: 'block', color: '#666', fontSize: '0.7rem', marginBottom: '0.3rem' }}>Target Speed (mph)</label>
                    <input type="number" value={bikeForm.targetSpeedMph} onChange={e => setBikeForm({...bikeForm, targetSpeedMph: e.target.value})} style={{ width: '100%', padding: '0.8rem', background: '#111', border: '1px solid #333', borderRadius: '8px', color: '#ff6600', fontWeight: 'bold' }} />
+                 </div>
+                 <div>
+                   <label style={{ display: 'block', color: '#666', fontSize: '0.7rem', marginBottom: '0.3rem' }}>Rental Price / Hr ($)</label>
+                   <input type="number" step="0.01" value={bikeForm.pricePerHour} onChange={e => setBikeForm({...bikeForm, pricePerHour: e.target.value})} placeholder="e.g. 25" style={{ width: '100%', padding: '0.8rem', background: '#111', border: '1px solid #333', borderRadius: '8px', color: '#34a853', fontWeight: 'bold' }} />
                  </div>
                  <div style={{ gridColumn: 'span 2' }}>
                    <label style={{ display: 'block', color: '#666', fontSize: '0.7rem', marginBottom: '0.3rem' }}>Bike Photo</label>
