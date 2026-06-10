@@ -41,7 +41,7 @@ export function useUserData(providedUser?: User | null) {
     if (!user) {
       setUserData(null);
       // If we are not listening to auth, we should stop loading if there's no user
-      if (providedUser !== undefined || !auth.currentUser) {
+      if (providedUser !== undefined) {
          setLoading(false);
       }
       return;
