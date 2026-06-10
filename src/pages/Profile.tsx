@@ -131,11 +131,6 @@ const Profile: React.FC = () => {
       if (!snap.empty) {
         const data = snap.docs[0].data();
         setProfileData({ uid: snap.docs[0].id, ...data } as UserProfile);
-        setNewUsername(data.username || '');
-        setNewProfilePic(data.profilePic || '');
-        setEditHomeRegion(data.homeRegion || '');
-        setEditBirthday(data.birthday || '');
-        setEditRiderWeight(data.riderWeight?.toString() || '180');
       } else {
         setProfileData(null);
       }
@@ -144,6 +139,16 @@ const Profile: React.FC = () => {
 
     return () => { if (profileUnsub) profileUnsub(); };
   }, [username]);
+
+  useEffect(() => {
+    if (showSettings && profileData) {
+      setNewUsername(profileData.username || '');
+      setNewProfilePic(profileData.profilePic || '');
+      setEditHomeRegion(profileData.homeRegion || '');
+      setEditBirthday(profileData.birthday || '');
+      setEditRiderWeight(profileData.riderWeight?.toString() || '180');
+    }
+  }, [showSettings, profileData?.uid]);
 
   // Fetch Reviews
   useEffect(() => {
