@@ -406,3 +406,8 @@ main {
     -1px  1px 0 #000,
      1px  1px 0 #000;
 }
+
+/* Fix Google Maps Autocomplete z-index to appear above sidebar */
+.pac-container {
+  z-index: 100005 !important;
+}
