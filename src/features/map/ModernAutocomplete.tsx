@@ -17,6 +17,12 @@ const ModernAutocomplete: React.FC<ModernAutocompleteProps> = ({
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   const [inputValue, setInputValue] = useState(value || "");
 
+  const onPlaceSelectedRef = useRef(onPlaceSelected);
+
+  useEffect(() => {
+    onPlaceSelectedRef.current = onPlaceSelected;
+  }, [onPlaceSelected]);
+
   useEffect(() => {
     if (!inputRef.current || !window.google) return;
 
@@ -34,7 +40,7 @@ const ModernAutocomplete: React.FC<ModernAutocompleteProps> = ({
 
         const address = place.formatted_address || place.name || "";
         setInputValue(address);
-        onPlaceSelected(
+        onPlaceSelectedRef.current(
           address, 
           place.geometry.location?.lat(), 
           place.geometry.location?.lng()
@@ -50,7 +56,7 @@ const ModernAutocomplete: React.FC<ModernAutocompleteProps> = ({
         window.google.maps.event.clearInstanceListeners(autocompleteRef.current);
       }
     };
-  }, [onPlaceSelected]);
+  }, []);
 
   // Sync external value changes if necessary
   useEffect(() => {
