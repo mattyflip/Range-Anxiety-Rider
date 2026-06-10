@@ -224,7 +224,7 @@ const Profile: React.FC = () => {
 
       <main style={{ padding: '1.5rem', maxWidth: '800px', margin: '0 auto' }}>
         <header style={{ textAlign: 'center', marginBottom: '2.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-           <div style={{ width: '100px', height: '100px', borderRadius: '50%', background: '#1a1a1a', marginBottom: '1.2rem', border: '3px solid #ff6600', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.5rem' }}>
+           <div style={{ width: '100px', height: '100px', borderRadius: '50%', background: '#1a1a1a', marginBottom: '1.2rem', border: '3px solid #ff6600', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.5rem', flexShrink: 0 }}>
               {profileData.profilePic ? <img src={profileData.profilePic} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : '🚲'}
            </div>
            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
@@ -360,7 +360,12 @@ const Profile: React.FC = () => {
             <h2 style={{ color: 'white', marginTop: 0 }}>Edit Profile</h2>
             <div className="form-group" style={{ marginTop: '1.5rem' }}>
               <label>Profile Photo</label>
-              <input type="file" accept="image/*" onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0])} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+                <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: '#222', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #ff6600', flexShrink: 0 }}>
+                  {newProfilePic ? <img src={newProfilePic} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: '2rem' }}>🚲</span>}
+                </div>
+                <input type="file" accept="image/*" onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0])} style={{ flex: 1 }} />
+              </div>
             </div>
             <div className="form-group" style={{ marginTop: '1.5rem' }}><label>Username</label><input type="text" value={newUsername} onChange={e => setNewUsername(e.target.value)} /></div>
             <div className="form-group" style={{ marginTop: '1.5rem' }}><label>Home Region</label><input type="text" value={editHomeRegion} onChange={e => setEditHomeRegion(e.target.value)} placeholder="e.g. Southern California" /></div>
