@@ -24,6 +24,7 @@ const FleetDashboard = () => {
   // Direct Assignment State
   const [showDirectAssignModal, setShowDirectAssignModal] = useState(false);
   const [batteryDisplayMode, setBatteryDisplayMode] = useState<Record<string, 'percent' | 'voltage'>>({});
+  const [draftBattery, setDraftBattery] = useState<Record<string, string>>({});
   const [targetRiderEmail, setTargetRiderEmail] = useState('');
   const [bikeToAssign, setBikeToAssign] = useState<Bike | null>(null);
   const [isAssigning, setIsAssigning] = useState(false);
@@ -663,16 +664,23 @@ const FleetDashboard = () => {
                             <input 
                               type="number" 
                               step={batteryDisplayMode[b.id] === 'voltage' ? "0.1" : "1"}
-                              value={batteryDisplayMode[b.id] === 'voltage' ? percentToVoltage(b.specs.currentBatteryPercent || 0, b.specs.voltage || 48) : b.specs.currentBatteryPercent} 
-                              onChange={(e) => {
-                                const val = parseFloat(e.target.value) || 0;
-                                const pct = batteryDisplayMode[b.id] === 'voltage' ? voltageToPercent(val, b.specs.voltage || 48) : val;
-                                handleUpdateBattery(b, pct);
+                              value={draftBattery[b.id] !== undefined ? draftBattery[b.id] : (batteryDisplayMode[b.id] === 'voltage' ? percentToVoltage(b.specs.currentBatteryPercent || 0, b.specs.voltage || 48) : b.specs.currentBatteryPercent)} 
+                              onChange={(e) => setDraftBattery(prev => ({...prev, [b.id]: e.target.value}))}
+                              onBlur={(e) => {
+                                const val = parseFloat(e.target.value);
+                                if (!isNaN(val)) {
+                                  const pct = batteryDisplayMode[b.id] === 'voltage' ? voltageToPercent(val, b.specs.voltage || 48) : val;
+                                  handleUpdateBattery(b, pct);
+                                }
+                                setDraftBattery(prev => { const next = {...prev}; delete next[b.id]; return next; });
                               }}
                               style={{ width: '55px', background: '#111', border: '1px solid #333', color: 'white', padding: '4px', borderRadius: '6px', textAlign: 'center', fontWeight: 'bold', fontSize: '0.8rem' }} 
                             />
                             <button 
-                              onClick={() => setBatteryDisplayMode(prev => ({...prev, [b.id]: prev[b.id] === 'voltage' ? 'percent' : 'voltage'}))}
+                              onClick={() => {
+                                setDraftBattery(prev => { const next = {...prev}; delete next[b.id]; return next; });
+                                setBatteryDisplayMode(prev => ({...prev, [b.id]: prev[b.id] === 'voltage' ? 'percent' : 'voltage'}));
+                              }}
                               style={{ background: '#222', border: '1px solid #333', color: '#888', borderRadius: '6px', padding: '4px 8px', fontSize: '0.7rem', fontWeight: 'bold', cursor: 'pointer' }}
                             >
                               {batteryDisplayMode[b.id] === 'voltage' ? 'V' : '%'}
