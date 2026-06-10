@@ -27,6 +27,11 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId; 
     }
 
+    match /global_bikes/{bikeId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
     match /users/{userId} {
       // SECURITY FIX: Users can't make themselves admin. 
       // Only an existing admin can set isAdmin to true, or it must be set via Firebase Console.

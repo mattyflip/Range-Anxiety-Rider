@@ -57,6 +57,9 @@ const AdminLibrary: React.FC = () => {
       });
       setBikes(fetched);
       setLoading(false);
+    }, (error) => {
+      console.error("Error fetching global_bikes:", error);
+      setLoading(false);
     });
 
     return () => unsubscribe();
