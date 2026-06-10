@@ -23,9 +23,33 @@ const FleetDashboard = () => {
   
   // Direct Assignment State
   const [showDirectAssignModal, setShowDirectAssignModal] = useState(false);
+  const [batteryDisplayMode, setBatteryDisplayMode] = useState<Record<string, 'percent' | 'voltage'>>({});
   const [targetRiderEmail, setTargetRiderEmail] = useState('');
   const [bikeToAssign, setBikeToAssign] = useState<Bike | null>(null);
   const [isAssigning, setIsAssigning] = useState(false);
+
+  const percentToVoltage = (percent: number, nominalVoltage: number) => {
+    if (!nominalVoltage) return percent;
+    let min = 0, max = 0;
+    if (nominalVoltage === 48) { min = 40; max = 54.6; }
+    else if (nominalVoltage === 52) { min = 43; max = 58.8; }
+    else if (nominalVoltage === 36) { min = 30; max = 42; }
+    else if (nominalVoltage === 72) { min = 60; max = 84; }
+    else return percent;
+    return parseFloat((min + (percent / 100) * (max - min)).toFixed(1));
+  };
+
+  const voltageToPercent = (voltage: number, nominalVoltage: number) => {
+    if (!nominalVoltage) return voltage;
+    let min = 0, max = 0;
+    if (nominalVoltage === 48) { min = 40; max = 54.6; }
+    else if (nominalVoltage === 52) { min = 43; max = 58.8; }
+    else if (nominalVoltage === 36) { min = 30; max = 42; }
+    else if (nominalVoltage === 72) { min = 60; max = 84; }
+    else return voltage;
+    let pct = ((voltage - min) / (max - min)) * 100;
+    return Math.max(0, Math.min(100, Math.round(pct)));
+  };
 
   // Bike Edit Modal State
   const [showBikeModal, setShowShowBikeModal] = useState(false);
@@ -638,10 +662,21 @@ const FleetDashboard = () => {
                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                             <input 
                               type="number" 
-                              value={b.specs.currentBatteryPercent} 
-                              onChange={(e) => handleUpdateBattery(b, parseInt(e.target.value))}
-                              style={{ width: '50px', background: '#111', border: '1px solid #333', color: 'white', padding: '4px', borderRadius: '6px', textAlign: 'center', fontWeight: 'bold', fontSize: '0.8rem' }} 
+                              step={batteryDisplayMode[b.id] === 'voltage' ? "0.1" : "1"}
+                              value={batteryDisplayMode[b.id] === 'voltage' ? percentToVoltage(b.specs.currentBatteryPercent || 0, b.specs.voltage || 48) : b.specs.currentBatteryPercent} 
+                              onChange={(e) => {
+                                const val = parseFloat(e.target.value) || 0;
+                                const pct = batteryDisplayMode[b.id] === 'voltage' ? voltageToPercent(val, b.specs.voltage || 48) : val;
+                                handleUpdateBattery(b, pct);
+                              }}
+                              style={{ width: '55px', background: '#111', border: '1px solid #333', color: 'white', padding: '4px', borderRadius: '6px', textAlign: 'center', fontWeight: 'bold', fontSize: '0.8rem' }} 
                             />
+                            <button 
+                              onClick={() => setBatteryDisplayMode(prev => ({...prev, [b.id]: prev[b.id] === 'voltage' ? 'percent' : 'voltage'}))}
+                              style={{ background: '#222', border: '1px solid #333', color: '#888', borderRadius: '6px', padding: '4px 8px', fontSize: '0.7rem', fontWeight: 'bold', cursor: 'pointer' }}
+                            >
+                              {batteryDisplayMode[b.id] === 'voltage' ? 'V' : '%'}
+                            </button>
                             <div style={{ flex: 1, height: '6px', background: '#222', borderRadius: '3px', overflow: 'hidden' }}>
                                <div style={{ width: `${b.specs.currentBatteryPercent}%`, height: '100%', background: (b.specs.currentBatteryPercent || 0) < 30 ? '#ff4444' : '#34a853' }} />
                             </div>
@@ -681,9 +716,16 @@ const FleetDashboard = () => {
                             <div style={{ fontSize: '0.6rem', color: '#34a853' }}>{live ? '🛰️ LIVE' : '⌛ SYNC'}</div>
                          </div>
                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                            <div style={{ background: '#1a1a1a', padding: '0.4rem', borderRadius: '8px' }}>
+                            <div 
+                              style={{ background: '#1a1a1a', padding: '0.4rem', borderRadius: '8px', cursor: 'pointer' }}
+                              onClick={() => setBatteryDisplayMode(prev => ({...prev, [b.id]: prev[b.id] === 'voltage' ? 'percent' : 'voltage'}))}
+                            >
                                <div style={{ color: '#555', fontSize: '0.5rem', fontWeight: 'bold' }}>BATTERY</div>
-                               <div style={{ color: (live?.battery || b.specs.currentBatteryPercent || 0) < 30 ? '#ff4444' : 'white', fontWeight: 900, fontSize: '0.9rem' }}>{live?.battery || b.specs.currentBatteryPercent}%</div>
+                               <div style={{ color: (live?.battery || b.specs.currentBatteryPercent || 0) < 30 ? '#ff4444' : 'white', fontWeight: 900, fontSize: '0.9rem' }}>
+                                 {batteryDisplayMode[b.id] === 'voltage' 
+                                   ? `${percentToVoltage(live?.battery || b.specs.currentBatteryPercent || 0, b.specs.voltage || 48)}V`
+                                   : `${live?.battery || b.specs.currentBatteryPercent}%`}
+                               </div>
                             </div>
                             <div style={{ background: '#1a1a1a', padding: '0.4rem', borderRadius: '8px' }}>
                                <div style={{ color: '#555', fontSize: '0.5rem', fontWeight: 'bold' }}>RANGE</div>
