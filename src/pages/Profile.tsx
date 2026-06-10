@@ -181,7 +181,7 @@ const Profile: React.FC = () => {
     if (!user) return;
     setIsSavingProfile(true);
     try {
-      const storageRef = ref(storage, `profiles/${user.uid}/${Date.now()}_${file.name}`);
+      const storageRef = ref(storage, `profile_pics/${user.uid}/${Date.now()}_${file.name}`);
       await uploadBytes(storageRef, file);
       const url = await getDownloadURL(storageRef);
       setNewProfilePic(url);
