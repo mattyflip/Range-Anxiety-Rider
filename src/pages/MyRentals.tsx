@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { db } from '../firebase';
-import { collection, query, where, onSnapshot, doc, updateDoc, collectionGroup } from 'firebase/firestore';
+import { query, where, onSnapshot, doc, updateDoc, collectionGroup } from 'firebase/firestore';
 import NavBar from '../shared/ui/NavBar';
 import SEO from '../shared/ui/SEO';
 import AuthModal from '../features/auth/AuthModal';

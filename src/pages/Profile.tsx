@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { db, storage } from '../firebase'
-import { doc, collection, setDoc, query, where, onSnapshot, updateDoc, serverTimestamp } from 'firebase/firestore'
+import { doc, collection, setDoc, query, where, onSnapshot, updateDoc, serverTimestamp, orderBy } from 'firebase/firestore'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import NavBar from '../shared/ui/NavBar'
 import InstallTutorial from '../shared/ui/InstallTutorial'
 import AuthModal from '../features/auth/AuthModal'
 import SEO from '../shared/ui/SEO'
-import type { UserProfile } from '../types';
+import type { UserProfile, Post } from '../types';
 import { useUserData } from '../hooks/useUserData';
 
 const Profile: React.FC = () => {
@@ -16,6 +16,10 @@ const Profile: React.FC = () => {
   
   const [profileData, setProfileData] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Posts state
+  const [userPosts, setUserPosts] = useState<Post[]>([]);
+  const [loadingPosts, setLoadingPosts] = useState(true);
 
   // Settings states
   const [showSettings, setShowSettings] = useState(false);
@@ -28,6 +32,7 @@ const Profile: React.FC = () => {
   const [editingBike, setEditingBike] = useState<any>(null);
   const [bikeForm, setBikeForm] = useState({
     name: '',
+    imageUrl: '',
     voltage: '48',
     capacityAh: '15',
     motorWatts: '750',
@@ -44,6 +49,7 @@ const Profile: React.FC = () => {
     const newBike = {
       id: editingBike?.id || Date.now().toString(),
       name: bikeForm.name,
+      imageUrl: bikeForm.imageUrl,
       specs: {
         voltage: parseFloat(bikeForm.voltage),
         capacityAh: parseFloat(bikeForm.capacityAh),
@@ -90,6 +96,7 @@ const Profile: React.FC = () => {
     setEditingBike(bike);
     setBikeForm({
       name: bike.name,
+      imageUrl: bike.imageUrl || '',
       voltage: bike.specs.voltage.toString(),
       capacityAh: bike.specs.capacityAh.toString(),
       motorWatts: bike.specs.motorWatts.toString(),
@@ -100,6 +107,24 @@ const Profile: React.FC = () => {
       targetSpeedMph: (bike.specs.targetSpeedMph || 20).toString()
     });
     setShowBikeModal(true);
+  };
+
+  const [isUploadingBikePic, setIsUploadingBikePic] = useState(false);
+
+  const handleBikeImageUpload = async (file: File) => {
+    if (!user) return;
+    setIsUploadingBikePic(true);
+    try {
+      const storageRef = ref(storage, `bikes/${user.uid}/${Date.now()}_${file.name}`);
+      await uploadBytes(storageRef, file);
+      const url = await getDownloadURL(storageRef);
+      setBikeForm(prev => ({ ...prev, imageUrl: url }));
+    } catch (e) {
+      console.error(e);
+      alert("Failed to upload bike image.");
+    } finally {
+      setIsUploadingBikePic(false);
+    }
   };
 
   // Profile Edit states
@@ -156,6 +181,17 @@ const Profile: React.FC = () => {
     const q = query(collection(db, `users/${profileData.uid}/reviews`), where('status', '==', 'approved'));
     const unsub = onSnapshot(q, (snap) => {
       setReviews(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+    return () => unsub();
+  }, [profileData?.uid]);
+
+  // Fetch Posts
+  useEffect(() => {
+    if (!profileData?.uid) return;
+    const q = query(collection(db, "posts"), where("authorId", "==", profileData.uid), orderBy("createdAt", "desc"));
+    const unsub = onSnapshot(q, (snap) => {
+      setUserPosts(snap.docs.map(d => ({ id: d.id, ...d.data() } as Post)));
+      setLoadingPosts(false);
     });
     return () => unsub();
   }, [profileData?.uid]);
@@ -271,7 +307,7 @@ const Profile: React.FC = () => {
             <h2 style={{ color: 'white', fontSize: '1.1rem', margin: 0 }}>My Garage</h2>
             {canEdit && (
               <button 
-                onClick={() => { setEditingBike(null); setBikeForm({ name: '', voltage: '48', capacityAh: '15', motorWatts: '750', bikeWeightLbs: '65', tirePSI: '30', tireType: 'road', driveMode: 'both', targetSpeedMph: '20' }); setShowBikeModal(true); }}
+                onClick={() => { setEditingBike(null); setBikeForm({ name: '', imageUrl: '', voltage: '48', capacityAh: '15', motorWatts: '750', bikeWeightLbs: '65', tirePSI: '30', tireType: 'road', driveMode: 'both', targetSpeedMph: '20' }); setShowBikeModal(true); }}
                 style={{ background: 'none', border: '1px solid #ff6600', color: '#ff6600', padding: '0.4rem 1rem', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer' }}
               >
                 + Add Bike
@@ -288,7 +324,7 @@ const Profile: React.FC = () => {
             ) : (
               profileData.bikes.map((bike: any) => (
                 <div key={bike.id} style={{ background: '#1a1a1a', padding: '1.2rem', borderRadius: '24px', border: '1px solid #333', position: 'relative', overflow: 'hidden' }}>
-                  <div style={{ position: 'absolute', top: 0, right: 0, padding: '0.8rem', display: 'flex', gap: '0.4rem' }}>
+                  <div style={{ position: 'absolute', top: 0, right: 0, padding: '0.8rem', display: 'flex', gap: '0.4rem', zIndex: 10 }}>
                     {canEdit && (
                       <>
                         <button onClick={() => openEditBike(bike)} style={{ background: '#222', border: 'none', color: '#ffcc00', padding: '0.4rem', borderRadius: '8px', cursor: 'pointer', fontSize: '0.75rem' }}>✏️</button>
@@ -297,7 +333,13 @@ const Profile: React.FC = () => {
                     )}
                   </div>
 
-                  <div style={{ fontSize: '1.8rem', marginBottom: '0.8rem' }}>⚡</div>
+                  {bike.imageUrl ? (
+                    <div style={{ width: '100%', height: '150px', borderRadius: '12px', overflow: 'hidden', marginBottom: '0.8rem' }}>
+                      <img src={bike.imageUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt={bike.name} />
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: '1.8rem', marginBottom: '0.8rem' }}>⚡</div>
+                  )}
                   <h3 style={{ color: 'white', margin: '0 0 0.5rem 0', fontSize: '1rem' }}>{bike.name}</h3>
                   
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem', marginTop: '0.8rem' }}>
@@ -322,6 +364,41 @@ const Profile: React.FC = () => {
               ))
             )}
           </div>
+        </section>
+
+        {/* Posts & Trips Section */}
+        <section style={{ marginBottom: '3rem' }}>
+          <h2 style={{ color: 'white', fontSize: '1.2rem', marginBottom: '1.5rem' }}>Posts & Trips</h2>
+          {loadingPosts ? (
+            <div style={{ color: '#666', textAlign: 'center', padding: '2rem' }}>Loading posts...</div>
+          ) : userPosts.length === 0 ? (
+             <div style={{ textAlign: 'center', padding: '2.5rem', background: '#1a1a1a', borderRadius: '24px', border: '1px dashed #333' }}>
+               <div style={{ fontSize: '2.5rem', marginBottom: '0.8rem' }}>📸</div>
+               <p style={{ color: '#666', margin: 0, fontSize: '0.9rem' }}>No posts or trips yet.</p>
+             </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '1rem' }}>
+              {userPosts.map(post => (
+                <div key={post.id} style={{ background: '#1a1a1a', borderRadius: '16px', border: '1px solid #333', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                  <div style={{ width: '100%', aspectRatio: '1', position: 'relative' }}>
+                    <img src={post.imageUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Post" />
+                    {post.tripData && (
+                       <div style={{ position: 'absolute', top: '8px', right: '8px', background: 'rgba(255, 102, 0, 0.9)', color: 'white', fontSize: '0.7rem', fontWeight: 'bold', padding: '4px 8px', borderRadius: '12px' }}>
+                         TRIP
+                       </div>
+                    )}
+                  </div>
+                  <div style={{ padding: '0.8rem' }}>
+                    <p style={{ color: '#ccc', fontSize: '0.8rem', margin: '0 0 0.5rem 0', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{post.caption}</p>
+                    <div style={{ display: 'flex', gap: '0.8rem', color: '#666', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                      <span>❤️ {post.likes?.length || 0}</span>
+                      {post.commentsEnabled !== false && <span>💬 {post.commentCount || 0}</span>}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </section>
 
         {/* Reviews Section */}
@@ -395,6 +472,19 @@ const Profile: React.FC = () => {
           <div style={{ background: '#1a1a1a', width: '100%', maxWidth: '500px', padding: '2.5rem', borderRadius: '24px', border: '1px solid #333', maxHeight: '90vh', overflowY: 'auto' }}>
             <h2 style={{ color: 'white', marginTop: 0 }}>{editingBike ? 'Edit Bike' : 'Add to Garage'}</h2>
             
+            <div className="form-group" style={{ marginTop: '1.5rem' }}>
+              <label>Bike Photo</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+                <div style={{ width: '80px', height: '80px', borderRadius: '12px', background: '#222', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #333', flexShrink: 0 }}>
+                  {bikeForm.imageUrl ? <img src={bikeForm.imageUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: '2rem' }}>📸</span>}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <input type="file" accept="image/*" onChange={(e) => e.target.files?.[0] && handleBikeImageUpload(e.target.files[0])} disabled={isUploadingBikePic} />
+                  {isUploadingBikePic && <div style={{ color: '#ff6600', fontSize: '0.8rem', marginTop: '0.4rem' }}>Uploading...</div>}
+                </div>
+              </div>
+            </div>
+
             <div className="form-group" style={{ marginTop: '1.5rem' }}>
               <label>Bike Nickname</label>
               <input type="text" value={bikeForm.name} onChange={e => setBikeForm({ ...bikeForm, name: e.target.value })} placeholder="e.g. My Fast Commuter" />
