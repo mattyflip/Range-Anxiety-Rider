@@ -27,13 +27,17 @@ const MyRentals: React.FC = () => {
   const [showInstallTutorial, setShowInstallTutorial] = useState(false);
   const [selectedRental, setSelectedRental] = useState<RentalRequest | null>(null);
 
-  useEffect(() => {
-    if (authLoading) return;
-    if (!user) { 
+  const [authChecked, setAuthChecked] = useState(false);
+  if (!authLoading && !authChecked) {
+    setAuthChecked(true);
+    if (!user) {
       setShowAuthModal(true);
       setLoading(false);
-      return;
     }
+  }
+
+  useEffect(() => {
+    if (authLoading || !user) return;
 
     // Fetch all rental requests where this user is the rider across all shops
     const qRequests = query(

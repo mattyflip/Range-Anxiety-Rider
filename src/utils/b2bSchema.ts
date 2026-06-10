@@ -51,6 +51,8 @@
     - status: 'active' | 'completed' | 'overdue' | 'cancelled'
 */
 
+import type { Timestamp } from 'firebase/firestore';
+
 export interface RentalShop {
   id: string;
   name: string;
@@ -79,8 +81,8 @@ export interface RentalSession {
   id: string;
   bikeId: string;
   customerName: string;
-  startTime: any;
-  endTime: any;
+  startTime: Timestamp;
+  endTime: Timestamp;
   status: 'active' | 'completed' | 'overdue' | 'cancelled';
   startBattery: number;
 }

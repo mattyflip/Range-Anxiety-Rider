@@ -10,15 +10,25 @@ import { useUserData } from '../hooks/useUserData';
 import type { Organization } from '../types';
 import { useNavigate } from 'react-router-dom';
 
+interface BikeData {
+  id: string;
+  unitId?: string;
+  specs?: {
+    motorWatts?: number | string;
+    voltage?: number | string;
+    capacityAh?: number | string;
+  };
+}
+
 const Rent: React.FC = () => {
   const navigate = useNavigate();
   const { user, userData, loading: authLoading } = useUserData();
   const [shops, setShops] = useState<(Organization & { id: string })[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedShop, setSelectedShop] = useState<(Organization & { id: string }) | null>(null);
-  const [availableBikes, setAvailableBikes] = useState<any[]>([]);
+  const [availableBikes, setAvailableBikes] = useState<BikeData[]>([]);
   const [bikeCounts, setBikeCounts] = useState<Record<string, number>>({});
-  const [selectedBike, setSelectedBike] = useState<any>(null);
+  const [selectedBike, setSelectedBike] = useState<BikeData | null>(null);
   const [bookingForm, setBookingForm] = useState({
     date: new Date().toISOString().split('T')[0],
     pickupTime: '10:00',
@@ -33,11 +43,13 @@ const Rent: React.FC = () => {
   const minimumCharge = selectedShop?.pricing?.minimumCharge || 15;
   const totalPrice = Math.max(bookingForm.duration * pricePerHour, minimumCharge);
 
-  useEffect(() => {
-    if (userData?.phone) {
-       setBookingForm(prev => ({ ...prev, phone: userData.phone || '' }));
+  const [prevPhone, setPrevPhone] = useState(userData?.phone);
+  if (userData?.phone !== prevPhone) {
+    setPrevPhone(userData?.phone);
+    if (!bookingForm.phone) {
+      setBookingForm({ ...bookingForm, phone: userData?.phone || '' });
     }
-  }, [userData]);
+  }
 
   useEffect(() => {
     const qShops = query(collection(db, "organizations"));
@@ -59,20 +71,15 @@ const Rent: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (!selectedShop) {
-      setAvailableBikes([]);
-      setSelectedBike(null);
-      return;
-    }
+    if (!selectedShop) return;
 
     const qBikes = query(collection(db, `organizations/${selectedShop.id}/bikes`), where("status", "==", "available"));
     const unsubBikes = onSnapshot(qBikes, (snap) => {
       setAvailableBikes(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-      setSelectedBike(null); // Reset bike selection when shop changes
     });
 
     return () => unsubBikes();
-  }, [selectedShop]);
+  }, [selectedShop?.id]);
 
   const calculateReturnTime = (pickupTime: string, duration: number): string => {
     const [hours, minutes] = pickupTime.split(':').map(Number);
@@ -149,7 +156,7 @@ const Rent: React.FC = () => {
         {!selectedShop ? (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
             {shops.map(shop => (
-              <div key={shop.id} onClick={() => setSelectedShop(shop)} style={{ background: '#1a1a1a', padding: '2rem', borderRadius: '24px', border: '1px solid #333', cursor: 'pointer', transition: 'transform 0.2s' }}>
+              <div key={shop.id} onClick={() => { setSelectedShop(shop); setAvailableBikes([]); setSelectedBike(null); }} style={{ background: '#1a1a1a', padding: '2rem', borderRadius: '24px', border: '1px solid #333', cursor: 'pointer', transition: 'transform 0.2s' }}>
                 <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>🏬</div>
                 <h2 style={{ color: 'white', margin: '0 0 0.5rem 0' }}>{shop.name}</h2>
                 <p style={{ color: '#666', fontSize: '0.85rem', marginBottom: '1.5rem' }}>{shop.address}</p>
@@ -162,7 +169,7 @@ const Rent: React.FC = () => {
           </div>
         ) : (
           <div>
-            <button onClick={() => setSelectedShop(null)} style={{ background: 'none', border: 'none', color: '#ff6600', fontWeight: 'bold', cursor: 'pointer', marginBottom: '2rem' }}>← BACK TO SHOPS</button>
+            <button onClick={() => { setSelectedShop(null); setAvailableBikes([]); setSelectedBike(null); }} style={{ background: 'none', border: 'none', color: '#ff6600', fontWeight: 'bold', cursor: 'pointer', marginBottom: '2rem' }}>← BACK TO SHOPS</button>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 350px', gap: '2rem' }}>
                <section>
                   <h2 style={{ color: 'white', marginBottom: '1.5rem' }}>Available at {selectedShop.name}</h2>

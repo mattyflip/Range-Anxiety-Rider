@@ -6,7 +6,7 @@ import { decode } from '@googlemaps/polyline-codec';
  * @param polyline The encoded polyline string from Google Maps API.
  * @returns A GeoJSON Feature object.
  */
-export const polylineToGeoJSON = (polyline: any) => {
+export const polylineToGeoJSON = (polyline: string | { lat: number, lng: number }[] | { points?: string, encodedPolyline?: string }) => {
   if (!polyline) return null;
 
   // Handle direct array of coordinates [{lat, lng}, ...]

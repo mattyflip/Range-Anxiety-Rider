@@ -30,3 +30,6 @@ server/
 # TypeScript build artifacts — never commit these
 tsconfig.api.tsbuildinfo
 *.tsbuildinfo
+
+# AI Agent configuration
+.gemini/

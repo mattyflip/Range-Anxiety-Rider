@@ -17,9 +17,16 @@ const Notifications: React.FC = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showInstallTutorial, setShowInstallTutorial] = useState(false);
 
+  const [authChecked, setAuthChecked] = useState(false);
+  if (!authLoading && !authChecked) {
+    setAuthChecked(true);
+    if (!user) {
+      setLoading(false);
+    }
+  }
+
   useEffect(() => {
-    if (authLoading) return;
-    if (!user) { setLoading(false); return; }
+    if (authLoading || !user) return;
 
     const q = query(
       collection(db, `users/${user.uid}/notifications`),

@@ -35,20 +35,13 @@ const ShopProfile: React.FC = () => {
   const [closeTime, setCloseTime] = useState('18:00');
   
   const [isUpdating, setIsUpdating] = useState(false);
-  const [isShopTier, setIsShopTier] = useState(false);
-  const [shopTierExpiresAt, setShopTierExpiresAt] = useState<Date | null>(null);
+  const isShopTier = userData?.isShopTier || false;
+  const shopTierExpiresAt = userData?.shopTierExpiresAt?.toDate?.() || null;
 
   useEffect(() => {
     if (authLoading) return;
     if (!user) { navigate('/'); return; }
-
-    if (userData) {
-      setIsShopTier(userData.isShopTier || false);
-      if (userData.shopTierExpiresAt?.toDate) {
-        setShopTierExpiresAt(userData.shopTierExpiresAt.toDate());
-      }
-    }
-  }, [user, userData, authLoading, navigate]);
+  }, [user, authLoading, navigate]);
 
   useEffect(() => {
     if (userData?.orgId && userData?.role === 'fleet') {
@@ -116,7 +109,7 @@ const ShopProfile: React.FC = () => {
       alert("Shop profile updated!");
     } catch (e: any) {
       console.error(e);
-      alert("Update failed: " + e.message);
+      alert("Update failed: " + (e instanceof Error ? e.message : String(e)));
     } finally { setIsUpdating(false); }
   };
 

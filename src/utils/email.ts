@@ -6,7 +6,7 @@ interface EmailParams {
   text?: string;
   html?: string;
   templateId?: string;
-  dynamicTemplateData?: Record<string, any>;
+  dynamicTemplateData?: Record<string, unknown>;
 }
 
 export async function sendEmail(params: EmailParams) {

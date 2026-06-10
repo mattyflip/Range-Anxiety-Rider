@@ -5,9 +5,10 @@ import { signOut } from 'firebase/auth'
 import { collection, query, where, onSnapshot, doc, updateDoc } from 'firebase/firestore'
 
 import { useUserData } from '../../hooks/useUserData'
+import type { User } from 'firebase/auth'
 
 interface NavBarProps {
-  user: any;
+  user: User | null;
   onShowInstall: () => void;
   onShowAuth: () => void;
 }
@@ -19,10 +20,11 @@ const NavBar: React.FC<NavBarProps> = ({ user: providedUser, onShowInstall, onSh
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { user, userData } = useUserData(providedUser);
 
-  useEffect(() => {
-    // Close menu on route change
+  const [prevPath, setPrevPath] = useState(location.pathname);
+  if (location.pathname !== prevPath) {
+    setPrevPath(location.pathname);
     setIsMenuOpen(false);
-  }, [location.pathname]);
+  }
 
   useEffect(() => {
     if (!user) return;

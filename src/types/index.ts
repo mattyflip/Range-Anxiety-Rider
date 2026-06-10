@@ -100,8 +100,17 @@ export interface UserProfile {
   updatedAt?: Timestamp;
 }
 
+export interface TripData {
+  distanceMiles: number;
+  durationMinutes: number;
+  batteryUsed: number;
+  routeCoordinates?: { lat: number, lng: number }[];
+  startAddress?: string;
+  endAddress?: string;
+}
+
 /**
- * Social Post model stored in /posts/{postId}
+ * Feed Post model stored in /posts/{postId}
  */
 export interface Post {
   id: string;
@@ -115,7 +124,7 @@ export interface Post {
   commentCount?: number;
   commentsEnabled?: boolean;
   createdAt: Timestamp;
-  tripData?: any;
+  tripData?: TripData;
 }
 
 /**

@@ -2,14 +2,16 @@ import { useState, useEffect } from 'react';
 import { auth, db } from '../../firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
 
+import type { UserProfile } from '../../types';
+
 const AdBanner = () => {
-  const [userData, setUserData] = useState<any>(null);
+  const [userData, setUserData] = useState<UserProfile | null>(null);
 
   useEffect(() => {
-    const unsubAuth = auth.onAuthStateChanged((user: any) => {
+    const unsubAuth = auth.onAuthStateChanged((user) => {
       if (user) {
         return onSnapshot(doc(db, "users", user.uid), (snap) => {
-          if (snap.exists()) setUserData(snap.data());
+          if (snap.exists()) setUserData(snap.data() as UserProfile);
         });
       } else {
         setUserData(null);

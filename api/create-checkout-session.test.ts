@@ -60,7 +60,7 @@ describe('api/create-checkout-session', () => {
     const res = mockRes();
     await handler(req, res);
     expect(res.status).toHaveBeenCalledWith(400);
-    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ error: 'Invalid User ID' }));
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ error: 'VALIDATION_ERROR' }));
   });
 
   it('should return 403 if token UID does not match body userId', async () => {

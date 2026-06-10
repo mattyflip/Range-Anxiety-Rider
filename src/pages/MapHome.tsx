@@ -123,6 +123,14 @@ function MapHome() {
   const [startVoltage, setStartVoltage] = useState<number | ''>(54.6);
   
   const [riderWeight, setRiderWeight] = useState<number | ''>(180);
+
+  // Initialize rider weight from user profile if available
+  useEffect(() => {
+    if (userData?.riderWeight) {
+      setRiderWeight(userData.riderWeight);
+    }
+  }, [userData?.riderWeight]);
+
   const [targetSpeed, setTargetSpeed] = useState<number | ''>(18);
   const [driveMode, setDriveMode] = useState<'throttle' | 'pas'>('throttle');
   const [pedalAssistLevel, setPedalAssistLevel] = useState<number>(3);
@@ -453,7 +461,7 @@ function MapHome() {
               mapRef.current.setZoom(14);
            }
         } else if (data && typeof data.origin === 'string' && data.origin.trim()) {
-          const wps = data.waypoints?.filter((w: unknown) => typeof w === 'string') || [];
+          const wps = data.waypoints?.filter((w: any) => typeof w === 'string') || [];
           setLocations([data.origin, data.destination, wps[0] || '', wps[1] || '', wps[2] || '']);
           if (typeof data.isRoundTrip === 'boolean') setIsRoundTrip(data.isRoundTrip);
           setResponse(null);
@@ -1223,7 +1231,7 @@ function MapHome() {
           console.error("Polyline decoding failed:", e);
           return null;
         }
-        const result: unknown = {
+        const result: any = {
           request: { travelMode: 'BICYCLING' },
           decodedPath,
           routes: [{
@@ -1288,7 +1296,7 @@ function MapHome() {
         mapRef.current.fitBounds(bounds, { top: 50, right: 50, bottom: 50, left: window.innerWidth > 768 ? 350 : 50 });
       }
 
-    } catch (err: unknown) { const e = err as Error;
+    } catch (err: any) { const e = err as Error;
       console.error("Route calculation failed:", e);
       showToast("Could not calculate route. Please try different locations.");
     } finally {
@@ -1308,7 +1316,7 @@ function MapHome() {
       const data = await res.json();
       if (data.url) window.location.href = data.url;
       else showToast(`Checkout failed: ${data.error || 'Please try again.'}`);
-    } catch (e: unknown) { showToast(`Checkout failed: ${e instanceof Error ? e.message : 'Unknown error'}`); }
+    } catch (e: any) { showToast(`Checkout failed: ${e instanceof Error ? e.message : 'Unknown error'}`); }
   };
 
   const onMapLoad = useCallback((map: google.maps.Map) => { mapRef.current = map; }, []);

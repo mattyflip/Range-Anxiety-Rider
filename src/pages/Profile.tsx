@@ -29,7 +29,23 @@ const Profile: React.FC = () => {
 
   // Garage states
   const [showBikeModal, setShowBikeModal] = useState(false);
-  const [editingBike, setEditingBike] = useState<any>(null);
+  interface BikeType {
+    id: string;
+    name: string;
+    imageUrl?: string;
+    specs: {
+      voltage: number;
+      capacityAh: number;
+      motorWatts: number;
+      bikeWeightLbs?: number;
+      tirePSI?: number;
+      tireType?: 'road' | 'knobby';
+      driveMode?: 'both' | 'pas_only' | 'throttle_only';
+      targetSpeedMph?: number;
+    }
+  }
+
+  const [editingBike, setEditingBike] = useState<BikeType | null>(null);
   const [bikeForm, setBikeForm] = useState({
     name: '',
     imageUrl: '',
@@ -92,7 +108,7 @@ const Profile: React.FC = () => {
     } catch (e) { console.error(e); }
   };
 
-  const openEditBike = (bike: any) => {
+  const openEditBike = (bike: BikeType) => {
     setEditingBike(bike);
     setBikeForm({
       name: bike.name,
@@ -132,8 +148,14 @@ const Profile: React.FC = () => {
   const [editBirthday, setEditBirthday] = useState('');
   const [editRiderWeight, setEditRiderWeight] = useState('180');
 
+  interface ReviewType {
+    id: string;
+    reviewerName: string;
+    rating: number;
+    text: string;
+  }
   // Review states
-  const [reviews, setReviews] = useState<any[]>([]);
+  const [reviews, setReviews] = useState<ReviewType[]>([]);
   const [reviewText, setReviewText] = useState('');
   const [reviewRating, setReviewRating] = useState(0);
 
@@ -165,15 +187,17 @@ const Profile: React.FC = () => {
     return () => { if (profileUnsub) profileUnsub(); };
   }, [username]);
 
-  useEffect(() => {
-    if (showSettings && profileData) {
+  const [prevProfileData, setPrevProfileData] = useState<UserProfile | null>(null);
+  if (profileData !== prevProfileData) {
+    setPrevProfileData(profileData);
+    if (profileData) {
       setNewUsername(profileData.username || '');
       setNewProfilePic(profileData.profilePic || '');
       setEditHomeRegion(profileData.homeRegion || '');
       setEditBirthday(profileData.birthday || '');
       setEditRiderWeight(profileData.riderWeight?.toString() || '180');
     }
-  }, [showSettings, profileData?.uid]);
+  }
 
   // Fetch Reviews
   useEffect(() => {
@@ -278,7 +302,10 @@ const Profile: React.FC = () => {
                 <span style={{ background: '#ff0000', color: 'white', fontSize: '0.6rem', padding: '2px 6px', borderRadius: '4px', fontWeight: 900 }}>ADMIN</span>
               )}
            </div>
-           <p style={{ color: '#666', marginTop: '0.4rem', fontSize: '0.9rem' }}>{profileData.homeRegion || 'E-Bike Enthusiast'}</p>
+            <p style={{ color: '#666', marginTop: '0.4rem', fontSize: '0.9rem', display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+              <span>{profileData.homeRegion || 'E-Bike Enthusiast'}</span>
+              {profileData.riderWeight && <span>• {profileData.riderWeight} lbs</span>}
+            </p>
            
            {canEdit && (
              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.6rem', marginTop: '1rem' }}>
@@ -322,7 +349,7 @@ const Profile: React.FC = () => {
                 <p style={{ color: '#666', margin: 0, fontSize: '0.9rem' }}>No bikes in the garage yet.</p>
               </div>
             ) : (
-              profileData.bikes.map((bike: any) => (
+              profileData.bikes.map((bike: { id: string, name: string, imageUrl?: string, specs: any }) => (
                 <div key={bike.id} style={{ background: '#1a1a1a', padding: '1.2rem', borderRadius: '24px', border: '1px solid #333', position: 'relative', overflow: 'hidden' }}>
                   <div style={{ position: 'absolute', top: 0, right: 0, padding: '0.8rem', display: 'flex', gap: '0.4rem', zIndex: 10 }}>
                     {canEdit && (
@@ -525,7 +552,7 @@ const Profile: React.FC = () => {
               </div>
               <div className="form-group">
                 <label>Tire Type</label>
-                <select value={bikeForm.tireType} onChange={e => setBikeForm({ ...bikeForm, tireType: e.target.value as any })} style={{ background: '#222', color: 'white', border: '1px solid #333', padding: '0.8rem', borderRadius: '12px', width: '100%' }}>
+                <select value={bikeForm.tireType} onChange={e => setBikeForm({ ...bikeForm, tireType: e.target.value as 'road' | 'knobby' })} style={{ background: '#222', color: 'white', border: '1px solid #333', padding: '0.8rem', borderRadius: '12px', width: '100%' }}>
                   <option value="road">Road / Slicks</option>
                   <option value="knobby">Knobby / Off-road</option>
                 </select>
@@ -534,7 +561,7 @@ const Profile: React.FC = () => {
 
             <div className="form-group" style={{ marginTop: '1.5rem' }}>
               <label>Drive Mode</label>
-              <select value={bikeForm.driveMode} onChange={e => setBikeForm({ ...bikeForm, driveMode: e.target.value as any })} style={{ background: '#222', color: 'white', border: '1px solid #333', padding: '0.8rem', borderRadius: '12px', width: '100%' }}>
+              <select value={bikeForm.driveMode} onChange={e => setBikeForm({ ...bikeForm, driveMode: e.target.value as 'both' | 'pas_only' | 'throttle_only' })} style={{ background: '#222', color: 'white', border: '1px solid #333', padding: '0.8rem', borderRadius: '12px', width: '100%' }}>
                 <option value="both">PAS + Throttle</option>
                 <option value="pas_only">PAS Only (Class 1/3)</option>
                 <option value="throttle_only">Throttle Only</option>

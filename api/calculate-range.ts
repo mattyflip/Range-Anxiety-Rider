@@ -2,6 +2,29 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 import { setCorsHeaders } from './_cors.js';
 import { calculateBurnRate, calculateHeadwind, estimateVoltage, getRollingResCoefficient, PHYSICS_CONSTANTS } from './_physics.js';
+import { z } from 'zod';
+
+const CalculateRangeRequestSchema = z.object({
+  type: z.enum(['telemetry', 'route']),
+  specs: z.object({
+    voltage: z.number().default(48),
+    capacityAh: z.number().default(15),
+    bikeWeightLbs: z.number().default(65),
+    tirePSI: z.number().default(30),
+    tireType: z.string().default('all-terrain')
+  }),
+  batteryPercent: z.number().optional(),
+  durationSeconds: z.number().optional(),
+  speedMph: z.number().optional(),
+  elevationChangeFt: z.number().optional(),
+  windMph: z.number().optional(),
+  windDirDeg: z.number().optional(),
+  headingDeg: z.number().optional(),
+  riderWeightLbs: z.number().default(180),
+  pedalAssistLevel: z.number().default(0),
+  driveMode: z.string().default('throttle'),
+  throttleMode: z.string().default('normal')
+});
 
 /**
  * Proprietary Range Calculation Engine
@@ -16,6 +39,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(405).json({ error: 'METHOD_NOT_ALLOWED' });
     }
 
+    const parsed = CalculateRangeRequestSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'VALIDATION_ERROR', details: parsed.error.issues });
+    }
+
     const { 
       type, 
       specs, 
@@ -26,22 +54,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       windMph, 
       windDirDeg, 
       headingDeg,
-      riderWeightLbs = 180,
-      pedalAssistLevel = 0,
-      driveMode = 'throttle',
-      throttleMode = 'normal'
-    } = req.body;
-
-    if (!specs) {
-      return res.status(400).json({ error: 'MISSING_SPECS' });
-    }
+      riderWeightLbs,
+      pedalAssistLevel,
+      driveMode,
+      throttleMode
+    } = parsed.data;
 
     const { 
-      voltage = 48, 
-      capacityAh = 15, 
-      bikeWeightLbs = 65,
-      tirePSI = 30,
-      tireType = 'all-terrain'
+      voltage, 
+      capacityAh, 
+      bikeWeightLbs,
+      tirePSI,
+      tireType
     } = specs;
 
     const totalWh = voltage * capacityAh;
