@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { db } from '../firebase';
-import { collection, query, where, onSnapshot, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, updateDoc, collectionGroup } from 'firebase/firestore';
 import NavBar from '../shared/ui/NavBar';
 import SEO from '../shared/ui/SEO';
 import AuthModal from '../features/auth/AuthModal';
@@ -35,38 +35,18 @@ const MyRentals: React.FC = () => {
       return;
     }
 
-    // Fetch all rental requests where this user is the rider
-    const q = query(
-      collection(db, "organizations"),
+    // Fetch all rental requests where this user is the rider across all shops
+    const qRequests = query(
+      collectionGroup(db, 'rental_requests'), 
+      where("riderId", "==", user.uid)
     );
 
-    const unsubscribes: (() => void)[] = [];
-    let allRentals: RentalRequest[] = [];
-
-    const unsubOrgs = onSnapshot(q, async (orgSnap) => {
-      const orgs = orgSnap.docs;
-      
-      // For each org, check if there's a rental request for this user
-      const promises = orgs.map(async (orgDoc) => {
-        const orgId = orgDoc.id;
-        const requestsRef = collection(db, `organizations/${orgId}/rental_requests`);
-        const qRequests = query(requestsRef, where("riderId", "==", user.uid));
-        
-        return new Promise<void>((resolve) => {
-          const unsubRequests = onSnapshot(qRequests, (reqSnap) => {
-            const requests = reqSnap.docs.map(d => ({
-              id: d.id,
-              shopId: orgId,
-              ...d.data()
-            } as RentalRequest));
-            allRentals = [...allRentals, ...requests];
-            resolve();
-          });
-          unsubscribes.push(unsubRequests);
-        });
-      });
-
-      await Promise.all(promises);
+    const unsubRequests = onSnapshot(qRequests, (reqSnap) => {
+      const allRentals = reqSnap.docs.map(d => ({
+        id: d.id,
+        shopId: d.ref.parent.parent?.id || '',
+        ...d.data()
+      } as RentalRequest));
       
       // Sort by createdAt
       allRentals.sort((a, b) => {
@@ -77,13 +57,12 @@ const MyRentals: React.FC = () => {
       
       setRentals(allRentals);
       setLoading(false);
+    }, (error) => {
+      console.error("Failed to load rentals:", error);
+      setLoading(false);
     });
 
-    unsubscribes.push(unsubOrgs);
-
-    return () => {
-      unsubscribes.forEach(unsub => unsub());
-    };
+    return () => unsubRequests();
   }, [user, authLoading]);
 
   const handleCancelRequest = async (rental: RentalRequest) => {
@@ -105,7 +84,7 @@ const MyRentals: React.FC = () => {
   const activeCount = rentals.filter(r => r.status === 'active').length;
 
   const renderRentalCard = (rental: RentalRequest) => {
-    const config = STATUS_CONFIG[rental.status];
+    const config = STATUS_CONFIG[rental.status] || { label: `Unknown: ${rental.status}`, color: '#fff', bg: '#333' };
     
     return (
       <div 

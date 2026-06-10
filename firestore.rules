@@ -158,6 +158,12 @@ service cloud.firestore {
         allow get, list: if isSignedIn() && (request.auth.uid == resource.data.customerId || get(/databases/$(database)/documents/organizations/$(orgId)).data.ownerId == request.auth.uid || isAdmin());
         allow write: if isAdmin() || (isSignedIn() && get(/databases/$(database)/documents/organizations/$(orgId)).data.ownerId == request.auth.uid);
       }
+
+      match /rental_requests/{requestId} {
+        allow get, list: if isSignedIn() && (request.auth.uid == resource.data.riderId || get(/databases/$(database)/documents/organizations/$(orgId)).data.ownerId == request.auth.uid || isAdmin());
+        allow create: if isSignedIn() && request.auth.uid == request.resource.data.riderId;
+        allow update, delete: if isSignedIn() && (request.auth.uid == resource.data.riderId || get(/databases/$(database)/documents/organizations/$(orgId)).data.ownerId == request.auth.uid || isAdmin());
+      }
     }
   }
 }
