@@ -29,23 +29,7 @@ const Profile: React.FC = () => {
 
   // Garage states
   const [showBikeModal, setShowBikeModal] = useState(false);
-  interface BikeType {
-    id: string;
-    name: string;
-    imageUrl?: string;
-    specs: {
-      voltage: number;
-      capacityAh: number;
-      motorWatts: number;
-      bikeWeightLbs?: number;
-      tirePSI?: number;
-      tireType?: 'road' | 'knobby';
-      driveMode?: 'both' | 'pas_only' | 'throttle_only';
-      targetSpeedMph?: number;
-    }
-  }
-
-  const [editingBike, setEditingBike] = useState<BikeType | null>(null);
+  const [editingBike, setEditingBike] = useState<import('../types').SavedBike | null>(null);
   const [bikeForm, setBikeForm] = useState({
     name: '',
     imageUrl: '',
@@ -108,19 +92,19 @@ const Profile: React.FC = () => {
     } catch (e) { console.error(e); }
   };
 
-  const openEditBike = (bike: BikeType) => {
+  const openEditBike = (bike: import('../types').SavedBike) => {
     setEditingBike(bike);
     setBikeForm({
       name: bike.name,
       imageUrl: bike.imageUrl || '',
-      voltage: bike.specs.voltage.toString(),
-      capacityAh: bike.specs.capacityAh.toString(),
-      motorWatts: bike.specs.motorWatts.toString(),
+      voltage: bike.specs.voltage?.toString() || '48',
+      capacityAh: bike.specs.capacityAh?.toString() || '15',
+      motorWatts: bike.specs.motorWatts?.toString() || '750',
       bikeWeightLbs: (bike.specs.bikeWeightLbs || 65).toString(),
       tirePSI: (bike.specs.tirePSI || 30).toString(),
-      tireType: bike.specs.tireType || 'road',
-      driveMode: bike.specs.driveMode || 'both',
-      targetSpeedMph: (bike.specs.targetSpeedMph || 20).toString()
+      tireType: (bike.specs.tireType as 'road' | 'knobby') || 'road',
+      driveMode: (bike.specs.driveMode as 'both' | 'pas_only' | 'throttle_only') || 'both',
+      targetSpeedMph: ((bike.specs as any).targetSpeedMph || 20).toString()
     });
     setShowBikeModal(true);
   };
@@ -204,7 +188,7 @@ const Profile: React.FC = () => {
     if (!profileData?.uid) return;
     const q = query(collection(db, `users/${profileData.uid}/reviews`), where('status', '==', 'approved'));
     const unsub = onSnapshot(q, (snap) => {
-      setReviews(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      setReviews(snap.docs.map(d => ({ id: d.id, ...d.data() } as ReviewType)));
     });
     return () => unsub();
   }, [profileData?.uid]);
@@ -349,13 +333,13 @@ const Profile: React.FC = () => {
                 <p style={{ color: '#666', margin: 0, fontSize: '0.9rem' }}>No bikes in the garage yet.</p>
               </div>
             ) : (
-              profileData.bikes.map((bike: { id: string, name: string, imageUrl?: string, specs: any }) => (
-                <div key={bike.id} style={{ background: '#1a1a1a', padding: '1.2rem', borderRadius: '24px', border: '1px solid #333', position: 'relative', overflow: 'hidden' }}>
+              profileData.bikes.map((bike: import('../types').SavedBike) => (
+                <div key={bike.id || bike.name} style={{ background: '#1a1a1a', padding: '1.2rem', borderRadius: '24px', border: '1px solid #333', position: 'relative', overflow: 'hidden' }}>
                   <div style={{ position: 'absolute', top: 0, right: 0, padding: '0.8rem', display: 'flex', gap: '0.4rem', zIndex: 10 }}>
                     {canEdit && (
                       <>
                         <button onClick={() => openEditBike(bike)} style={{ background: '#222', border: 'none', color: '#ffcc00', padding: '0.4rem', borderRadius: '8px', cursor: 'pointer', fontSize: '0.75rem' }}>✏️</button>
-                        <button onClick={() => deleteBike(bike.id)} style={{ background: '#222', border: 'none', color: '#ff4444', padding: '0.4rem', borderRadius: '8px', cursor: 'pointer', fontSize: '0.75rem' }}>🗑️</button>
+                        <button onClick={() => deleteBike(bike.id!)} style={{ background: '#222', border: 'none', color: '#ff4444', padding: '0.4rem', borderRadius: '8px', cursor: 'pointer', fontSize: '0.75rem' }}>🗑️</button>
                       </>
                     )}
                   </div>

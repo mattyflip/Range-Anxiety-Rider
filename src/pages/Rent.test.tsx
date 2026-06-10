@@ -49,8 +49,8 @@ describe('Rent Component', () => {
       user: null,
       userData: null,
       loading: true,
-      role: 'rider',
-      logout: vi.fn()
+      
+      
     });
 
     renderRent();
@@ -62,8 +62,8 @@ describe('Rent Component', () => {
       user: { uid: 'user-1' } as any,
       userData: { name: 'Test User' } as any,
       loading: false,
-      role: 'rider',
-      logout: vi.fn()
+      
+      
     });
 
     renderRent();
@@ -78,8 +78,8 @@ describe('Rent Component', () => {
       user: null,
       userData: null,
       loading: false,
-      role: 'rider',
-      logout: vi.fn()
+      
+      
     });
 
     renderRent();

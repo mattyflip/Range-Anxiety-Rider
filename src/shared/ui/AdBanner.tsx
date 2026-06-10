@@ -21,7 +21,7 @@ const AdBanner = () => {
   }, []);
 
   // Hide ads if user is Shop Tier or has an active Group Ride Host pass
-  const isPremium = userData?.isShopTier || (userData?.canHostGroupRide && new Date(userData.groupRideExpiresAt?.seconds * 1000) > new Date());
+  const isPremium = userData?.isShopTier || (userData?.canHostGroupRide && new Date((userData.groupRideExpiresAt?.seconds || 0) * 1000) > new Date());
 
   if (isPremium) return null;
 

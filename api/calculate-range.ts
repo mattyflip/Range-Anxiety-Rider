@@ -69,7 +69,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     } = specs;
 
     const totalWh = voltage * capacityAh;
-    const totalWeightKg = (parseFloat(bikeWeightLbs) + parseFloat(riderWeightLbs)) * PHYSICS_CONSTANTS.LBS_TO_KG;
+    const totalWeightKg = (Number(bikeWeightLbs) + Number(riderWeightLbs)) * PHYSICS_CONSTANTS.LBS_TO_KG;
     const rollingRes = getRollingResCoefficient(tireType, tirePSI);
 
     if (type === 'telemetry') {
@@ -89,8 +89,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         headwindMph: headwind,
         riderWeightLbs,
         pedalAssistLevel,
-        driveMode,
-        throttleMode,
+        driveMode: driveMode as 'throttle' | 'pas',
+        throttleMode: throttleMode as 'eco' | 'normal' | 'sport',
         specs
       });
       const remainingHours = currentWh / burnRateW;
@@ -127,8 +127,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         headwindMph: headwind,
         riderWeightLbs,
         pedalAssistLevel,
-        driveMode,
-        throttleMode,
+        driveMode: driveMode as 'throttle' | 'pas',
+        throttleMode: throttleMode as 'eco' | 'normal' | 'sport',
         specs
       });
       const energyWh = burnRateW * (durationSeconds / 3600);
