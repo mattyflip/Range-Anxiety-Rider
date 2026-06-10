@@ -235,6 +235,23 @@ const FleetDashboard = () => {
     } catch (e) { console.error(e); }
   };
 
+  const handleStatusChange = async (bike: Bike, newStatus: string) => {
+    if (!userData?.orgId) return;
+    if (bike.status === 'rented' && newStatus !== 'rented') {
+      if (!window.confirm("This bike is currently marked as rented. If you change its status manually, you might leave lingering active rental sessions for the rider. It's recommended to use the 'RETURN' button instead. Proceed anyway?")) {
+        return;
+      }
+    }
+    try {
+      await updateDoc(doc(db, `organizations/${userData.orgId}/bikes`, bike.id), {
+        status: newStatus
+      });
+    } catch (e) {
+      console.error(e);
+      alert("Failed to update status.");
+    }
+  };
+
   const handleDeleteBike = async (bike: Bike) => {
     if (bike.status === 'rented') {
       alert("You must return this bike before removing it from your fleet.");
@@ -592,7 +609,29 @@ const FleetDashboard = () => {
                       </div>
                       <div style={{ minWidth: '80px' }}>
                         <div style={{ color: 'white', fontWeight: 900, fontSize: '1.1rem' }}>{b.unitId}</div>
-                        <div style={{ fontSize: '0.55rem', color: b.status === 'rented' ? '#ff6600' : '#34a853', fontWeight: 'bold', textTransform: 'uppercase' }}>{b.status}</div>
+                        <select 
+                          value={b.status}
+                          onChange={(e) => handleStatusChange(b, e.target.value)}
+                          style={{
+                            background: 'transparent',
+                            border: '1px solid #333',
+                            borderRadius: '4px',
+                            color: b.status === 'rented' ? '#ff6600' : b.status === 'available' ? '#34a853' : '#ffcc00',
+                            fontWeight: 'bold',
+                            textTransform: 'uppercase',
+                            fontSize: '0.65rem',
+                            cursor: 'pointer',
+                            outline: 'none',
+                            padding: '2px 4px',
+                            marginTop: '2px',
+                            width: '100%'
+                          }}
+                        >
+                          <option value="available" style={{ color: 'black' }}>AVAILABLE</option>
+                          <option value="rented" style={{ color: 'black' }}>RENTED</option>
+                          <option value="maintenance" style={{ color: 'black' }}>MAINTENANCE</option>
+                          <option value="lost" style={{ color: 'black' }}>LOST</option>
+                        </select>
                       </div>
                       
                       <div style={{ flex: 1, minWidth: '150px' }}>
