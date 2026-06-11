@@ -265,7 +265,6 @@ function MapHome() {
     {
       target: '.tour-route',
       content: 'Start by planning your route. Enter your starting location, any stops, and your destination.',
-      disableBeacon: true,
     },
     {
       target: '.tour-battery-specs',
@@ -1523,7 +1522,7 @@ function MapHome() {
             arrowColor: '#1a1a1a',
           }
         }}
-        callback={(data) => {
+        callback={(data: any) => {
           const { status } = data;
           if (['finished', 'skipped'].includes(status)) {
             setRunTour(false);
