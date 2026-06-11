@@ -18,7 +18,7 @@ import CalibrationModal from '../features/map/CalibrationModal'
 import OpportunityChargingModal from '../features/map/OpportunityChargingModal'
 import * as ReactJoyride from 'react-joyride';
 const Joyride: any = (ReactJoyride as any).default || (ReactJoyride as any).Joyride || ReactJoyride;
-import type { Step } from 'react-joyride';
+
 import orangePin from '../assets/orange-pin.png'
 import { createNotification } from '../utils/notifications'
 import { STATE_COORDINATES } from '../utils/ebikeLaws'
