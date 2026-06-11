@@ -255,6 +255,16 @@ function MapHome() {
   // Tour State
   const [runTour, setRunTour] = useState(false);
   const [tourKey, setTourKey] = useState(Date.now());
+
+  const startTour = () => {
+    setTripMode('plan');
+    setShowMobileMenu(true);
+    setTimeout(() => {
+      setTourKey(Date.now());
+      setRunTour(true);
+    }, 100);
+  };
+
   useEffect(() => {
     const hasSeenTour = localStorage.getItem('hasSeenTour');
     if (!hasSeenTour) {
@@ -1579,7 +1589,7 @@ function MapHome() {
         >
           {getMobileToggleLabel()}
         </button>
-        <button onClick={() => { setTourKey(Date.now()); setRunTour(true); }} style={{ marginLeft: '0.8rem', background: '#333', color: 'white', border: 'none', borderRadius: '50%', width: '50px', height: '50px', cursor: 'pointer', fontWeight: 900 }}>?</button>
+        <button onClick={startTour} style={{ marginLeft: '0.8rem', background: '#333', color: 'white', border: 'none', borderRadius: '50%', width: '50px', height: '50px', cursor: 'pointer', fontWeight: 900 }}>?</button>
       </div>
 
       <div className="main-layout" style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
@@ -2052,7 +2062,7 @@ function MapHome() {
             </button>
             <button onClick={() => searchPOIs('charging')} className="desktop-only" style={{ padding: '0.8rem 1.2rem', background: 'rgba(20,20,20,0.9)', color: 'white', border: '1px solid #333', borderRadius: '12px', fontWeight: 900 }}>⚡ Chargers</button>
             <button onClick={() => searchPOIs('cafe')} className="desktop-only" style={{ padding: '0.8rem 1.2rem', background: 'rgba(20,20,20,0.9)', color: 'white', border: '1px solid #333', borderRadius: '12px', fontWeight: 900 }}>☕ Cafes</button>
-            <button onClick={() => { setTourKey(Date.now()); setRunTour(true); }} className="desktop-only" style={{ padding: '0.8rem 1.2rem', background: 'rgba(20,20,20,0.9)', color: 'white', border: '1px solid #333', borderRadius: '12px', fontWeight: 900 }}>❔ Tour</button>
+            <button onClick={startTour} className="desktop-only" style={{ padding: '0.8rem 1.2rem', background: 'rgba(20,20,20,0.9)', color: 'white', border: '1px solid #333', borderRadius: '12px', fontWeight: 900 }}>❔ Tour</button>
           </div>
 
           <GoogleMap 
