@@ -1520,10 +1520,19 @@ function MapHome() {
             backgroundColor: '#1a1a1a',
             textColor: '#ffffff',
             arrowColor: '#1a1a1a',
+            zIndex: 1000000,
           }
         }}
         callback={(data: any) => {
-          const { status } = data;
+          const { status, type, index } = data;
+          
+          // Switch tabs automatically for the tour
+          if (type === 'step:before') {
+            if (index === 0) setTripMode('plan');
+            if (index >= 1 && index <= 5) setTripMode('settings');
+            if (index === 6) setTripMode('plan'); // or any mode for calculate button
+          }
+
           if (['finished', 'skipped'].includes(status)) {
             setRunTour(false);
             localStorage.setItem('hasSeenTour', 'true');
