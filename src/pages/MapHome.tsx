@@ -16,9 +16,6 @@ import RouteReplay3D from '../features/map/RouteReplay3D'
 import AdvancedMarker from '../features/map/AdvancedMarker'
 import CalibrationModal from '../features/map/CalibrationModal'
 import OpportunityChargingModal from '../features/map/OpportunityChargingModal'
-import * as ReactJoyride from 'react-joyride';
-const Joyride: any = (ReactJoyride as any).default || (ReactJoyride as any).Joyride || ReactJoyride;
-
 import orangePin from '../assets/orange-pin.png'
 import { createNotification } from '../utils/notifications'
 import { STATE_COORDINATES } from '../utils/ebikeLaws'
@@ -101,6 +98,12 @@ interface POI {
 }
 
 const center = { lat: 40.7128, lng: -74.0060 };
+
+const HelpBubble = ({ text }: { text: string }) => (
+  <div style={{ marginTop: '0.2rem', marginBottom: '0.5rem', padding: '0.5rem', background: '#333', color: '#ff6600', fontSize: '0.75rem', borderRadius: '4px', borderLeft: '3px solid #ff6600', animation: 'fadeIn 0.3s ease', lineHeight: '1.4' }}>
+    {text}
+  </div>
+);
 
 function MapHome() {
   const { isLoaded } = useJsApiLoader({ id: 'google-map-script', googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "", libraries: LIBRARIES });
@@ -252,64 +255,14 @@ function MapHome() {
   const [isDrawingPerimeter, setIsDrawingPerimeter] = useState(false);
   const [drawingPerimeterPoints, setDrawingPerimeterPoints] = useState<google.maps.LatLngLiteral[]>([]);
   
-  // Tour State
-  const [runTour, setRunTour] = useState(false);
-  const [tourKey, setTourKey] = useState(Date.now());
-  const [stepIndex, setStepIndex] = useState(0);
+  // Help Mode State
+  const [showHelpMode, setShowHelpMode] = useState(false);
 
-  const startTour = () => {
+  const toggleHelpMode = () => {
+    setShowHelpMode(prev => !prev);
     setTripMode('plan');
     setShowMobileMenu(true);
-    setTimeout(() => {
-      setStepIndex(0);
-      setTourKey(Date.now());
-      setRunTour(true);
-    }, 100);
   };
-
-  useEffect(() => {
-    const hasSeenTour = localStorage.getItem('hasSeenTour');
-    if (!hasSeenTour) {
-      setRunTour(true);
-    }
-  }, []);
-
-  const tourSteps: any[] = [
-    {
-      target: '.tour-route',
-      content: 'Start by planning your route. Enter your starting location, any stops, and your destination.',
-      disableBeacon: true,
-    },
-    {
-      target: '.tour-battery-specs',
-      content: 'These are the most important fields! Your battery voltage and capacity determine the total energy available.',
-      disableBeacon: true,
-    },
-    {
-      target: '.tour-weights',
-      content: 'Gravity and rolling resistance depend heavily on weight. Accurate weights mean accurate range estimates.',
-      disableBeacon: true,
-    },
-    {
-      target: '.tour-motor',
-      content: 'Your motor rating helps the physics engine understand your bike\'s power constraints on hills.',
-      disableBeacon: true,
-    },
-    {
-      target: '.tour-speed',
-      content: 'Wind resistance increases exponentially with speed. Tell us how fast you plan to ride.',
-      disableBeacon: true,
-    },
-    {
-      target: '.tour-current-battery',
-      content: 'Set your starting battery percentage or voltage here.',
-    },
-    {
-      target: '.tour-calculate',
-      content: 'Once everything is set, calculate your route to see your remaining battery, efficiency, and trip details!',
-      disableBeacon: true,
-    }
-  ];
   const [messageRiderTarget, setMessageRiderTarget] = useState<LiveUnit | null>(null);
   const lastAlertTime = useRef<{ [key: string]: number }>({});
   // Reorderable locations state - The SINGLE source of truth for the trip
@@ -1527,38 +1480,6 @@ function MapHome() {
   return (
     <div className="container" style={{ height: '100vh', background: '#121212', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <SEO title={userRole === 'fleet' ? "Fleet Map" : "Rider Map"} />
-      <Joyride
-        key={tourKey}
-        stepIndex={stepIndex}
-        steps={tourSteps}
-        run={runTour}
-        continuous
-        showSkipButton
-        showProgress
-        styles={{
-          options: {
-            primaryColor: '#ff6600',
-            backgroundColor: '#1a1a1a',
-            textColor: '#ffffff',
-            arrowColor: '#1a1a1a',
-            zIndex: 1000000,
-          }
-        }}
-        callback={(data: any) => {
-          const { status, type, action, index } = data;
-          
-          if (type === 'step:after' || type === 'error' || action === 'close') {
-            if (action === 'next') setStepIndex(index + 1);
-            if (action === 'prev') setStepIndex(index - 1);
-          }
-
-          if (['finished', 'skipped'].includes(status)) {
-            setRunTour(false);
-            setStepIndex(0);
-            localStorage.setItem('hasSeenTour', 'true');
-          }
-        }}
-      />
       <NavBar user={user} onShowInstall={() => setShowInstallTutorial(true)} onShowAuth={() => setShowAuthModal(true)} />
       
       {/* Persistent Controls - Split so POI stays behind sidebar, but Toggle stays on top */}
@@ -1599,7 +1520,7 @@ function MapHome() {
         >
           {getMobileToggleLabel()}
         </button>
-        <button onClick={startTour} style={{ marginLeft: '0.8rem', background: '#333', color: 'white', border: 'none', borderRadius: '50%', width: '50px', height: '50px', cursor: 'pointer', fontWeight: 900 }}>?</button>
+        <button onClick={toggleHelpMode} style={{ marginLeft: '0.8rem', background: showHelpMode ? '#ff6600' : '#333', color: 'white', border: 'none', borderRadius: '50%', width: '50px', height: '50px', cursor: 'pointer', fontWeight: 900 }}>?</button>
       </div>
 
       <div className="main-layout" style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
@@ -1736,6 +1657,7 @@ function MapHome() {
           {tripMode === 'plan' && (
             <section className="form-group tour-route">
               <label>Route</label>
+              {showHelpMode && <HelpBubble text="Start by planning your route. Enter your starting location, any stops, and your destination." />}
               {locations.map((loc, index) => {
                 if (index >= 2 && locations[index - 1].trim() === '') return null;
                 return (
@@ -1795,17 +1717,37 @@ function MapHome() {
           )}
 
           <div className="tour-battery-specs" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-            <section className="form-group"><label>Voltage</label><input type="number" disabled={isRenting} style={{ opacity: isRenting ? 0.5 : 1 }} value={specs.voltage} onChange={e => { setSpecs(p => ({ ...p, voltage: e.target.value === '' ? '' : parseFloat(e.target.value) })); markDirty(); }} /></section>
-            <section className="form-group"><label>Capacity (Ah)</label><input type="number" disabled={isRenting} style={{ opacity: isRenting ? 0.5 : 1 }} value={specs.capacityAh} onChange={e => { setSpecs(p => ({ ...p, capacityAh: e.target.value === '' ? '' : parseFloat(e.target.value) })); markDirty(); }} /></section>
+            <section className="form-group">
+              <label>Voltage</label>
+              {showHelpMode && <HelpBubble text="These are the most important fields! Your battery voltage and capacity determine the total energy available." />}
+              <input type="number" disabled={isRenting} style={{ opacity: isRenting ? 0.5 : 1 }} value={specs.voltage} onChange={e => { setSpecs(p => ({ ...p, voltage: e.target.value === '' ? '' : parseFloat(e.target.value) })); markDirty(); }} />
+            </section>
+            <section className="form-group">
+              <label>Capacity (Ah)</label>
+              {showHelpMode && <HelpBubble text="These are the most important fields! Your battery voltage and capacity determine the total energy available." />}
+              <input type="number" disabled={isRenting} style={{ opacity: isRenting ? 0.5 : 1 }} value={specs.capacityAh} onChange={e => { setSpecs(p => ({ ...p, capacityAh: e.target.value === '' ? '' : parseFloat(e.target.value) })); markDirty(); }} />
+            </section>
           </div>
 
           <div className="tour-weights" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
-            <section className="form-group"><label>Bike Weight (lbs)</label><input type="number" disabled={isRenting} style={{ opacity: isRenting ? 0.5 : 1 }} value={specs.bikeWeightLbs} onChange={e => { setSpecs(p => ({ ...p, bikeWeightLbs: e.target.value === '' ? '' : parseFloat(e.target.value) })); markDirty(); }} /></section>
-            <section className="form-group"><label>Rider Weight (lbs)</label><input type="number" value={riderWeight} onChange={e => { setRiderWeight(e.target.value === '' ? '' : parseFloat(e.target.value)); markDirty(); }} /></section>
+            <section className="form-group">
+              <label>Bike Weight (lbs)</label>
+              {showHelpMode && <HelpBubble text="Gravity and rolling resistance depend heavily on weight. Accurate weights mean accurate range estimates." />}
+              <input type="number" disabled={isRenting} style={{ opacity: isRenting ? 0.5 : 1 }} value={specs.bikeWeightLbs} onChange={e => { setSpecs(p => ({ ...p, bikeWeightLbs: e.target.value === '' ? '' : parseFloat(e.target.value) })); markDirty(); }} />
+            </section>
+            <section className="form-group">
+              <label>Rider Weight (lbs)</label>
+              {showHelpMode && <HelpBubble text="Gravity and rolling resistance depend heavily on weight. Accurate weights mean accurate range estimates." />}
+              <input type="number" value={riderWeight} onChange={e => { setRiderWeight(e.target.value === '' ? '' : parseFloat(e.target.value)); markDirty(); }} />
+            </section>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
-            <section className="form-group tour-motor"><label>Nominal Motor Rating (Watts)</label><input type="number" disabled={isRenting} style={{ opacity: isRenting ? 0.5 : 1 }} value={specs.motorWatts} onChange={e => { setSpecs(p => ({ ...p, motorWatts: e.target.value === '' ? '' : parseFloat(e.target.value) })); markDirty(); }} /></section>
+            <section className="form-group tour-motor">
+              <label>Nominal Motor Rating (Watts)</label>
+              {showHelpMode && <HelpBubble text="Your motor rating helps the physics engine understand your bike's power constraints on hills." />}
+              <input type="number" disabled={isRenting} style={{ opacity: isRenting ? 0.5 : 1 }} value={specs.motorWatts} onChange={e => { setSpecs(p => ({ ...p, motorWatts: e.target.value === '' ? '' : parseFloat(e.target.value) })); markDirty(); }} />
+            </section>
             <section className="form-group"><label>Tire PSI</label><input type="number" disabled={isRenting} style={{ opacity: isRenting ? 0.5 : 1 }} value={specs.tirePSI || 30} onChange={e => { setSpecs(p => ({ ...p, tirePSI: e.target.value === '' ? '' : parseFloat(e.target.value) })); markDirty(); }} /></section>
           </div>
 
@@ -1820,6 +1762,7 @@ function MapHome() {
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem', marginTop: '1rem' }}>
             <section className="form-group tour-speed"><label>Target Average Speed (mph)</label>
+              {showHelpMode && <HelpBubble text="Wind resistance increases exponentially with speed. Tell us how fast you plan to ride." />}
               <input type="number" min="1" max="100" value={targetSpeed} onChange={e => { setTargetSpeed(e.target.value === '' ? '' : parseFloat(e.target.value)); markDirty(); }} style={{ width: '100%', padding: '0.8rem', background: '#111', border: '1px solid #333', borderRadius: '12px', color: '#ff6600', fontWeight: 'bold', fontSize: '1.2rem', textAlign: 'center' }} />
             </section>
           </div>
@@ -1855,6 +1798,7 @@ function MapHome() {
 
           <section className="form-group tour-current-battery" style={{ marginTop: '1rem' }}>
             <label>Current Battery Level</label>
+            {showHelpMode && <HelpBubble text="Set your starting battery percentage or voltage here." />}
             <div className="mode-toggle">
               <button className={batteryInputMode === 'percent' ? 'active' : ''} onClick={() => handleToggleBatteryMode('percent')}>%</button>
               <button className={batteryInputMode === 'voltage' ? 'active' : ''} onClick={() => handleToggleBatteryMode('voltage')}>V</button>
@@ -1877,9 +1821,12 @@ function MapHome() {
           </section>
 
           {tripMode === 'plan' ? (
-            <button className="tour-calculate" onClick={handleCalculate} disabled={isCalculating} style={{ width: '100%', padding: '1rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold', marginTop: '1rem', opacity: isCalculating ? 0.5 : 1 }}>
-              {isCalculating ? 'CALCULATING...' : 'UPDATE ROUTE'}
-            </button>
+            <div style={{ marginTop: '1rem' }}>
+              {showHelpMode && <HelpBubble text="Once everything is set, calculate your route to see your remaining battery, efficiency, and trip details!" />}
+              <button className="tour-calculate" onClick={handleCalculate} disabled={isCalculating} style={{ width: '100%', padding: '1rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold', opacity: isCalculating ? 0.5 : 1 }}>
+                {isCalculating ? 'CALCULATING...' : 'UPDATE ROUTE'}
+              </button>
+            </div>
           ) : (
             <button onClick={startFreeTracking} style={{ width: '100%', padding: '1.2rem', background: 'linear-gradient(to bottom, #34a853, #2e9148)', color: 'white', border: 'none', borderRadius: '16px', fontWeight: 900, fontSize: '1.2rem', marginTop: '1rem', boxShadow: '0 4px 15px rgba(52,168,83,0.4)' }}>
               🏁 START TRACKING
@@ -2072,7 +2019,7 @@ function MapHome() {
             </button>
             <button onClick={() => searchPOIs('charging')} className="desktop-only" style={{ padding: '0.8rem 1.2rem', background: 'rgba(20,20,20,0.9)', color: 'white', border: '1px solid #333', borderRadius: '12px', fontWeight: 900 }}>⚡ Chargers</button>
             <button onClick={() => searchPOIs('cafe')} className="desktop-only" style={{ padding: '0.8rem 1.2rem', background: 'rgba(20,20,20,0.9)', color: 'white', border: '1px solid #333', borderRadius: '12px', fontWeight: 900 }}>☕ Cafes</button>
-            <button onClick={startTour} className="desktop-only" style={{ padding: '0.8rem 1.2rem', background: 'rgba(20,20,20,0.9)', color: 'white', border: '1px solid #333', borderRadius: '12px', fontWeight: 900 }}>❔ Tour</button>
+            <button onClick={toggleHelpMode} className="desktop-only" style={{ padding: '0.8rem 1.2rem', background: showHelpMode ? '#ff6600' : 'rgba(20,20,20,0.9)', color: 'white', border: '1px solid #333', borderRadius: '12px', fontWeight: 900 }}>❔ Help</button>
           </div>
 
           <GoogleMap 
