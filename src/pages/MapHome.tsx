@@ -255,11 +255,13 @@ function MapHome() {
   // Tour State
   const [runTour, setRunTour] = useState(false);
   const [tourKey, setTourKey] = useState(Date.now());
+  const [stepIndex, setStepIndex] = useState(0);
 
   const startTour = () => {
     setTripMode('plan');
     setShowMobileMenu(true);
     setTimeout(() => {
+      setStepIndex(0);
       setTourKey(Date.now());
       setRunTour(true);
     }, 100);
@@ -276,22 +278,27 @@ function MapHome() {
     {
       target: '.tour-route',
       content: 'Start by planning your route. Enter your starting location, any stops, and your destination.',
+      disableBeacon: true,
     },
     {
       target: '.tour-battery-specs',
       content: 'These are the most important fields! Your battery voltage and capacity determine the total energy available.',
+      disableBeacon: true,
     },
     {
       target: '.tour-weights',
       content: 'Gravity and rolling resistance depend heavily on weight. Accurate weights mean accurate range estimates.',
+      disableBeacon: true,
     },
     {
       target: '.tour-motor',
       content: 'Your motor rating helps the physics engine understand your bike\'s power constraints on hills.',
+      disableBeacon: true,
     },
     {
       target: '.tour-speed',
       content: 'Wind resistance increases exponentially with speed. Tell us how fast you plan to ride.',
+      disableBeacon: true,
     },
     {
       target: '.tour-current-battery',
@@ -300,6 +307,7 @@ function MapHome() {
     {
       target: '.tour-calculate',
       content: 'Once everything is set, calculate your route to see your remaining battery, efficiency, and trip details!',
+      disableBeacon: true,
     }
   ];
   const [messageRiderTarget, setMessageRiderTarget] = useState<LiveUnit | null>(null);
@@ -1521,6 +1529,7 @@ function MapHome() {
       <SEO title={userRole === 'fleet' ? "Fleet Map" : "Rider Map"} />
       <Joyride
         key={tourKey}
+        stepIndex={stepIndex}
         steps={tourSteps}
         run={runTour}
         continuous
@@ -1536,15 +1545,16 @@ function MapHome() {
           }
         }}
         callback={(data: any) => {
-          const { status, type } = data;
+          const { status, type, action, index } = data;
           
-          if (type === 'tour:start') {
-            setTripMode('plan');
-            setShowMobileMenu(true);
+          if (type === 'step:after' || type === 'error' || action === 'close') {
+            if (action === 'next') setStepIndex(index + 1);
+            if (action === 'prev') setStepIndex(index - 1);
           }
 
           if (['finished', 'skipped'].includes(status)) {
             setRunTour(false);
+            setStepIndex(0);
             localStorage.setItem('hasSeenTour', 'true');
           }
         }}
