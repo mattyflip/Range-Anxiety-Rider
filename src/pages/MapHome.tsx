@@ -274,7 +274,7 @@ function MapHome() {
     }
   }, []);
 
-  const tourSteps: Step[] = [
+  const tourSteps: any[] = [
     {
       target: '.tour-route',
       content: 'Start by planning your route. Enter your starting location, any stops, and your destination.',
