@@ -72,20 +72,23 @@ const CalibrationModal: React.FC<CalibrationModalProps> = ({
     if (!user || !bike) return;
     setIsSaving(true);
 
+    const voltage = Number(bike.specs.voltage) || 48;
+    const capacityAh = Number(bike.specs.capacityAh) || 15;
+    const totalWh = voltage * capacityAh;
+
+    const batteryUsedPct = startBattery - endBattery;
+    const actualWh = (batteryUsedPct / 100) * totalWh;
+
+    const safePredictedWh = Math.max(1, predictedWh);
+    const tripMultiplier = actualWh / safePredictedWh;
+
+    const currentFactor = bike.specs.calibrationFactor || 1.0;
+    const newFactor = (currentFactor * 0.8) + (tripMultiplier * 0.2);
+
+    // Close the window immediately for snappy UX
+    onComplete(newFactor);
+
     try {
-      const voltage = Number(bike.specs.voltage) || 48;
-      const capacityAh = Number(bike.specs.capacityAh) || 15;
-      const totalWh = voltage * capacityAh;
-
-      const batteryUsedPct = startBattery - endBattery;
-      const actualWh = (batteryUsedPct / 100) * totalWh;
-
-      const safePredictedWh = Math.max(1, predictedWh);
-      const tripMultiplier = actualWh / safePredictedWh;
-
-      const currentFactor = bike.specs.calibrationFactor || 1.0;
-      const newFactor = (currentFactor * 0.8) + (tripMultiplier * 0.2);
-
       // (Predicted - Actual) / Actual * 100
       const errorPct = ((safePredictedWh - actualWh) / Math.max(1, actualWh)) * 100;
 
@@ -169,7 +172,7 @@ const CalibrationModal: React.FC<CalibrationModalProps> = ({
       // 3. Trigger Layer 3 Multi-Dimensional Fit
       try {
         const idToken = await user.getIdToken();
-        const fitRes = await fetch('/api/fit-calibration-model', {
+        await fetch('/api/fit-calibration-model', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -180,22 +183,12 @@ const CalibrationModal: React.FC<CalibrationModalProps> = ({
             orgId: orgId || null
           })
         });
-        
-        if (fitRes.ok) {
-          const factors = await fitRes.json();
-          if (factors.trained_on_n_rides >= 5) {
-            onComplete(newFactor);
-            return;
-          }
-        }
       } catch (err) {
         console.error('Failed to trigger Layer 3 model fit:', err);
       }
 
-      onComplete(newFactor);
     } catch (error) {
-      console.error('Calibration failed:', error);
-      alert('Failed to save calibration data.');
+      console.error('Calibration background sync failed:', error);
     } finally {
       setIsSaving(false);
     }
