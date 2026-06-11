@@ -1524,13 +1524,11 @@ function MapHome() {
           }
         }}
         callback={(data: any) => {
-          const { status, type, index } = data;
+          const { status, type } = data;
           
-          // Switch tabs automatically for the tour
-          if (type === 'step:before') {
-            if (index === 0) setTripMode('plan');
-            if (index >= 1 && index <= 5) setTripMode('settings');
-            if (index === 6) setTripMode('plan'); // or any mode for calculate button
+          if (type === 'tour:start') {
+            setTripMode('plan');
+            setShowMobileMenu(true);
           }
 
           if (['finished', 'skipped'].includes(status)) {
