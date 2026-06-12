@@ -74,7 +74,8 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
 }
 
 async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
-  const subscriptionId = typeof invoice.subscription === 'string' ? invoice.subscription : invoice.subscription?.id;
+  const invoiceExt = invoice as Stripe.Invoice & { subscription?: string | Stripe.Subscription | null };
+  const subscriptionId = typeof invoiceExt.subscription === 'string' ? invoiceExt.subscription : invoiceExt.subscription?.id;
   if (!subscriptionId) return;
 
   const subscription = await stripe.subscriptions.retrieve(subscriptionId);
@@ -92,7 +93,16 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
 }
 
 async function handleSubscriptionDeletedOrFailed(obj: Stripe.Subscription | Stripe.Invoice) {
-  const subscriptionId = 'subscription' in obj ? (typeof obj.subscription === 'string' ? obj.subscription : obj.subscription?.id) : obj.id;
+  let subscriptionId: string | undefined;
+  if ('subscription' in obj) {
+    const invoiceExt = obj as Stripe.Invoice & { subscription?: string | Stripe.Subscription | null };
+    subscriptionId = typeof invoiceExt.subscription === 'string' ? invoiceExt.subscription : invoiceExt.subscription?.id;
+  } else {
+    subscriptionId = obj.id;
+  }
+
+  if (!subscriptionId) return;
+
   const subscription = await stripe.subscriptions.retrieve(subscriptionId);
   const userId = subscription.metadata?.userId;
 
