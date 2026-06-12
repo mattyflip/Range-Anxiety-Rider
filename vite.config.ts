@@ -24,6 +24,9 @@ export default defineConfig({
             if (id.includes('@react-google-maps')) {
               return 'vendor-google';
             }
+            if (id.includes('recharts')) {
+              return 'vendor-recharts';
+            }
             if (id.includes('firebase')) {
               return 'vendor-firebase';
             }
@@ -32,5 +35,8 @@ export default defineConfig({
         }
       }
     }
+  },
+  optimizeDeps: {
+    include: ['recharts']
   }
 })
