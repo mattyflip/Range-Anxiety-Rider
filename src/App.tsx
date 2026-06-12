@@ -63,6 +63,21 @@ const RoleRoute = ({ children, requiredRole }: { children: React.ReactNode, requ
   return <>{children}</>
 }
 
+// Admin-Only Route Component
+const AdminRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user, userData, loading } = useUserData()
+
+  if (loading) return <div style={{ background: '#121212', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ff6600' }}>Verifying Admin...</div>
+
+  if (!user) return <Navigate to="/" replace />
+  
+  if (!userData?.isAdmin) {
+    return <Navigate to="/map" replace />
+  }
+
+  return <>{children}</>
+}
+
 function App() {
   return (
     <Router>
@@ -88,8 +103,8 @@ function App() {
         <Route path="/forum" element={<ProtectedRoute><ForumHub /></ProtectedRoute>} />
         <Route path="/forum/c/:communityId" element={<ProtectedRoute><CommunityView /></ProtectedRoute>} />
         <Route path="/forum/c/:communityId/t/:threadId" element={<ProtectedRoute><ThreadView /></ProtectedRoute>} />
-        <Route path="/admin/library" element={<ProtectedRoute><AdminLibrary /></ProtectedRoute>} />
-        <Route path="/admin/analytics" element={<ProtectedRoute><AdminAnalytics /></ProtectedRoute>} />
+        <Route path="/admin/library" element={<AdminRoute><AdminLibrary /></AdminRoute>} />
+        <Route path="/admin/analytics" element={<AdminRoute><AdminAnalytics /></AdminRoute>} />
         
         <Route path="/about" element={<About />} />
 

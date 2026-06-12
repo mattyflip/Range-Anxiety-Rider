@@ -48,7 +48,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
     return;
   }
 
-  const updateData: any = {
+  const updateData: Record<string, unknown> = {
     updatedAt: FieldValue.serverTimestamp(),
   };
 
@@ -74,7 +74,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
 }
 
 async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
-  const subscriptionId = (invoice as any).subscription as string;
+  const subscriptionId = typeof invoice.subscription === 'string' ? invoice.subscription : invoice.subscription?.id;
   if (!subscriptionId) return;
 
   const subscription = await stripe.subscriptions.retrieve(subscriptionId);
@@ -91,8 +91,8 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
   }
 }
 
-async function handleSubscriptionDeletedOrFailed(obj: any) {
-  const subscriptionId = obj.subscription || obj.id;
+async function handleSubscriptionDeletedOrFailed(obj: Stripe.Subscription | Stripe.Invoice) {
+  const subscriptionId = 'subscription' in obj ? (typeof obj.subscription === 'string' ? obj.subscription : obj.subscription?.id) : obj.id;
   const subscription = await stripe.subscriptions.retrieve(subscriptionId);
   const userId = subscription.metadata?.userId;
 
@@ -133,7 +133,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       case 'customer.subscription.deleted':
       case 'invoice.payment_failed':
-        await handleSubscriptionDeletedOrFailed(event.data.object);
+        await handleSubscriptionDeletedOrFailed(event.data.object as Stripe.Subscription | Stripe.Invoice);
         break;
 
       default:

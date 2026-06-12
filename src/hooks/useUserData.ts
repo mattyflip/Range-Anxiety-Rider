@@ -65,7 +65,7 @@ export function useUserData(providedUser?: User | null) {
     });
 
     return () => unsubscribe();
-  }, [user, providedUser]);
+  }, [user?.uid]);
 
   return { user, userData, loading };
 }
