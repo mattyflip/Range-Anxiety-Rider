@@ -8,6 +8,8 @@ import NavBar from '../shared/ui/NavBar'
 import ModernAutocomplete from '../features/map/ModernAutocomplete'
 import AdvancedMarker from '../features/map/AdvancedMarker'
 import SEO from '../shared/ui/SEO'
+import Toast, { type ToastType } from '../shared/ui/Toast'
+import ConfirmationModal from '../shared/ui/ConfirmationModal'
 import type { Organization } from '../types';
 import { useUserData } from '../hooks/useUserData';
 
@@ -37,6 +39,62 @@ const ShopProfile: React.FC = () => {
   const [isUpdating, setIsUpdating] = useState(false);
   const isShopTier = userData?.isShopTier || false;
   const shopTierExpiresAt = userData?.shopTierExpiresAt?.toDate?.() || null;
+
+  // Toast state
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastType, setToastType] = useState<ToastType>('info');
+
+  // Confirmation state
+  const [confirmation, setConfirmation] = useState<{
+    title: string;
+    message: string;
+    confirmText?: string;
+    onConfirm: () => void;
+    isDestructive?: boolean;
+  } | null>(null);
+
+  const showToast = useCallback((message: string, type: ToastType = 'info') => {
+    setToastMessage(message);
+    setToastType(type);
+  }, []);
+
+  const handleDeleteAccount = async () => {
+    if (!user) return;
+    
+    setConfirmation({
+      title: "Delete Account?",
+      message: "This will permanently delete your shop profile, organization, and all fleet data. This cannot be undone. Are you sure?",
+      confirmText: "Delete Permanently",
+      isDestructive: true,
+      onConfirm: async () => {
+        setConfirmation(null);
+        setIsUpdating(true);
+        try {
+          const idToken = await user.getIdToken();
+          const response = await fetch('/api/delete-account', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${idToken}`,
+              'Content-Type': 'application/json'
+            }
+          });
+
+          if (response.ok) {
+            showToast("Account deleted successfully.", "success");
+            setTimeout(() => navigate('/'), 2000);
+          } else {
+            const res = await response.json();
+            throw new Error(res.error || 'Deletion failed');
+          }
+        } catch (e: any) {
+          console.error(e);
+          showToast(`Error: ${e.message}`, "error");
+        } finally {
+          setIsUpdating(false);
+        }
+      }
+    });
+  };
 
   useEffect(() => {
     if (authLoading) return;
@@ -106,10 +164,10 @@ const ShopProfile: React.FC = () => {
         orgAddress: shopAddress,
         orgLocation: { lat: shopLat, lng: shopLng }
       });
-      alert("Shop profile updated!");
+      showToast("Shop profile updated!", "success");
     } catch (e: any) {
       console.error(e);
-      alert("Update failed: " + (e instanceof Error ? e.message : String(e)));
+      showToast("Update failed.", "error");
     } finally { setIsUpdating(false); }
   };
 
@@ -262,9 +320,21 @@ const ShopProfile: React.FC = () => {
 
         <section style={{ marginTop: '4rem', paddingTop: '2rem', borderTop: '1px solid #222', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
            <button onClick={() => signOut(auth).then(() => navigate('/'))} style={{ width: '100%', padding: '1rem', background: '#222', color: 'white', border: '1px solid #333', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer' }}>Sign Out</button>
-           <button onClick={async () => { if(user && window.confirm("Delete account?")) { await deleteDoc(doc(db, "users", user.uid)); await deleteUser(user); navigate('/'); } }} style={{ width: '100%', padding: '1rem', background: 'transparent', color: '#666', border: 'none', fontSize: '0.8rem', cursor: 'pointer' }}>Delete Account</button>
+           <button onClick={handleDeleteAccount} style={{ width: '100%', padding: '1rem', background: 'transparent', color: '#666', border: 'none', fontSize: '0.8rem', cursor: 'pointer' }}>Delete Account</button>
         </section>
       </main>
+
+      {toastMessage && <Toast message={toastMessage} type={toastType} onClose={() => setToastMessage(null)} />}
+      {confirmation && (
+        <ConfirmationModal
+          title={confirmation.title}
+          message={confirmation.message}
+          confirmText={confirmation.confirmText}
+          isDestructive={confirmation.isDestructive}
+          onConfirm={confirmation.onConfirm}
+          onCancel={() => setConfirmation(null)}
+        />
+      )}
     </div>
   );
 };

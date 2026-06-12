@@ -60,10 +60,13 @@ const PrivacyPolicy: React.FC<{ onClose: () => void }> = ({ onClose }) => {
           <h3>5. Data Security</h3>
           <p>We implement industry-standard security measures to protect your data. However, no method of transmission over the Internet is 100% secure.</p>
 
-          <h3>6. Your Rights</h3>
-          <p>You may request to view, update, or delete your personal data at any time by contacting us at mattyfliptv@gmail.com.</p>
+          <h3>6. Data Retention and Deletion</h3>
+          <p>We retain your information for as long as your account is active or as needed to provide you services. If you wish to delete your account and associated data, you can do so directly within the <strong>Profile &gt; Edit Profile</strong> section of the app. Alternatively, you may request data deletion by contacting us at mattyfliptv@gmail.com. Once an account is deleted, all saved bikes, ride telemetry, and profile information are permanently removed from our active databases.</p>
 
-          <h3>7. Changes to This Policy</h3>
+          <h3>7. Your Rights</h3>
+          <p>You may request to view, update, or delete your personal data at any time. You have the right to portability and to object to certain processing activities.</p>
+
+          <h3>8. Changes to This Policy</h3>
           <p>We may update this policy from time to time. We will notify you of any significant changes via the email address associated with your account.</p>
         </div>
 

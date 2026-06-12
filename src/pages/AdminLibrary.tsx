@@ -4,6 +4,8 @@ import { collection, query, orderBy, onSnapshot, doc, setDoc, serverTimestamp, d
 import { useNavigate } from 'react-router-dom';
 import NavBar from '../shared/ui/NavBar';
 import SEO from '../shared/ui/SEO';
+import Toast, { type ToastType } from '../shared/ui/Toast';
+import ConfirmationModal from '../shared/ui/ConfirmationModal';
 import AuthModal from '../features/auth/AuthModal';
 import { useUserData } from '../hooks/useUserData';
 import type { SavedBike } from '../types';
@@ -21,6 +23,24 @@ const AdminLibrary: React.FC = () => {
   const [typeFilter, setTypeFilter] = useState('All Types');
   
   const [showAuthModal, setShowAuthModal] = useState(false);
+
+  // Toast state
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastType, setToastType] = useState<ToastType>('info');
+
+  // Confirmation state
+  const [confirmation, setConfirmation] = useState<{
+    title: string;
+    message: string;
+    confirmText?: string;
+    onConfirm: () => void;
+    isDestructive?: boolean;
+  } | null>(null);
+
+  const showToast = useCallback((message: string, type: ToastType = 'info') => {
+    setToastMessage(message);
+    setToastType(type);
+  }, []);
 
   // Edit Modal State
   const [showModal, setShowModal] = useState(false);
@@ -74,34 +94,41 @@ const AdminLibrary: React.FC = () => {
   }, [bikes, searchQuery, typeFilter]);
 
   const handleSeedDatabase = async () => {
-    if (!window.confirm("This will overwrite existing global bikes with hardcoded data. Continue?")) return;
-    setIsSeeding(true);
-    try {
-      const batch = writeBatch(db);
-      
-      const allStaticBikes = [
-        ...STANDARD_BIKES.map(b => ({ ...b, type: 'standard' })),
-        ...PEDAL_EBIKES_US_UK_CA.map(b => ({ ...b, type: 'pedal' })),
-        ...E_MOTOS_GLOBAL.map(b => ({ ...b, type: 'emoto' }))
-      ];
+    setConfirmation({
+      title: "Seed Database?",
+      message: "This will overwrite existing global bikes with hardcoded data. Continue?",
+      confirmText: "Seed Data",
+      onConfirm: async () => {
+        setConfirmation(null);
+        setIsSeeding(true);
+        try {
+          const batch = writeBatch(db);
+          
+          const allStaticBikes = [
+            ...STANDARD_BIKES.map(b => ({ ...b, type: 'standard' })),
+            ...PEDAL_EBIKES_US_UK_CA.map(b => ({ ...b, type: 'pedal' })),
+            ...E_MOTOS_GLOBAL.map(b => ({ ...b, type: 'emoto' }))
+          ];
 
-      for (const bike of allStaticBikes) {
-        const bikeId = bike.name.toLowerCase().replace(/[^a-z0-9]/g, '-');
-        const bikeRef = doc(db, "global_bikes", bikeId);
-        batch.set(bikeRef, {
-          ...bike,
-          updatedAt: serverTimestamp()
-        });
+          for (const bike of allStaticBikes) {
+            const bikeId = bike.name.toLowerCase().replace(/[^a-z0-9]/g, '-');
+            const bikeRef = doc(db, "global_bikes", bikeId);
+            batch.set(bikeRef, {
+              ...bike,
+              updatedAt: serverTimestamp()
+            });
+          }
+
+          await batch.commit();
+          showToast(`Successfully seeded ${allStaticBikes.length} bikes!`, "success");
+        } catch (e) {
+          console.error("Seeding failed", e);
+          showToast("Seeding failed. Check console.", "error");
+        } finally {
+          setIsSeeding(false);
+        }
       }
-
-      await batch.commit();
-      alert(`Successfully seeded ${allStaticBikes.length} bikes!`);
-    } catch (e) {
-      console.error("Seeding failed", e);
-      alert("Seeding failed. Check console.");
-    } finally {
-      setIsSeeding(false);
-    }
+    });
   };
 
   const openEditModal = (bike?: SavedBike) => {
@@ -401,6 +428,17 @@ const AdminLibrary: React.FC = () => {
       )}
 
       {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
+      {toastMessage && <Toast message={toastMessage} type={toastType} onClose={() => setToastMessage(null)} />}
+      {confirmation && (
+        <ConfirmationModal
+          title={confirmation.title}
+          message={confirmation.message}
+          confirmText={confirmation.confirmText}
+          isDestructive={confirmation.isDestructive}
+          onConfirm={confirmation.onConfirm}
+          onCancel={() => setConfirmation(null)}
+        />
+      )}
     </div>
   );
 };

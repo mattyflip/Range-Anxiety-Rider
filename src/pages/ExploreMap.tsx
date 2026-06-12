@@ -10,6 +10,7 @@ import PrivacyPolicy from '../features/legal/PrivacyPolicy';
 import InstallTutorial from '../shared/ui/InstallTutorial';
 import SEO from '../shared/ui/SEO';
 import AdvancedMarker from '../features/map/AdvancedMarker';
+import ConfirmationModal from '../shared/ui/ConfirmationModal';
 
 import { useUserData } from '../hooks/useUserData';
 
@@ -34,6 +35,9 @@ const ExploreMap: React.FC = () => {
   
   // UI Notification state
   const [notification, setNotification] = useState<{ message: string; type: 'info' | 'warning' } | null>(null);
+
+  // Confirmation state
+  const [confirmation, setConfirmation] = useState<{ title: string; message: string; onConfirm: () => void } | null>(null);
 
   const watchId = useRef<number | null>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
@@ -115,14 +119,20 @@ const ExploreMap: React.FC = () => {
   };
 
   const restartTracking = () => {
-    if (!window.confirm("Are you sure?")) return;
-    stopTracking();
-    setPath([]);
-    setDistance(0);
-    setStartTime(Date.now());
-    setLastMovementTime(Date.now());
-    setCurrentSpeed(0);
-    if (isTracking) startTracking();
+    setConfirmation({
+      title: "Restart Ride?",
+      message: "This will clear your current path and distance. Are you sure?",
+      onConfirm: () => {
+        setConfirmation(null);
+        stopTracking();
+        setPath([]);
+        setDistance(0);
+        setStartTime(Date.now());
+        setLastMovementTime(Date.now());
+        setCurrentSpeed(0);
+        startTracking();
+      }
+    });
   };
 
   const saveRide = async () => {
@@ -282,6 +292,14 @@ const ExploreMap: React.FC = () => {
       {showInstallTutorial && <InstallTutorial onClose={() => setShowInstallTutorial(false)} />}
       {showToS && <TermsOfService onClose={() => setShowToS(false)} />}
       {showPrivacy && <PrivacyPolicy onClose={() => setShowPrivacy(false)} />}
+      {confirmation && (
+        <ConfirmationModal
+          title={confirmation.title}
+          message={confirmation.message}
+          onConfirm={confirmation.onConfirm}
+          onCancel={() => setConfirmation(null)}
+        />
+      )}
     </div>
   );
 };

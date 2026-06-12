@@ -6,6 +6,8 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { sendEmail } from '../utils/email'
 import NavBar from '../shared/ui/NavBar'
 import SEO from '../shared/ui/SEO'
+import Toast, { type ToastType } from '../shared/ui/Toast'
+import ConfirmationModal from '../shared/ui/ConfirmationModal'
 import type { Bike, LiveUnit, Notification } from '../types';
 import { useUserData } from '../hooks/useUserData';
 
@@ -28,6 +30,24 @@ const FleetDashboard = () => {
   const [targetRiderEmail, setTargetRiderEmail] = useState('');
   const [bikeToAssign, setBikeToAssign] = useState<Bike | null>(null);
   const [isAssigning, setIsAssigning] = useState(false);
+
+  // Toast state
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastType, setToastType] = useState<ToastType>('info');
+
+  // Confirmation state
+  const [confirmation, setConfirmation] = useState<{
+    title: string;
+    message: string;
+    confirmText?: string;
+    onConfirm: () => void;
+    isDestructive?: boolean;
+  } | null>(null);
+
+  const showToast = useCallback((message: string, type: ToastType = 'info') => {
+    setToastMessage(message);
+    setToastType(type);
+  }, []);
 
   const percentToVoltage = (percent: number, nominalVoltage: number) => {
     if (!nominalVoltage) return percent;
@@ -197,10 +217,10 @@ const FleetDashboard = () => {
         `Your rental for ${request.unitId} is ready! PIN: ${pin}`
       );
 
-      alert(`✅ Rental approved! QR code and PIN sent to rider.`);
+      showToast(`Rental approved! QR code and PIN sent to rider.`, "success");
     } catch (e) { 
       console.error(e); 
-      alert('Failed to approve rental.');
+      showToast('Failed to approve rental.', "error");
     }
   };
 
@@ -904,6 +924,18 @@ const FleetDashboard = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {toastMessage && <Toast message={toastMessage} type={toastType} onClose={() => setToastMessage(null)} />}
+      {confirmation && (
+        <ConfirmationModal
+          title={confirmation.title}
+          message={confirmation.message}
+          confirmText={confirmation.confirmText}
+          isDestructive={confirmation.isDestructive}
+          onConfirm={confirmation.onConfirm}
+          onCancel={() => setConfirmation(null)}
+        />
       )}
     </div>
   );

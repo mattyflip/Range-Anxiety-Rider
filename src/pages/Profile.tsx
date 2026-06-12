@@ -1,14 +1,18 @@
 import React, { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
-import { db, storage } from '../firebase'
+import { db, storage, auth } from '../firebase'
 import { doc, collection, setDoc, query, where, onSnapshot, updateDoc, serverTimestamp, orderBy } from 'firebase/firestore'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import NavBar from '../shared/ui/NavBar'
 import InstallTutorial from '../shared/ui/InstallTutorial'
 import AuthModal from '../features/auth/AuthModal'
 import SEO from '../shared/ui/SEO'
+import Toast, { type ToastType } from '../shared/ui/Toast';
+import ConfirmationModal from '../shared/ui/ConfirmationModal';
+import UpgradeModal from '../shared/ui/UpgradeModal';
 import type { UserProfile, Post } from '../types';
 import { useUserData } from '../hooks/useUserData';
+import { getTierLimits } from '../utils/tierLimits';
 
 const Profile: React.FC = () => {
   const { username } = useParams<{ username: string }>();
@@ -16,6 +20,24 @@ const Profile: React.FC = () => {
   
   const [profileData, setProfileData] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Toast state
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastType, setToastType] = useState<ToastType>('info');
+
+  // Confirmation state
+  const [confirmation, setConfirmation] = useState<{
+    title: string;
+    message: string;
+    confirmText?: string;
+    onConfirm: () => void;
+    isDestructive?: boolean;
+  } | null>(null);
+
+  const showToast = useCallback((message: string, type: ToastType = 'info') => {
+    setToastMessage(message);
+    setToastType(type);
+  }, []);
 
   // Posts state
   const [userPosts, setUserPosts] = useState<Post[]>([]);
@@ -25,10 +47,58 @@ const Profile: React.FC = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [newUsername, setNewUsername] = useState('');
   const [newProfilePic, setNewProfilePic] = useState('');
+  const [editHomeRegion, setEditHomeRegion] = useState('');
+  const [editBirthday, setEditBirthday] = useState('');
+  const [editRiderWeight, setEditRiderWeight] = useState('');
   const [isSavingProfile, setIsSavingProfile] = useState(false);
 
   // Garage states
   const [showBikeModal, setShowBikeModal] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [upgradeContext, setUpgradeContext] = useState({ title: '', message: '', feature: '' });
+  
+  const limits = getTierLimits(userData);
+
+  const handleOpenAddBike = () => {
+    const currentBikes = profileData?.bikes?.length || 0;
+    if (currentBikes >= limits.maxBikes) {
+      setUpgradeContext({
+        title: "Garage Full!",
+        message: `Your current plan allows for ${limits.maxBikes} bike. Upgrade to Pro for an unlimited garage!`,
+        feature: "Unlimited Garage"
+      });
+      setShowUpgradeModal(true);
+      return;
+    }
+    setEditingBike(null);
+    setBikeForm({
+      name: '',
+      imageUrl: '',
+      voltage: '48',
+      capacityAh: '15',
+      motorWatts: '750',
+      bikeWeightLbs: '65',
+      tirePSI: '30',
+      tireType: 'road' as 'road' | 'knobby',
+      driveMode: 'both' as 'throttle_only' | 'pas_only' | 'both',
+      targetSpeedMph: '20'
+    });
+    setShowBikeModal(true);
+  };
+
+  const handleStartUpgrade = async () => {
+    setShowUpgradeModal(false);
+    if (!user) return;
+    try {
+      // Logic for Stripe Checkout would go here
+      showToast("Forwarding to secure checkout...", "info");
+      // window.location.href = ...
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const [isUploadingBikePic, setIsUploadingBikePic] = useState(false);
   const [editingBike, setEditingBike] = useState<import('../types').SavedBike | null>(null);
   const [bikeForm, setBikeForm] = useState({
     name: '',
@@ -42,6 +112,44 @@ const Profile: React.FC = () => {
     driveMode: 'both' as 'throttle_only' | 'pas_only' | 'both',
     targetSpeedMph: '20'
   });
+
+  const handleDeleteAccount = async () => {
+    if (!user || !profileData) return;
+    
+    setConfirmation({
+      title: "Delete Account?",
+      message: "CRITICAL: This will permanently delete your account, garage, and all ride telemetry. This cannot be undone. Are you absolutely sure?",
+      confirmText: "Delete Permanently",
+      isDestructive: true,
+      onConfirm: async () => {
+        setConfirmation(null);
+        setIsSavingProfile(true);
+        try {
+          const idToken = await user.getIdToken();
+          const response = await fetch('/api/delete-account', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${idToken}`,
+              'Content-Type': 'application/json'
+            }
+          });
+
+          const result = await response.json();
+          if (response.ok) {
+            showToast("Account successfully deleted. Ride safe!", "success");
+            setTimeout(() => { window.location.href = '/'; }, 2000);
+          } else {
+            throw new Error(result.error || 'Deletion failed');
+          }
+        } catch (e: any) {
+          console.error(e);
+          showToast(`Error: ${e.message}`, "error");
+        } finally {
+          setIsSavingProfile(false);
+        }
+      }
+    });
+  };
 
   const handleSaveBike = async () => {
     if (!user || !profileData || !bikeForm.name.trim()) return;
@@ -75,21 +183,35 @@ const Profile: React.FC = () => {
       });
       setShowBikeModal(false);
       setEditingBike(null);
-      alert("Garage updated!");
+      showToast("Garage updated!", "success");
     } catch (e) {
       console.error(e);
-      alert("Failed to save bike.");
+      showToast("Failed to save bike.", "error");
     }
   };
 
   const deleteBike = async (bikeId: string) => {
-    if (!profileData || !window.confirm("Delete this bike from your garage?")) return;
-    const updatedBikes = (profileData.bikes || []).filter(b => b.id !== bikeId);
-    try {
-      await updateDoc(doc(db, "users", profileData.uid), {
-        bikes: updatedBikes
-      });
-    } catch (e) { console.error(e); }
+    if (!profileData) return;
+
+    setConfirmation({
+      title: "Delete Bike?",
+      message: "Remove this bike from your garage?",
+      confirmText: "Delete",
+      isDestructive: true,
+      onConfirm: async () => {
+        setConfirmation(null);
+        const updatedBikes = (profileData.bikes || []).filter(b => b.id !== bikeId);
+        try {
+          await updateDoc(doc(db, "users", profileData.uid), {
+            bikes: updatedBikes
+          });
+          showToast("Bike deleted.", "success");
+        } catch (e) { 
+          console.error(e);
+          showToast("Failed to delete bike.", "error");
+        }
+      }
+    });
   };
 
   const openEditBike = (bike: import('../types').SavedBike) => {
@@ -121,7 +243,7 @@ const Profile: React.FC = () => {
       setBikeForm(prev => ({ ...prev, imageUrl: url }));
     } catch (e) {
       console.error(e);
-      alert("Failed to upload bike image.");
+      showToast("Failed to upload bike image.", "error");
     } finally {
       setIsUploadingBikePic(false);
     }
@@ -217,10 +339,10 @@ const Profile: React.FC = () => {
         riderWeight: parseInt(editRiderWeight) || 180
       });
       setShowSettings(false);
-      alert("Profile updated!");
+      showToast("Profile updated!", "success");
     } catch (e) {
       console.error(e);
-      alert("Failed to update profile.");
+      showToast("Failed to update profile.", "error");
     } finally {
       setIsSavingProfile(false);
     }
@@ -236,6 +358,7 @@ const Profile: React.FC = () => {
       setNewProfilePic(url);
     } catch (e) {
       console.error(e);
+      showToast("Failed to upload profile photo.", "error");
     } finally {
       setIsSavingProfile(false);
     }
@@ -244,7 +367,7 @@ const Profile: React.FC = () => {
   const submitReview = async () => {
     if (!user || !userData || !profileData) return;
     if (reviewRating === 0) {
-      alert("Please select a star rating (1-5)");
+      showToast("Please select a star rating (1-5)", "error");
       return;
     }
     try {
@@ -257,8 +380,11 @@ const Profile: React.FC = () => {
         createdAt: serverTimestamp()
       });
       setReviewText('');
-      alert("Review posted!");
-    } catch (e) { console.error(e); }
+      showToast("Review posted!", "success");
+    } catch (e) { 
+      console.error(e); 
+      showToast("Failed to post review.", "error");
+    }
   };
 
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -318,7 +444,7 @@ const Profile: React.FC = () => {
             <h2 style={{ color: 'white', fontSize: '1.1rem', margin: 0 }}>My Garage</h2>
             {canEdit && (
               <button 
-                onClick={() => { setEditingBike(null); setBikeForm({ name: '', imageUrl: '', voltage: '48', capacityAh: '15', motorWatts: '750', bikeWeightLbs: '65', tirePSI: '30', tireType: 'road', driveMode: 'both', targetSpeedMph: '20' }); setShowBikeModal(true); }}
+                onClick={handleOpenAddBike}
                 style={{ background: 'none', border: '1px solid #ff6600', color: '#ff6600', padding: '0.4rem 1rem', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer' }}
               >
                 + Add Bike
@@ -474,6 +600,18 @@ const Profile: React.FC = () => {
               <button onClick={() => setShowSettings(false)} style={{ flex: 1, padding: '1rem', background: '#333', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold' }}>Cancel</button>
               <button onClick={handleUpdateProfile} disabled={isSavingProfile} style={{ flex: 2, padding: '1rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold' }}>{isSavingProfile ? 'Saving...' : 'Save Changes'}</button>
             </div>
+
+            {isOwnProfile && (
+              <div style={{ marginTop: '2.5rem', borderTop: '1px solid #333', paddingTop: '1.5rem', textAlign: 'center' }}>
+                <button 
+                  onClick={handleDeleteAccount}
+                  disabled={isSavingProfile}
+                  style={{ background: 'none', border: 'none', color: '#ff4444', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer', textDecoration: 'underline' }}
+                >
+                  Permanently Delete Account
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -567,6 +705,26 @@ const Profile: React.FC = () => {
 
       {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
       {showInstallTutorial && <InstallTutorial onClose={() => setShowInstallTutorial(false)} />}
+      {toastMessage && <Toast message={toastMessage} type={toastType} onClose={() => setToastMessage(null)} />}
+      {showUpgradeModal && (
+        <UpgradeModal
+          title={upgradeContext.title}
+          message={upgradeContext.message}
+          featureName={upgradeContext.feature}
+          onUpgrade={handleStartUpgrade}
+          onClose={() => setShowUpgradeModal(false)}
+        />
+      )}
+      {confirmation && (
+        <ConfirmationModal
+          title={confirmation.title}
+          message={confirmation.message}
+          confirmText={confirmation.confirmText}
+          isDestructive={confirmation.isDestructive}
+          onConfirm={confirmation.onConfirm}
+          onCancel={() => setConfirmation(null)}
+        />
+      )}
     </div>
   );
 };

@@ -1,5 +1,10 @@
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { useEffect } from 'react'
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { App as CapacitorApp } from '@capacitor/app'
+import { StatusBar, Style } from '@capacitor/status-bar'
+import { SplashScreen } from '@capacitor/splash-screen'
 import { useUserData } from './hooks/useUserData'
+import { usePushNotifications } from './hooks/usePushNotifications'
 import FleetDashboard from './pages/FleetDashboard'
 import Profile from './pages/Profile'
 import ShopProfile from './pages/ShopProfile'
@@ -78,9 +83,57 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>
 }
 
+// Deep Link Handler Component
+const DeepLinkHandler = () => {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    CapacitorApp.addListener('appUrlOpen', data => {
+      // Example: https://rangeanxiety.app/profile/username
+      // The URL will be the full URL, we want the path.
+      // Capacitor App Links on Android can sometimes be weird with protocols.
+      try {
+        const url = new URL(data.url);
+        const path = url.pathname + url.search + url.hash;
+        navigate(path);
+      } catch (e) {
+        // Fallback for custom schemes if URL parsing fails
+        const slug = data.url.split('rangeanxiety.app').pop() || data.url.split('://').pop();
+        if (slug && slug.startsWith('/')) {
+          navigate(slug);
+        }
+      }
+    });
+  }, [navigate]);
+
+  return null;
+}
+
 function App() {
+  const { user } = useUserData();
+  usePushNotifications(user);
+
+  useEffect(() => {
+    const initMobile = async () => {
+      try {
+        // Set status bar style to match dark theme
+        await StatusBar.setStyle({ style: Style.Dark });
+        await StatusBar.setBackgroundColor({ color: '#121212' });
+        
+        // Hide splash screen after a short delay to ensure app is ready
+        setTimeout(async () => {
+          await SplashScreen.hide();
+        }, 1000);
+      } catch (e) {
+        console.warn('Mobile plugin init failed (probably on web):', e);
+      }
+    };
+    initMobile();
+  }, []);
+
   return (
     <Router>
+      <DeepLinkHandler />
       <Routes>
         {/* Public Routes */}
         <Route path="/" element={

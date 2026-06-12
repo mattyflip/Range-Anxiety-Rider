@@ -28,6 +28,9 @@ import { useUserData } from '../hooks/useUserData';
 import { useBikeLibrary } from '../hooks/useBikeLibrary';
 import { calculateRangePolygon, calculateBurnRate, calculateHeadwind } from '../utils/physics';
 import Toast, { type ToastType } from '../shared/ui/Toast';
+import LocationDisclosureModal from '../shared/ui/LocationDisclosureModal';
+import UpgradeModal from '../shared/ui/UpgradeModal';
+import { getTierLimits } from '../utils/tierLimits';
 
 interface GoogleRouteStep {
   navigationInstruction?: { instructions: string };
@@ -113,6 +116,16 @@ function MapHome() {
   const { user, userData, loading: authLoading } = useUserData();
   const { bikes: globalBikes } = useBikeLibrary();
   const [authInitialized, setAuthInitialized] = useState(false);
+  const [showLocationDisclosure, setShowLocationDisclosure] = useState(() => {
+    return localStorage.getItem('location_disclosure_accepted') !== 'true';
+  });
+
+  const handleLocationAccept = () => {
+    localStorage.setItem('location_disclosure_accepted', 'true');
+    setShowLocationDisclosure(false);
+    // After accepting, we might want to trigger the first location fetch
+    locateMe();
+  };
 
   // Sync authInitialized with hook loading
   useEffect(() => {
@@ -300,6 +313,26 @@ function MapHome() {
 
   // Navigation State
   const [isNavigating, setIsNavigating] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [upgradeContext, setUpgradeContext] = useState({ title: '', message: '', feature: '' });
+  
+  const limits = getTierLimits(userData);
+
+  const handleStartUpgrade = async () => {
+    setShowUpgradeModal(false);
+    if (!user) { setShowAuthModal(true); return; }
+    try {
+      showToast("Forwarding to secure checkout...", "info");
+      const token = await user.getIdToken();
+      const res = await fetch('/api/create-checkout-session', { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, 
+        body: JSON.stringify({ userId: user.uid, email: user.email, tier: 'pro' }) 
+      });
+      const data = await res.json();
+      if (data.url) window.location.href = data.url;
+    } catch (e) { console.error(e); }
+  };
   const [currentLegIndex, setCurrentLegIndex] = useState(0);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [distToNextStep, setNextStepDist] = useState<string | null>(null);
@@ -527,7 +560,7 @@ function MapHome() {
   }, [response, selectedRouteIndex]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || localStorage.getItem('location_disclosure_accepted') !== 'true') return;
     const watchId = navigator.geolocation.watchPosition(async (pos) => {
       const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
       setUserLocation(loc);
@@ -1369,6 +1402,11 @@ function MapHome() {
   const onMapLoad = useCallback((map: google.maps.Map) => { mapRef.current = map; }, []);
 
   const locateMe = () => {
+    if (localStorage.getItem('location_disclosure_accepted') !== 'true') {
+      setShowLocationDisclosure(true);
+      return;
+    }
+
     if (!window.isSecureContext && window.location.hostname !== 'localhost') {
       showToast("Location services require a secure connection (HTTPS). Please ensure you are using a secure URL.");
       return;
@@ -1966,7 +2004,7 @@ function MapHome() {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '0.5rem' }}>
                 <button onClick={() => { if (isExploreTier) setShowSharePreview(true); else setShowGroupRidePaywall(true); }} style={{ width: '100%', padding: '1rem', background: '#333', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 900 }}>Share {isExploreTier ? '' : '🔒'}</button>
-                <button onClick={() => setShowRouteReplay(true)} style={{ width: '100%', padding: '1rem', background: '#333', color: '#ff6600', border: '1px solid #ff6600', borderRadius: '12px', fontWeight: 900 }}>3D VIEW</button>
+                <button onClick={handleOpenRouteReplay} style={{ width: '100%', padding: '1rem', background: '#333', color: '#ff6600', border: '1px solid #ff6600', borderRadius: '12px', fontWeight: 900 }}>3D VIEW {limits.has3DFlyover ? '' : '🔒'}</button>
               </div>
               <button onClick={startNavigation} style={{ width: '100%', padding: '1.2rem', background: 'linear-gradient(to bottom, #ff8800, #ff6600)', color: 'white', border: 'none', borderRadius: '16px', fontWeight: 900, fontSize: '1.2rem', boxShadow: '0 4px 15px rgba(255,102,0,0.4)' }}>🏁 START TRIP</button>
             </div>
@@ -2489,6 +2527,23 @@ function MapHome() {
       </Suspense>
 
       {toastMessage && <Toast message={toastMessage} type={toastType} onClose={() => setToastMessage(null)} />}
+
+      {showLocationDisclosure && (
+        <LocationDisclosureModal 
+          onAccept={handleLocationAccept}
+          onCancel={() => setShowLocationDisclosure(false)}
+        />
+      )}
+
+      {showUpgradeModal && (
+        <UpgradeModal
+          title={upgradeContext.title}
+          message={upgradeContext.message}
+          featureName={upgradeContext.feature}
+          onUpgrade={handleStartUpgrade}
+          onClose={() => setShowUpgradeModal(false)}
+        />
+      )}
 
       {showGroupRidePaywall && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.95)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(10px)' }}>

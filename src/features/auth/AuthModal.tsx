@@ -82,7 +82,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
           const suffix = Math.floor(1000 + Math.random() * 9000).toString();
           finalUsername = finalUsername + suffix;
           finalUsernameLowercase = finalUsername.toLowerCase();
-          alert(`Your requested username was taken. You have been assigned: ${finalUsername}. You can change this in settings later.`);
+          setMessage(`Requested username taken. Assigned: ${finalUsername}. You can change this in settings.`);
         }
         
         try {

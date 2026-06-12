@@ -4,6 +4,8 @@ import { db } from '../firebase';
 import { query, where, onSnapshot, doc, updateDoc, collectionGroup } from 'firebase/firestore';
 import NavBar from '../shared/ui/NavBar';
 import SEO from '../shared/ui/SEO';
+import Toast, { type ToastType } from '../shared/ui/Toast';
+import ConfirmationModal from '../shared/ui/ConfirmationModal';
 import AuthModal from '../features/auth/AuthModal';
 import InstallTutorial from '../shared/ui/InstallTutorial';
 import { useUserData } from '../hooks/useUserData';
@@ -26,6 +28,24 @@ const MyRentals: React.FC = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showInstallTutorial, setShowInstallTutorial] = useState(false);
   const [selectedRental, setSelectedRental] = useState<RentalRequest | null>(null);
+
+  // Toast state
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastType, setToastType] = useState<ToastType>('info');
+
+  // Confirmation state
+  const [confirmation, setConfirmation] = useState<{
+    title: string;
+    message: string;
+    confirmText?: string;
+    onConfirm: () => void;
+    isDestructive?: boolean;
+  } | null>(null);
+
+  const showToast = (message: string, type: ToastType = 'info') => {
+    setToastMessage(message);
+    setToastType(type);
+  };
 
   const [authChecked, setAuthChecked] = useState(false);
   if (!authLoading && !authChecked) {
@@ -70,17 +90,24 @@ const MyRentals: React.FC = () => {
   }, [user, authLoading]);
 
   const handleCancelRequest = async (rental: RentalRequest) => {
-    if (!window.confirm('Are you sure you want to cancel this rental request?')) return;
-    
-    try {
-      await updateDoc(doc(db, `organizations/${rental.shopId}/rental_requests`, rental.id), {
-        status: 'cancelled'
-      });
-      alert('Rental request cancelled.');
-    } catch (e) {
-      console.error('Failed to cancel:', e);
-      alert('Failed to cancel request.');
-    }
+    setConfirmation({
+      title: "Cancel Rental?",
+      message: "Are you sure you want to cancel this rental request?",
+      confirmText: "Cancel Request",
+      isDestructive: true,
+      onConfirm: async () => {
+        setConfirmation(null);
+        try {
+          await updateDoc(doc(db, `organizations/${rental.shopId}/rental_requests`, rental.id), {
+            status: 'cancelled'
+          });
+          showToast('Rental request cancelled.', 'success');
+        } catch (e) {
+          console.error('Failed to cancel:', e);
+          showToast('Failed to cancel request.', 'error');
+        }
+      }
+    });
   };
 
   const pendingCount = rentals.filter(r => r.status === 'pending').length;
@@ -346,6 +373,17 @@ const MyRentals: React.FC = () => {
 
       {showAuthModal && <AuthModal onClose={() => { setShowAuthModal(false); navigate('/'); }} />}
       {showInstallTutorial && <InstallTutorial onClose={() => setShowInstallTutorial(false)} />}
+      {toastMessage && <Toast message={toastMessage} type={toastType} onClose={() => setToastMessage(null)} />}
+      {confirmation && (
+        <ConfirmationModal
+          title={confirmation.title}
+          message={confirmation.message}
+          confirmText={confirmation.confirmText}
+          isDestructive={confirmation.isDestructive}
+          onConfirm={confirmation.onConfirm}
+          onCancel={() => setConfirmation(null)}
+        />
+      )}
     </div>
   );
 };

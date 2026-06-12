@@ -75,9 +75,11 @@ export interface UserProfile {
   profilePic?: string;
   role: 'rider' | 'fleet';
   isAdmin: boolean;
-  isPro: boolean;
-  isExploreTier?: boolean;
-  isShopTier?: boolean;
+  isPro: boolean; // B2C Pro
+  isShopTier?: boolean; // B2B Starter or higher
+  maxFleetSize?: number; // For B2B gating
+  stripeCustomerId?: string;
+  subscriptionStatus?: 'active' | 'past_due' | 'canceled' | 'none';
   shopTierExpiresAt?: Timestamp;
   canHostGroupRide?: boolean;
   groupRideExpiresAt?: Timestamp;
@@ -90,7 +92,7 @@ export interface UserProfile {
   birthday?: string;
   riderWeight?: number;
   phone?: string;
-  bikes?: SavedBike[]; 
+  bikes?: SavedBike[];
   activeRental?: {
     shopId: string;
     bikeId: string;
@@ -100,7 +102,6 @@ export interface UserProfile {
   createdAt: Timestamp;
   updatedAt?: Timestamp;
 }
-
 export interface TripData {
   distanceMiles: number;
   durationMinutes: number;
