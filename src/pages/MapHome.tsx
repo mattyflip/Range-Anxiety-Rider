@@ -6,17 +6,19 @@ import { decode } from '@googlemaps/polyline-codec'
 import { db, storage } from '../firebase'
 import { doc, getDoc, collection, addDoc, serverTimestamp, updateDoc, query, onSnapshot, setDoc, arrayUnion } from 'firebase/firestore'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
-import TermsOfService from '../features/legal/TermsOfService'
-import PrivacyPolicy from '../features/legal/PrivacyPolicy'
-import InstallTutorial from '../shared/ui/InstallTutorial'
-import NavBar from '../shared/ui/NavBar'
-import AuthModal from '../features/auth/AuthModal'
-import WelcomeModal from '../shared/ui/WelcomeModal'
-import RouteReplay3D from '../features/map/RouteReplay3D'
-import AdvancedMarker from '../features/map/AdvancedMarker'
-import CalibrationModal from '../features/map/CalibrationModal'
-import OpportunityChargingModal from '../features/map/OpportunityChargingModal'
-import { ShareCard } from '../components/ShareCard'
+import { Suspense, lazy } from 'react';
+import InstallTutorial from '../shared/ui/InstallTutorial';
+import NavBar from '../shared/ui/NavBar';
+import AdvancedMarker from '../features/map/AdvancedMarker';
+
+const TermsOfService = lazy(() => import('../features/legal/TermsOfService'));
+const PrivacyPolicy = lazy(() => import('../features/legal/PrivacyPolicy'));
+const AuthModal = lazy(() => import('../features/auth/AuthModal'));
+const WelcomeModal = lazy(() => import('../shared/ui/WelcomeModal'));
+const RouteReplay3D = lazy(() => import('../features/map/RouteReplay3D'));
+const CalibrationModal = lazy(() => import('../features/map/CalibrationModal'));
+const OpportunityChargingModal = lazy(() => import('../features/map/OpportunityChargingModal'));
+const ShareCard = lazy(() => import('../components/ShareCard').then(m => ({ default: m.ShareCard })));
 import orangePin from '../assets/orange-pin.png'
 import { createNotification } from '../utils/notifications'
 import { STATE_COORDINATES } from '../utils/ebikeLaws'
@@ -2408,81 +2410,83 @@ function MapHome() {
         </main>
       </div>
 
-      {showSharePreview && metrics && (
-        <ShareCard 
-          metrics={metrics}
-          shareCardRef={shareCardRef}
-          setShowRouteReplay={setShowRouteReplay}
-          setShowSharePreview={setShowSharePreview}
-          downloadShareCard={downloadShareCard}
-          shareToCommunity={shareToCommunity}
-        />
-      )}
+      <Suspense fallback={null}>
+        {showSharePreview && metrics && (
+          <ShareCard 
+            metrics={metrics}
+            shareCardRef={shareCardRef}
+            setShowRouteReplay={setShowRouteReplay}
+            setShowSharePreview={setShowSharePreview}
+            downloadShareCard={downloadShareCard}
+            shareToCommunity={shareToCommunity}
+          />
+        )}
 
-      {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
-      {showToSPage && <TermsOfService onClose={() => setShowToSPage(false)} />}
-      {showPrivacyPage && <PrivacyPolicy onClose={() => setShowPrivacyPage(false)} />}
-      {showWelcomeModal && <WelcomeModal onClose={() => setShowWelcomeModal(false)} />}
-      {showInstallTutorial && <InstallTutorial onClose={() => setShowInstallTutorial(false)} />}
-      
-      {showChargingRescue && metrics && (
-        <OpportunityChargingModal
-          bikeSpecs={specs}
-          currentBatteryWh={((Number(specs.voltage)||48) * (Number(specs.capacityAh)||15)) * ((Number(startBattery)||100)/100)}
-          neededWh={metrics.estimatedWh}
-          chargingStops={suggestedStops}
-          onClose={() => setShowChargingRescue(false)}
-          onSelectStop={(stop) => addRescueStop(stop)}
-        />
-      )}
+        {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
+        {showToSPage && <TermsOfService onClose={() => setShowToSPage(false)} />}
+        {showPrivacyPage && <PrivacyPolicy onClose={() => setShowPrivacyPage(false)} />}
+        {showWelcomeModal && <WelcomeModal onClose={() => setShowWelcomeModal(false)} />}
+        {showInstallTutorial && <InstallTutorial onClose={() => setShowInstallTutorial(false)} />}
+        
+        {showChargingRescue && metrics && (
+          <OpportunityChargingModal
+            bikeSpecs={specs}
+            currentBatteryWh={((Number(specs.voltage)||48) * (Number(specs.capacityAh)||15)) * ((Number(startBattery)||100)/100)}
+            neededWh={metrics.estimatedWh}
+            chargingStops={suggestedStops}
+            onClose={() => setShowChargingRescue(false)}
+            onSelectStop={(stop) => addRescueStop(stop)}
+          />
+        )}
 
-      {showCalibrationModal && currentTripBike && (
-        <CalibrationModal 
-          user={user}
-          userData={userData}
-          bike={currentTripBike}
-          predictedWh={tripPredictedWh}
-          distanceMiles={actualDistanceMiles}
-          avgSpeedMph={Number(targetSpeed) || 18}
-          startBattery={tripStartBattery}
-          elevationGainFt={tripElevationGain}
-          temperatureC={tripTemperatureC}
-          windSpeedMs={tripWindSpeedMs}
-          riderWeightLbs={Number(riderWeight) || 180}
-          stopCount={stopCount}
-          speedHistory={speedHistory}
-          orgId={userData?.orgId}
-          onClose={() => {
-            setShowCalibrationModal(false);
-            if (pendingActionAfterCalibration === 'share') {
-              setShowSharePreview(true);
-              setPendingActionAfterCalibration(null);
-            }
-          }}
-          onComplete={(newFactor) => {
-            setShowCalibrationModal(false);
-            // Update local state to reflect the new factor immediately
-            setSpecs(p => ({ ...p, calibrationFactor: newFactor }));
-            setCurrentTripBike(prev => prev ? {
-              ...prev,
-              specs: { ...prev.specs, calibrationFactor: newFactor }
-            } : null);
-            if (pendingActionAfterCalibration === 'share') {
-              setShowSharePreview(true);
-              setPendingActionAfterCalibration(null);
-            }
-          }}
-        />
-      )}
+        {showCalibrationModal && currentTripBike && (
+          <CalibrationModal 
+            user={user}
+            userData={userData}
+            bike={currentTripBike}
+            predictedWh={tripPredictedWh}
+            distanceMiles={actualDistanceMiles}
+            avgSpeedMph={Number(targetSpeed) || 18}
+            startBattery={tripStartBattery}
+            elevationGainFt={tripElevationGain}
+            temperatureC={tripTemperatureC}
+            windSpeedMs={tripWindSpeedMs}
+            riderWeightLbs={Number(riderWeight) || 180}
+            stopCount={stopCount}
+            speedHistory={speedHistory}
+            orgId={userData?.orgId}
+            onClose={() => {
+              setShowCalibrationModal(false);
+              if (pendingActionAfterCalibration === 'share') {
+                setShowSharePreview(true);
+                setPendingActionAfterCalibration(null);
+              }
+            }}
+            onComplete={(newFactor) => {
+              setShowCalibrationModal(false);
+              // Update local state to reflect the new factor immediately
+              setSpecs(p => ({ ...p, calibrationFactor: newFactor }));
+              setCurrentTripBike(prev => prev ? {
+                ...prev,
+                specs: { ...prev.specs, calibrationFactor: newFactor }
+              } : null);
+              if (pendingActionAfterCalibration === 'share') {
+                setShowSharePreview(true);
+                setPendingActionAfterCalibration(null);
+              }
+            }}
+          />
+        )}
 
-      {showRouteReplay && (response?.routes[0] || breadcrumbTrail.length > 0) && (
-        <RouteReplay3D 
-          polyline={breadcrumbTrail.length > 0 ? breadcrumbTrail : response!.routes[0].overview_polyline} 
-          onClose={() => setShowRouteReplay(false)}
-          maptilerKey={import.meta.env.VITE_MAPTILER_KEY}
-          userPhotoURL={userData?.profilePic || ''}
-        />
-      )}
+        {showRouteReplay && (response?.routes[0] || breadcrumbTrail.length > 0) && (
+          <RouteReplay3D 
+            polyline={breadcrumbTrail.length > 0 ? breadcrumbTrail : response!.routes[0].overview_polyline} 
+            onClose={() => setShowRouteReplay(false)}
+            maptilerKey={import.meta.env.VITE_MAPTILER_KEY}
+            userPhotoURL={userData?.profilePic || ''}
+          />
+        )}
+      </Suspense>
 
       {toastMessage && <Toast message={toastMessage} type={toastType} onClose={() => setToastMessage(null)} />}
 
