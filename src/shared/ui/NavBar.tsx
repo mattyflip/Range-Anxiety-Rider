@@ -134,6 +134,7 @@ const NavBar: React.FC<NavBarProps> = ({ user: providedUser, onShowInstall, onSh
           
           {isAdmin && (
             <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+              <Link to="/admin/analytics" style={{ color: location.pathname === '/admin/analytics' ? '#ff6600' : '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' }}>Command Center</Link>
               <Link to="/admin/library" style={{ color: location.pathname === '/admin/library' ? '#ff6600' : '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' }}>Catalog</Link>
               <button onClick={toggleRole} style={{ background: 'rgba(255,102,0,0.1)', border: '1px solid #ff6600', color: '#ff6600', borderRadius: '20px', padding: '0.3rem 0.8rem', fontSize: '0.65rem', fontWeight: 'bold', cursor: 'pointer' }}>
                 Switch to {userData?.role === 'fleet' ? 'Rider' : 'Manager'}
@@ -178,6 +179,7 @@ const NavBar: React.FC<NavBarProps> = ({ user: providedUser, onShowInstall, onSh
           
           {isAdmin && (
             <>
+              <Link to="/admin/analytics" style={{ color: '#888', textDecoration: 'none', fontSize: '1rem', fontWeight: 700, textTransform: 'uppercase' }}>Command Center</Link>
               <Link to="/admin/library" style={{ color: '#888', textDecoration: 'none', fontSize: '1rem', fontWeight: 700, textTransform: 'uppercase' }}>Catalog</Link>
               <button onClick={toggleRole} style={{ width: '100%', background: 'rgba(255,102,0,0.1)', border: '1px solid #ff6600', color: '#ff6600', borderRadius: '12px', padding: '0.8rem', fontSize: '0.9rem', fontWeight: 'bold', cursor: 'pointer' }}>
                 Switch to {userData?.role === 'fleet' ? 'Rider' : 'Manager'}

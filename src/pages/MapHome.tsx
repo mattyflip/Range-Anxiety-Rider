@@ -170,11 +170,16 @@ function MapHome() {
 
   const handleAddLocationToRoute = (addr: string) => {
     const newLocs = [...locations];
-    const firstEmpty = newLocs.findIndex(l => l.trim() === '');
-    if (firstEmpty !== -1) {
-      newLocs[firstEmpty] = addr;
+    if (newLocs[0].trim() === '') {
+      newLocs[0] = "Current Location";
+      newLocs[1] = addr;
     } else {
-      newLocs.push(addr);
+      const firstEmpty = newLocs.findIndex(l => l.trim() === '');
+      if (firstEmpty !== -1) {
+        newLocs[firstEmpty] = addr;
+      } else {
+        newLocs.push(addr);
+      }
     }
     setLocations(newLocs);
     setTripMode('plan');
@@ -296,6 +301,10 @@ function MapHome() {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [distToNextStep, setNextStepDist] = useState<string | null>(null);
   const [hasAnnouncedNextStep, setHasAnnouncedNextStep] = useState(false);
+  const [isCameraLocked, setIsCameraLocked] = useState(false);
+  const [rideCount, setRideCount] = useState<number>(() => {
+    return parseInt(localStorage.getItem('rideCount') || '0', 10);
+  });
 
   // 1. Auth & Data Initialization
   useEffect(() => {
@@ -601,6 +610,7 @@ function MapHome() {
     if (!response || !metrics) return;
     setIsNavigating(true); setCurrentLegIndex(0); setCurrentStepIndex(0); setHasAnnouncedNextStep(false); setShowMobileMenu(false);
     setIsTrackingFreeRide(false);
+    setIsCameraLocked(true);
     
     // TRACKING FOR CALIBRATION
     setTripStartBattery(Number(startBattery) || 100);
@@ -623,6 +633,7 @@ function MapHome() {
     setIsTrackingFreeRide(true);
     setIsNavigating(false);
     setShowMobileMenu(false);
+    setIsCameraLocked(true);
     setBreadcrumbTrail(userLocation ? [userLocation] : []);
     setActualDistanceMiles(0);
     setLastNavLocation(userLocation);
@@ -636,16 +647,23 @@ function MapHome() {
 
   const stopNavigation = () => {
     setIsNavigating(false);
+    setIsCameraLocked(false);
     if (mapRef.current) { mapRef.current.setTilt(0); }
     
     // Trigger Calibration if trip was significant (> 0.2 miles)
     if (user && actualDistanceMiles > 0.2 && currentTripBike) {
-      setShowCalibrationModal(true);
+      const newCount = rideCount + 1;
+      setRideCount(newCount);
+      localStorage.setItem('rideCount', newCount.toString());
+      if (newCount <= 10 || newCount % 10 === 0) {
+        setShowCalibrationModal(true);
+      }
     }
   };
 
   const stopFreeTracking = () => {
     setIsTrackingFreeRide(false);
+    setIsCameraLocked(false);
     if (mapRef.current) { mapRef.current.setTilt(0); }
     // Prepare mock metrics for share
     setMetrics({
@@ -657,8 +675,15 @@ function MapHome() {
     
     // Trigger Calibration if trip was significant (> 0.2 miles)
     if (user && actualDistanceMiles > 0.2 && currentTripBike) {
-      setPendingActionAfterCalibration('share');
-      setShowCalibrationModal(true);
+      const newCount = rideCount + 1;
+      setRideCount(newCount);
+      localStorage.setItem('rideCount', newCount.toString());
+      if (newCount <= 10 || newCount % 10 === 0) {
+        setPendingActionAfterCalibration('share');
+        setShowCalibrationModal(true);
+      } else {
+        setShowSharePreview(true);
+      }
     } else {
       setShowSharePreview(true);
     }
@@ -721,14 +746,17 @@ function MapHome() {
              ) > 5) return [...prev, uLoc];
              return prev;
          });
-         if (mapRef.current) mapRef.current.panTo(uLoc);
+         if (mapRef.current && isCameraLocked) mapRef.current.panTo(uLoc);
       }
 
       if (isNavigating && response) {
         const route = response.routes[0];
         const leg = route.legs[currentLegIndex];
         const step = leg.steps[currentStepIndex];
-        // Note: Continuous panTo removed to allow free movement as requested
+        // If navigating and locked, pan to user
+        if (mapRef.current && isCameraLocked) {
+           mapRef.current.panTo(uLoc);
+        }
         const endLoc = { lat: step.end_location.lat(), lng: step.end_location.lng() };
         const distMeters = google.maps.geometry.spherical.computeDistanceBetween(new google.maps.LatLng(uLoc.lat, uLoc.lng), new google.maps.LatLng(endLoc.lat, endLoc.lng));
         const distFeet = distMeters * 3.28084;
@@ -2000,6 +2028,19 @@ function MapHome() {
           )}
 
           <div className="bottom-map-controls">
+            {(isNavigating || isTrackingFreeRide) && !isCameraLocked && (
+              <button 
+                onClick={() => {
+                  setIsCameraLocked(true);
+                  if (mapRef.current && userLocation) {
+                    mapRef.current.panTo(userLocation);
+                  }
+                }}
+                style={{ position: 'absolute', bottom: '120px', left: '50%', transform: 'translateX(-50%)', padding: '0.8rem 1.2rem', background: '#34a853', color: 'white', border: 'none', borderRadius: '24px', fontWeight: 900, boxShadow: '0 4px 12px rgba(0,0,0,0.5)', zIndex: 10 }}
+              >
+                🎯 RECENTER
+              </button>
+            )}
             <button 
               onClick={locateMe}
               style={{ width: '50px', height: '50px', borderRadius: '50%', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
@@ -2084,6 +2125,7 @@ function MapHome() {
               }
             }}
             onLoad={onMapLoad}
+            onDragStart={() => setIsCameraLocked(false)}
             onIdle={() => {
               if (mapRef.current && userRole !== 'fleet') {
                 const newCenter = mapRef.current.getCenter();

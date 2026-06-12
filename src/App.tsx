@@ -15,6 +15,7 @@ import Rent from './pages/Rent'
 import MapHome from './pages/MapHome'
 import MyRentals from './pages/MyRentals'
 import AdminLibrary from './pages/AdminLibrary'
+import AdminAnalytics from './pages/AdminAnalytics'
 
 // Protected Route Component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -88,6 +89,7 @@ function App() {
         <Route path="/forum/c/:communityId" element={<ProtectedRoute><CommunityView /></ProtectedRoute>} />
         <Route path="/forum/c/:communityId/t/:threadId" element={<ProtectedRoute><ThreadView /></ProtectedRoute>} />
         <Route path="/admin/library" element={<ProtectedRoute><AdminLibrary /></ProtectedRoute>} />
+        <Route path="/admin/analytics" element={<ProtectedRoute><AdminAnalytics /></ProtectedRoute>} />
         
         <Route path="/about" element={<About />} />
 
