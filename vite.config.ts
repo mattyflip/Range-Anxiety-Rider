@@ -16,25 +16,7 @@ export default defineConfig({
     '__APP_VERSION__': JSON.stringify(packageJson.version),
   },
   build: {
-    chunkSizeWarningLimit: 1000,
-    rollupOptions: {
-      output: {
-        manualChunks(id) {
-          if (id.includes('node_modules')) {
-            if (id.includes('@react-google-maps')) {
-              return 'vendor-google';
-            }
-            if (id.includes('recharts')) {
-              return 'vendor-recharts';
-            }
-            if (id.includes('firebase')) {
-              return 'vendor-firebase';
-            }
-            return 'vendor-libs';
-          }
-        }
-      }
-    }
+    chunkSizeWarningLimit: 2000
   },
   optimizeDeps: {
     include: ['recharts']
