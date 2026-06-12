@@ -1352,10 +1352,11 @@ function MapHome() {
     if (!user) { setShowAuthModal(true); return; }
     try {
       const token = await user.getIdToken();
+      const idempotencyKey = crypto.randomUUID();
       const res = await fetch('/api/create-checkout-session', { 
         method: 'POST', 
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, 
-        body: JSON.stringify({ userId: user.uid, email: user.email, tier: 'explore' }) 
+        body: JSON.stringify({ userId: user.uid, email: user.email, tier: 'explore', idempotencyKey }) 
       });
       const data = await res.json();
       if (data.url) window.location.href = data.url;

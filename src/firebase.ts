@@ -1,4 +1,5 @@
 import { initializeApp } from "firebase/app";
+import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "firebase/app-check";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
@@ -13,6 +14,21 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
+
+// Initialize Firebase App Check
+if (typeof window !== "undefined") {
+  if (import.meta.env.VITE_FIREBASE_APPCHECK_DEBUG_TOKEN || window.location.hostname === 'localhost') {
+    (self as any).FIREBASE_APPCHECK_DEBUG_TOKEN = import.meta.env.VITE_FIREBASE_APPCHECK_DEBUG_TOKEN || true;
+  }
+  try {
+    initializeAppCheck(app, {
+      provider: new ReCaptchaEnterpriseProvider(import.meta.env.VITE_RECAPTCHA_ENTERPRISE_SITE_KEY || 'dummy_key'),
+      isTokenAutoRefreshEnabled: true
+    });
+  } catch (e) {
+    console.warn("App Check initialization failed:", e);
+  }
+}
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);

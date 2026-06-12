@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
+import DOMPurify from 'dompurify';
 import { db, storage } from '../firebase'
 import { collection, query, orderBy, onSnapshot, doc, deleteDoc, updateDoc, addDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
@@ -328,7 +329,7 @@ const Feed: React.FC = () => {
                   
                   <p style={{ color: '#ccc', fontSize: '0.95rem', lineHeight: '1.5', margin: 0 }}>
                     <span style={{ fontWeight: 'bold', color: 'white', marginRight: '0.5rem' }}>{post.authorUsername}</span>
-                    {post.caption}
+                    <span dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(post.caption) }} />
                   </p>
                 </div>
               </article>
@@ -417,7 +418,7 @@ const Feed: React.FC = () => {
              <div style={{ marginTop: '1.5rem', padding: '0 1rem' }}>
                 <p style={{ color: '#ccc', fontSize: '1.1rem', lineHeight: '1.6' }}>
                   <span style={{ fontWeight: 'bold', color: 'white', marginRight: '0.5rem' }}>{selectedFullPost.authorUsername}</span>
-                  {selectedFullPost.caption}
+                  <span dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(selectedFullPost.caption) }} />
                 </p>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '1rem' }}>
                    <span style={{ color: '#ff6600', fontWeight: 'bold' }}><LikeWidget post={selectedFullPost} user={user} userData={userData} onAuthNeeded={() => setShowAuthModal(true)} /></span>

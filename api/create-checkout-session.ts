@@ -6,9 +6,10 @@ import { setCorsHeaders } from './_cors.js';
 import { z } from 'zod';
 
 const CheckoutSessionRequestSchema = z.object({
-  userId: z.string().max(128),
-  tier: z.string(),
+  userId: z.string().min(1),
   email: z.string().email().optional(),
+  tier: z.string().min(1),
+  idempotencyKey: z.string().uuid().optional(),
 });
 
 const serviceAccount: ServiceAccount = {
@@ -84,7 +85,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: 'VALIDATION_ERROR', details: parsed.error.issues });
   }
 
-  const { userId, email, tier } = parsed.data;
+  const { userId, email, tier, idempotencyKey } = parsed.data;
 
   // SECURITY FIX #2: Verify the authenticated user matches the userId in the request body.
   // Without this check, any authenticated user could pass a different userId and create
@@ -142,6 +143,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         userId,
         tier,
       },
+    }, {
+      idempotencyKey: idempotencyKey, // Use the client-provided idempotency key
     });
 
     return res.status(200).json({ url: session.url });
