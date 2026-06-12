@@ -88,7 +88,7 @@ const DeepLinkHandler = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    CapacitorApp.addListener('appUrlOpen', data => {
+    CapacitorApp.addListener('appUrlOpen', (data: { url: string }) => {
       // Example: https://rangeanxiety.app/profile/username
       // The URL will be the full URL, we want the path.
       // Capacitor App Links on Android can sometimes be weird with protocols.

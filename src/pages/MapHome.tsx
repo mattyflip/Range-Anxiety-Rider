@@ -318,6 +318,19 @@ function MapHome() {
   
   const limits = getTierLimits(userData);
 
+  const handleOpenRouteReplay = () => {
+    if (!limits.has3DFlyover) {
+      setUpgradeContext({
+        title: "Unlock 3D Flyover",
+        message: "Experience your ride in high-resolution 3D with the Pro Flyover feature.",
+        feature: "3D Route Flyover"
+      });
+      setShowUpgradeModal(true);
+      return;
+    }
+    setShowRouteReplay(true);
+  };
+
   const handleStartUpgrade = async () => {
     setShowUpgradeModal(false);
     if (!user) { setShowAuthModal(true); return; }

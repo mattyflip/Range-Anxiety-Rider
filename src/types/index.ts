@@ -76,6 +76,7 @@ export interface UserProfile {
   role: 'rider' | 'fleet';
   isAdmin: boolean;
   isPro: boolean; // B2C Pro
+  isExploreTier?: boolean; // Legacy/Separate tier
   isShopTier?: boolean; // B2B Starter or higher
   maxFleetSize?: number; // For B2B gating
   stripeCustomerId?: string;

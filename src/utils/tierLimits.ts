@@ -1,4 +1,4 @@
-import { UserProfile } from '../types';
+import type { UserProfile } from '../types';
 
 /**
  * Feature Tiers Definition
@@ -73,8 +73,9 @@ export const getUserTier = (userData: UserProfile | null): SubscriptionTier => {
   
   // Priority: Fleet tiers > Rider Pro > Free
   if (userData.role === 'fleet' || userData.isShopTier) {
-    if (userData.maxFleetSize > 25) return 'fleet_enterprise';
-    if (userData.maxFleetSize > 5) return 'fleet_pro';
+    const fleetSize = userData.maxFleetSize || 0;
+    if (fleetSize > 25) return 'fleet_enterprise';
+    if (fleetSize > 5) return 'fleet_pro';
     return 'fleet_starter';
   }
   

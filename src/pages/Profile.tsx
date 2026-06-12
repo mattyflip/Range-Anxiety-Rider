@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
-import { db, storage, auth } from '../firebase'
+import { db, storage } from '../firebase'
 import { doc, collection, setDoc, query, where, onSnapshot, updateDoc, serverTimestamp, orderBy } from 'firebase/firestore'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import NavBar from '../shared/ui/NavBar'
@@ -231,8 +231,6 @@ const Profile: React.FC = () => {
     setShowBikeModal(true);
   };
 
-  const [isUploadingBikePic, setIsUploadingBikePic] = useState(false);
-
   const handleBikeImageUpload = async (file: File) => {
     if (!user) return;
     setIsUploadingBikePic(true);
@@ -248,11 +246,6 @@ const Profile: React.FC = () => {
       setIsUploadingBikePic(false);
     }
   };
-
-  // Profile Edit states
-  const [editHomeRegion, setEditHomeRegion] = useState('');
-  const [editBirthday, setEditBirthday] = useState('');
-  const [editRiderWeight, setEditRiderWeight] = useState('180');
 
   interface ReviewType {
     id: string;
