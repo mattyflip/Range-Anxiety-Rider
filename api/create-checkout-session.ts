@@ -27,6 +27,11 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
   apiVersion: '2026-04-22.dahlia',
 });
 
+// Basic in-memory rate limiter to prevent spamming Stripe API.
+// Note: This only works per-lambda instance, but provides a decent
+// first line of defense against rapid automated spam.
+const rateLimitCache = new Map<string, { count: number, resetTime: number }>();
+
 // SECURITY: Explicit whitelist of valid tiers and their server-defined prices.
 // Never let the client determine the price — only the tier name.
 const TIER_CONFIG: Record<string, { unit_amount: number; product_name: string; product_description: string; mode: 'payment' | 'subscription'; isSubscription: boolean }> = {
@@ -97,6 +102,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const { unit_amount, product_name, product_description, mode, isSubscription } = tierConfig;
+
+  // SECURITY FIX #4: Rate Limiting
+  const now = Date.now();
+  const rateLimit = rateLimitCache.get(userId);
+  if (rateLimit && now < rateLimit.resetTime) {
+    if (rateLimit.count >= 5) {
+      console.warn(`[SECURITY] Rate limit exceeded for user ${userId}`);
+      return res.status(429).json({ error: 'Too many requests. Please try again later.' });
+    }
+    rateLimit.count += 1;
+  } else {
+    rateLimitCache.set(userId, { count: 1, resetTime: now + 60000 }); // 5 requests per minute
+  }
 
   try {
     const session = await stripe.checkout.sessions.create({

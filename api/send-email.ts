@@ -2,7 +2,18 @@ import { VercelRequest, VercelResponse } from '@vercel/node';
 import { Resend } from 'resend';
 import { getApps, initializeApp, cert, ServiceAccount } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
+import { getFirestore } from 'firebase-admin/firestore';
 import { setCorsHeaders } from './_cors.js';
+import { z } from 'zod';
+
+const EmailRequestSchema = z.object({
+  to: z.string().email(),
+  subject: z.string().max(255),
+  text: z.string().optional(),
+  html: z.string().optional(),
+}).refine(data => data.text || data.html, {
+  message: "Email content (text or html) is required",
+});
 
 const serviceAccount: ServiceAccount = {
   projectId: process.env.VITE_FIREBASE_PROJECT_ID,
@@ -32,36 +43,44 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const token = authHeader.split('Bearer ')[1];
+  let decodedToken;
   try {
-    await getAuth().verifyIdToken(token);
+    decodedToken = await getAuth().verifyIdToken(token);
   } catch (err) {
     return res.status(401).json({ error: 'Invalid token' });
   }
 
-  const { to, subject, text, html } = req.body;
-
-  // SECURITY FIX: Basic input validation
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!to || typeof to !== 'string' || !emailRegex.test(to)) {
-    return res.status(400).json({ error: 'Invalid recipient email' });
+  const parsed = EmailRequestSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: 'VALIDATION_ERROR', details: parsed.error.issues });
   }
 
-  if (!subject || typeof subject !== 'string' || subject.length > 255) {
-    return res.status(400).json({ error: 'Invalid subject' });
-  }
+  const { to, subject, text, html } = parsed.data;
 
-  if ((!text || typeof text !== 'string') && (!html || typeof html !== 'string')) {
-    return res.status(400).json({ error: 'Email content (text or html) is required' });
+  // SECURITY FIX: Verify that the recipient is either the authenticated user 
+  // OR the sender is an authorized shop/fleet owner.
+  if (to.toLowerCase() !== decodedToken.email?.toLowerCase()) {
+    const db = getFirestore();
+    const userDoc = await db.collection('users').doc(decodedToken.uid).get();
+    const userData = userDoc.data();
+    
+    const isFleetOwner = userData?.role === 'fleet' || userData?.isAdmin === true || decodedToken.admin === true;
+    
+    if (!isFleetOwner) {
+       return res.status(403).json({ error: 'Forbidden: You can only send emails to yourself' });
+    }
   }
 
   try {
-    const data = await resend.emails.send({
-      from: process.env.RESEND_FROM_EMAIL || 'Range Anxiety Rider <Info@rangeanxietyrider.com>',
+    const emailOptions: any = {
+      from: 'Range Anxiety <noreply@range-anxiety.com>',
       to: [to],
       subject: subject,
-      text: text,
-      html: html,
-    });
+    };
+    if (text) emailOptions.text = text;
+    if (html) emailOptions.html = html;
+
+    const data = await resend.emails.send(emailOptions);
 
     return res.status(200).json({ success: true, id: data.data?.id });
   } catch (error: any) {
