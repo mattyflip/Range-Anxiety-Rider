@@ -26,7 +26,9 @@ export const ShareCard: React.FC<ShareCardProps> = ({
          <p style={{ color: '#888' }}>Rode {metrics.distanceMiles.toFixed(1)} miles!</p>
       </div>
       <div style={{ marginTop: '1rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-        <button onClick={() => setShowRouteReplay(true)} style={{ padding: '1rem 2rem', background: '#333', color: '#ff6600', border: '1px solid #ff6600', borderRadius: '12px', fontWeight: 900 }}>3D VIEW</button>
+        {metrics.distanceMiles > 0.0062 && (
+          <button onClick={() => setShowRouteReplay(true)} style={{ padding: '1rem 2rem', background: '#333', color: '#ff6600', border: '1px solid #ff6600', borderRadius: '12px', fontWeight: 900 }}>3D VIEW</button>
+        )}
         <button onClick={() => setShowSharePreview(false)} style={{ padding: '1rem 2rem', background: '#333', color: 'white', border: 'none', borderRadius: '12px' }}>Cancel</button>
         <button onClick={downloadShareCard} style={{ padding: '1rem 2rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px' }}>Download</button>
         <button onClick={shareToCommunity} style={{ padding: '1rem 2rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px' }}>Post</button>
