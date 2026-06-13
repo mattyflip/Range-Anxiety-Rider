@@ -35,7 +35,7 @@ service cloud.firestore {
       // SECURITY FIX: Users can't make themselves admin. 
       // Only an existing admin can set isAdmin to true, or it must be set via Firebase Console.
       allow get: if isSignedIn();
-      allow list: if isAdmin();
+      allow list: if isSignedIn();
       allow create: if isSignedIn() && (!request.resource.data.keys().hasAny(['isAdmin']) || request.resource.data.isAdmin == false);
       allow update: if (isOwner(userId) && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['isAdmin']))) || isAdmin();
       allow delete: if isAdmin();
