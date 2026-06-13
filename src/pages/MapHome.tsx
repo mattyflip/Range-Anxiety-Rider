@@ -2268,6 +2268,15 @@ function MapHome() {
             mapContainerStyle={{ width: '100%', height: '100%' }} 
             center={userRole === 'fleet' ? (shopLocation || center) : mapCenter}
             zoom={mapZoom}
+            onZoomChanged={() => {
+              if (mapRef.current) setMapZoom(mapRef.current.getZoom() ?? 12);
+            }}
+            onCenterChanged={() => {
+              if (mapRef.current && !isCameraLocked && !isNavigating && !isTrackingFreeRide) {
+                const c = mapRef.current.getCenter();
+                if (c) setMapCenter({ lat: c.lat(), lng: c.lng() });
+              }
+            }}
             onClick={(e) => {
               if (userRole === 'fleet' && isDrawingPerimeter) {
                 if (e.latLng) {
