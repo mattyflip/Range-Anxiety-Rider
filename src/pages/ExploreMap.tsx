@@ -184,6 +184,24 @@ const ExploreMap: React.FC = () => {
     }, 300);
   }, []);
 
+  // Use ResizeObserver to catch any container size changes (especially on mobile)
+  useEffect(() => {
+    if (isLoaded && mapRef.current) {
+      const map = mapRef.current;
+      const container = map.getDiv();
+      if (!container) return;
+
+      const observer = new ResizeObserver(() => {
+        if (window.google) {
+          google.maps.event.trigger(map, 'resize');
+        }
+      });
+      
+      observer.observe(container);
+      return () => observer.disconnect();
+    }
+  }, [isLoaded]);
+
   if (authLoading) return <div style={{ minHeight: '100vh', background: '#121212' }} />;
 
   const canExplore = userData?.isShopTier || userData?.isExploreTier || (userData?.canHostGroupRide && userData.groupRideExpiresAt && new Date(userData.groupRideExpiresAt.seconds * 1000) > new Date());

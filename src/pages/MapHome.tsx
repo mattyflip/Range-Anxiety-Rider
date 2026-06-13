@@ -1514,13 +1514,31 @@ function MapHome() {
 
   const onMapLoad = useCallback((map: google.maps.Map) => { 
     mapRef.current = map; 
-    // Force a resize calculation after a short delay to ensure DOM is settled for WebView
+    // Force a resize calculation after a short delay
     setTimeout(() => {
       if (window.google) {
         google.maps.event.trigger(map, 'resize');
       }
     }, 300);
   }, []);
+
+  // Use ResizeObserver to catch any container size changes (especially on mobile)
+  useEffect(() => {
+    if (isLoaded && mapRef.current) {
+      const map = mapRef.current;
+      const container = map.getDiv();
+      if (!container) return;
+
+      const observer = new ResizeObserver(() => {
+        if (window.google) {
+          google.maps.event.trigger(map, 'resize');
+        }
+      });
+      
+      observer.observe(container);
+      return () => observer.disconnect();
+    }
+  }, [isLoaded]);
 
   const locateMe = () => {
     if (localStorage.getItem('location_disclosure_accepted') !== 'true') {
