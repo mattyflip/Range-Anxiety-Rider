@@ -333,10 +333,10 @@ function MapHome() {
   const limits = getTierLimits(userData);
 
   const handleOpenRouteReplay = () => {
-    if (!limits.has3DFlyover) {
+    if (!(userData?.isBetaTester || userData?.isAdmin)) {
       setUpgradeContext({
-        title: "Unlock 3D Flyover",
-        message: "Experience your ride in high-resolution 3D with the Pro Flyover feature.",
+        title: "Beta Feature",
+        message: "3D Route Flyover is currently only available for beta testers.",
         feature: "3D Route Flyover"
       });
       setShowUpgradeModal(true);
@@ -2161,7 +2161,7 @@ function MapHome() {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '0.5rem' }}>
                 <button onClick={() => { if (isExploreTier) setShowSharePreview(true); else setShowGroupRidePaywall(true); }} style={{ width: '100%', padding: '1rem', background: '#333', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 900 }}>Share {isExploreTier ? '' : '🔒'}</button>
-                <button onClick={handleOpenRouteReplay} style={{ width: '100%', padding: '1rem', background: '#333', color: '#ff6600', border: '1px solid #ff6600', borderRadius: '12px', fontWeight: 900 }}>3D VIEW {limits.has3DFlyover ? '' : '🔒'}</button>
+                <button onClick={handleOpenRouteReplay} style={{ width: '100%', padding: '1rem', background: '#333', color: '#ff6600', border: '1px solid #ff6600', borderRadius: '12px', fontWeight: 900 }}>3D VIEW {(userData?.isBetaTester || userData?.isAdmin) ? '' : '🔒'}</button>
               </div>
               <button onClick={startNavigation} style={{ width: '100%', padding: '1.2rem', background: 'linear-gradient(to bottom, #ff8800, #ff6600)', color: 'white', border: 'none', borderRadius: '16px', fontWeight: 900, fontSize: '1.2rem', boxShadow: '0 4px 15px rgba(255,102,0,0.4)' }}>🏁 START TRIP</button>
             </div>
