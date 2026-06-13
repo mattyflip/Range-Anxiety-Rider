@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, query, onSnapshot } from 'firebase/firestore';
+import { collection, query, onSnapshot, where, updateDoc, doc } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
 import NavBar from '../shared/ui/NavBar';
 import SEO from '../shared/ui/SEO';
@@ -19,6 +19,14 @@ interface LiveUnitData {
   battery: number;
 }
 
+interface ActiveGroupRide {
+  id: string;
+  name: string;
+  leaderId: string;
+  status: string;
+  [key: string]: any;
+}
+
 const COLORS = ['#ff6600', '#ff9900', '#00C49F', '#FFBB28', '#FF8042'];
 
 const AdminAnalytics: React.FC = () => {
@@ -34,6 +42,8 @@ const AdminAnalytics: React.FC = () => {
   const [totalOrgs, setTotalOrgs] = useState(0);
   const [activeRentals, setActiveRentals] = useState(0);
   const [liveUnits, setLiveUnits] = useState<LiveUnitData[]>([]);
+  const [activeGroupRides, setActiveGroupRides] = useState<ActiveGroupRide[]>([]);
+  const [endingRides, setEndingRides] = useState<Set<string>>(new Set());
 
   // Mocked historical data for charts since we don't have historical collections set up for this yet
   const allUserGrowthData = {
@@ -105,9 +115,20 @@ const AdminAnalytics: React.FC = () => {
     
     fetchLiveUnits();
 
+    // Fetch active group rides
+    const groupRidesUnsub = onSnapshot(query(collection(db, 'group_rides'), where('status', '==', 'active')), (snap) => {
+      const rides: ActiveGroupRide[] = [];
+      snap.forEach(d => {
+        const data = d.data();
+        rides.push({ id: d.id, name: data.name, leaderId: data.leaderId, status: data.status, ...data });
+      });
+      setActiveGroupRides(rides);
+    });
+
     return () => {
       usersUnsub();
       orgsUnsub();
+      groupRidesUnsub();
     };
   }, [user, userData, authLoading, navigate]);
 
@@ -119,6 +140,24 @@ const AdminAnalytics: React.FC = () => {
     { name: 'Medium (30-70%)', value: liveUnits.filter(u => u.battery >= 30 && u.battery < 70).length },
     { name: 'Low (<30%)', value: liveUnits.filter(u => u.battery < 30).length },
   ];
+
+  const handleEndGroupRide = async (rideId: string) => {
+    if (window.confirm('Are you sure you want to force end this active group ride?')) {
+      setEndingRides(prev => new Set(prev).add(rideId));
+      try {
+        await updateDoc(doc(db, 'group_rides', rideId), { status: 'completed' });
+      } catch (err) {
+        console.error('Failed to end group ride', err);
+        alert('Failed to end group ride. Please try again.');
+      } finally {
+        setEndingRides(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(rideId);
+          return newSet;
+        });
+      }
+    }
+  };
 
   return (
     <div className="container" style={{ minHeight: '100vh', background: '#121212', color: 'white' }}>
@@ -168,6 +207,39 @@ const AdminAnalytics: React.FC = () => {
             <div style={{ color: '#888', fontSize: '0.8rem' }}>Currently on the road</div>
           </div>
         </div>
+
+        {/* Active Group Rides */}
+        {activeGroupRides.length > 0 && (
+          <div style={{ background: '#1a1a1a', padding: '1.5rem', borderRadius: '16px', border: '1px solid #333', marginBottom: '2rem' }}>
+            <h3 style={{ margin: '0 0 1rem 0', color: '#ff6600' }}>Active Group Rides</h3>
+            <div style={{ display: 'grid', gap: '1rem' }}>
+              {activeGroupRides.map(ride => (
+                <div key={ride.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#222', padding: '1rem', borderRadius: '12px', border: '1px solid #444' }}>
+                  <div>
+                    <div style={{ color: 'white', fontWeight: 900, fontSize: '1.1rem' }}>{ride.name || 'Unnamed Ride'}</div>
+                    <div style={{ color: '#888', fontSize: '0.8rem' }}>Host ID: {ride.leaderId}</div>
+                  </div>
+                  <button 
+                    onClick={() => handleEndGroupRide(ride.id)}
+                    disabled={endingRides.has(ride.id)}
+                    style={{ 
+                      background: endingRides.has(ride.id) ? '#888' : '#ff4444', 
+                      color: 'white', 
+                      border: 'none', 
+                      padding: '0.6rem 1.2rem', 
+                      borderRadius: '8px', 
+                      fontWeight: 'bold', 
+                      cursor: endingRides.has(ride.id) ? 'not-allowed' : 'pointer',
+                      transition: 'background 0.2s'
+                    }}
+                  >
+                    {endingRides.has(ride.id) ? 'Ending...' : 'Force End Ride'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Charts Section */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(500px, 1fr))', gap: '1.5rem' }}>
