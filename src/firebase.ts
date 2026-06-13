@@ -16,17 +16,24 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 
 // Initialize Firebase App Check
-if (typeof window !== "undefined") {
+if (typeof window !== \"undefined\") {
+  const recaptchaKey = import.meta.env.VITE_RECAPTCHA_ENTERPRISE_SITE_KEY;
+  
   if (import.meta.env.VITE_FIREBASE_APPCHECK_DEBUG_TOKEN || window.location.hostname === 'localhost') {
     (self as any).FIREBASE_APPCHECK_DEBUG_TOKEN = import.meta.env.VITE_FIREBASE_APPCHECK_DEBUG_TOKEN || true;
   }
-  try {
-    initializeAppCheck(app, {
-      provider: new ReCaptchaEnterpriseProvider(import.meta.env.VITE_RECAPTCHA_ENTERPRISE_SITE_KEY || 'dummy_key'),
-      isTokenAutoRefreshEnabled: true
-    });
-  } catch (e) {
-    console.warn("App Check initialization failed:", e);
+  
+  if (recaptchaKey && recaptchaKey !== 'dummy_key') {
+    try {
+      initializeAppCheck(app, {
+        provider: new ReCaptchaEnterpriseProvider(recaptchaKey),
+        isTokenAutoRefreshEnabled: true
+      });
+    } catch (e) {
+      console.warn(\"App Check initialization failed:\", e);
+    }
+  } else {
+    console.warn(\"App Check skipped: No valid reCAPTCHA key provided.\");
   }
 }
 export const auth = getAuth(app);

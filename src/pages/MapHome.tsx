@@ -2203,7 +2203,7 @@ function MapHome() {
           )}
         </aside>
 
-        <main style={{ flex: 1, position: 'relative' }}>
+        <main style={{ flex: 1, position: 'relative', minHeight: 0, minWidth: 0 }}>
           <div style={{ position: 'absolute', top: '1.5rem', left: '50%', transform: 'translateX(-50%)', zIndex: 100, width: '90%', maxWidth: '400px' }}>
             <ModernAutocomplete 
               placeholder="Search map..." 

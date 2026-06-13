@@ -230,7 +230,7 @@ const ExploreMap: React.FC = () => {
       <SEO title="Explore Mode" />
       <NavBar user={user} onShowInstall={() => setShowInstallTutorial(true)} onShowAuth={() => setShowAuthModal(true)} />
       
-      <div style={{ flex: 1, position: 'relative', width: '100%', height: '100%' }}>
+      <div style={{ flex: 1, position: 'relative', width: '100%', height: '100%', minHeight: 0 }}>
         {!isLoaded ? (
           <div style={{ height: '100%', width: '100%', background: '#121212', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666' }}>Loading...</div>
         ) : (
