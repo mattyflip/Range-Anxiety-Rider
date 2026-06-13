@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, query, onSnapshot, where, updateDoc, doc, setDoc, deleteDoc, Timestamp, serverTimestamp } from 'firebase/firestore';
+import { collection, query, onSnapshot, where, updateDoc, doc, setDoc, deleteDoc, Timestamp, serverTimestamp, collectionGroup } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
 import NavBar from '../shared/ui/NavBar';
 import SEO from '../shared/ui/SEO';
@@ -45,6 +45,7 @@ const AdminAnalytics: React.FC = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [timeframe, setTimeframe] = useState('7D');
+  const [rawUsers, setRawUsers] = useState<any[]>([]);
 
   // Metrics state
   const [totalUsers, setTotalUsers] = useState(0);
@@ -61,35 +62,62 @@ const AdminAnalytics: React.FC = () => {
   const [isGeneratingCode, setIsGeneratingCode] = useState(false);
   const [expandedCode, setExpandedCode] = useState<string | null>(null);
 
-  // Mocked historical data for charts since we don't have historical collections set up for this yet
-  const allUserGrowthData = {
-    'Today': [{ name: '8am', users: 1900 }, { name: '12pm', users: 1950 }, { name: '4pm', users: 1980 }, { name: '8pm', users: 2000 }],
-    '7D': [
-      { name: 'Mon', users: 400 },
-      { name: 'Tue', users: 500 },
-      { name: 'Wed', users: 650 },
-      { name: 'Thu', users: 800 },
-      { name: 'Fri', users: 1100 },
-      { name: 'Sat', users: 1500 },
-      { name: 'Sun', users: 1900 },
-    ],
-    '30D': [
-      { name: 'Week 1', users: 200 },
-      { name: 'Week 2', users: 600 },
-      { name: 'Week 3', users: 1200 },
-      { name: 'Week 4', users: 1900 },
-    ],
-    'All Time': [
-      { name: 'Jan', users: 50 },
-      { name: 'Feb', users: 150 },
-      { name: 'Mar', users: 400 },
-      { name: 'Apr', users: 900 },
-      { name: 'May', users: 1500 },
-      { name: 'Jun', users: 1900 },
-    ]
-  };
-  
-  const userGrowthData = allUserGrowthData[timeframe as keyof typeof allUserGrowthData] || allUserGrowthData['7D'];
+  const userGrowthData = React.useMemo(() => {
+    if (!rawUsers.length) return [];
+    
+    const sorted = rawUsers
+      .map(u => {
+        let d = new Date();
+        if (u.createdAt?.toDate) d = u.createdAt.toDate();
+        else if (typeof u.createdAt === 'string' || typeof u.createdAt === 'number') d = new Date(u.createdAt);
+        return { date: d };
+      })
+      .sort((a, b) => a.date.getTime() - b.date.getTime());
+
+    const now = new Date();
+    let startDate = new Date(0);
+    
+    if (timeframe === 'Today') startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    else if (timeframe === '7D') startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    else if (timeframe === '30D') startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    let baseCount = sorted.filter(u => u.date < startDate).length;
+    const filtered = sorted.filter(u => u.date >= startDate);
+
+    const grouped = new Map<string, number>();
+    
+    filtered.forEach(u => {
+      let key = '';
+      if (timeframe === 'Today') {
+        key = u.date.toLocaleTimeString([], { hour: '2-digit', hour12: true });
+      } else if (timeframe === 'All Time') {
+        key = u.date.toLocaleDateString([], { month: 'short', year: 'numeric' });
+      } else {
+        key = u.date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+      }
+      grouped.set(key, (grouped.get(key) || 0) + 1);
+    });
+
+    const result = [];
+    let currentTotal = baseCount;
+    
+    const keys = Array.from(new Set(filtered.map(u => {
+      if (timeframe === 'Today') return u.date.toLocaleTimeString([], { hour: '2-digit', hour12: true });
+      if (timeframe === 'All Time') return u.date.toLocaleDateString([], { month: 'short', year: 'numeric' });
+      return u.date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    })));
+
+    if (keys.length === 0) {
+        result.push({ name: 'Now', users: baseCount });
+    }
+
+    for (const key of keys) {
+      currentTotal += grouped.get(key) || 0;
+      result.push({ name: key, users: currentTotal });
+    }
+
+    return result;
+  }, [rawUsers, timeframe]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -102,10 +130,14 @@ const AdminAnalytics: React.FC = () => {
     const usersUnsub = onSnapshot(query(collection(db, 'users')), (snap) => {
       setTotalUsers(snap.size);
       let proCount = 0;
+      const users: any[] = [];
       snap.forEach(doc => {
-        if (doc.data().isPro || doc.data().isExploreTier) proCount++;
+        const data = doc.data();
+        if (data.isPro || data.isExploreTier) proCount++;
+        users.push(data);
       });
       setProUsers(proCount);
+      setRawUsers(users);
     });
 
     // Fetch live orgs
@@ -113,23 +145,20 @@ const AdminAnalytics: React.FC = () => {
       setTotalOrgs(snap.size);
     });
 
-    // Using a collectionGroup query to get all live units globally
-    // Note: requires a Firebase index on live_units, but we'll try it
-    // If it fails, the catch block will handle it
-    const fetchLiveUnits = async () => {
-        // Mocking some live unit data for the charts in case collectionGroup fails
-        setLiveUnits([
-            { id: '1', speed: 15, battery: 80 },
-            { id: '2', speed: 22, battery: 45 },
-            { id: '3', speed: 0, battery: 90 },
-            { id: '4', speed: 28, battery: 15 },
-            { id: '5', speed: 12, battery: 60 },
-        ]);
-        setActiveRentals(5);
-        setLoading(false);
-    };
-    
-    fetchLiveUnits();
+    // Fetch live units via collectionGroup
+    const liveUnitsUnsub = onSnapshot(collectionGroup(db, 'live_units'), (snap) => {
+      const units: LiveUnitData[] = [];
+      snap.forEach(d => {
+        units.push({ id: d.id, ...d.data() } as LiveUnitData);
+      });
+      setLiveUnits(units);
+      setActiveRentals(units.length);
+      setLoading(false);
+    }, (err) => {
+      console.error("Live units collectionGroup failed. Ensure index is created.", err);
+      // Fallback if index missing
+      setLoading(false);
+    });
 
     // Fetch active group rides
     const groupRidesUnsub = onSnapshot(query(collection(db, 'group_rides'), where('status', '==', 'active')), (snap) => {
@@ -155,6 +184,7 @@ const AdminAnalytics: React.FC = () => {
       orgsUnsub();
       groupRidesUnsub();
       codesUnsub();
+      liveUnitsUnsub();
     };
   }, [user, userData, authLoading, navigate]);
 
