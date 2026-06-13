@@ -174,6 +174,16 @@ const ExploreMap: React.FC = () => {
     } catch (e: any) { setNotification({ message: `Checkout failed: ${e.message || 'Unknown error'}`, type: 'warning' }); }
   };
 
+  const onMapLoad = useCallback((map: google.maps.Map) => {
+    mapRef.current = map;
+    // Force a resize calculation after a short delay to ensure DOM is settled for WebView
+    setTimeout(() => {
+      if (window.google) {
+        google.maps.event.trigger(map, 'resize');
+      }
+    }, 300);
+  }, []);
+
   if (authLoading) return <div style={{ minHeight: '100vh', background: '#121212' }} />;
 
   const canExplore = userData?.isShopTier || userData?.isExploreTier || (userData?.canHostGroupRide && userData.groupRideExpiresAt && new Date(userData.groupRideExpiresAt.seconds * 1000) > new Date());
@@ -207,10 +217,10 @@ const ExploreMap: React.FC = () => {
           <div style={{ height: '100%', width: '100%', background: '#121212', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666' }}>Loading...</div>
         ) : (
           <GoogleMap
-            mapContainerStyle={{ width: '100%', height: '100%' }}
+            mapContainerStyle={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
             center={path.length > 0 ? path[path.length - 1] : { lat: 40.7128, lng: -74.0060 }}
             zoom={15}
-            onLoad={map => { mapRef.current = map; }}
+            onLoad={onMapLoad}
             options={{ mapId: import.meta.env.VITE_GOOGLE_MAP_ID || 'DEMO_MAP_ID', disableDefaultUI: true }}
           >
             {path.length > 1 && <Polyline path={path} options={{ strokeColor: '#ff6600', strokeOpacity: 1, strokeWeight: 5 }} />}

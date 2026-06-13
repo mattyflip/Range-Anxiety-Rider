@@ -1512,7 +1512,15 @@ function MapHome() {
     setActiveRide(null); setRideParticipants([]);
   };
 
-  const onMapLoad = useCallback((map: google.maps.Map) => { mapRef.current = map; }, []);
+  const onMapLoad = useCallback((map: google.maps.Map) => { 
+    mapRef.current = map; 
+    // Force a resize calculation after a short delay to ensure DOM is settled for WebView
+    setTimeout(() => {
+      if (window.google) {
+        google.maps.event.trigger(map, 'resize');
+      }
+    }, 300);
+  }, []);
 
   const locateMe = () => {
     if (localStorage.getItem('location_disclosure_accepted') !== 'true') {
@@ -1535,6 +1543,8 @@ function MapHome() {
         if (mapRef.current) {
           mapRef.current.panTo(loc);
           mapRef.current.setZoom(16);
+          // Another resize check after panning
+          google.maps.event.trigger(mapRef.current, 'resize');
         }
       };
 
@@ -2268,7 +2278,7 @@ function MapHome() {
           </div>
 
           <GoogleMap 
-            mapContainerStyle={{ width: '100%', height: '100%' }} 
+            mapContainerStyle={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} 
             center={userRole === 'fleet' ? (shopLocation || center) : mapCenter}
             zoom={12}
             onClick={(e) => {

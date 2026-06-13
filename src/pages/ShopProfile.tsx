@@ -219,11 +219,18 @@ const ShopProfile: React.FC = () => {
                 {isLoaded && shopLat && shopLng && (
                   <div style={{ marginBottom: '1.5rem' }}>
                     <label style={{ display: 'block', color: '#888', fontSize: '0.65rem', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Fine-Tune Location (Click map to move pin)</label>
-                    <div style={{ width: '100%', height: '250px', borderRadius: '15px', overflow: 'hidden', border: '1px solid #333' }}>
+                    <div style={{ width: '100%', height: '250px', borderRadius: '15px', overflow: 'hidden', border: '1px solid #333', position: 'relative' }}>
                       <GoogleMap
-                        mapContainerStyle={{ width: '100%', height: '100%' }}
+                        mapContainerStyle={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
                         center={{ lat: shopLat, lng: shopLng }}
                         zoom={17}
+                        onLoad={(map) => {
+                          setTimeout(() => {
+                            if (window.google) {
+                              google.maps.event.trigger(map, 'resize');
+                            }
+                          }, 300);
+                        }}
                         onClick={(e) => {
                           if (e.latLng) {
                             setShopLat(e.latLng.lat());
