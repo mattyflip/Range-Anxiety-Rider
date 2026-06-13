@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { PushNotifications } from '@capacitor/push-notifications';
 import { Device } from '@capacitor/device';
+import { Capacitor } from '@capacitor/core';
 import { doc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { db } from '../firebase';
 import type { User } from 'firebase/auth';
@@ -64,7 +65,9 @@ export const usePushNotifications = (user: User | null) => {
 
     // Cleanup listeners
     return () => {
-      PushNotifications.removeAllListeners();
+      if (Capacitor.isNativePlatform()) {
+        PushNotifications.removeAllListeners();
+      }
     };
   }, [user?.uid]);
 };

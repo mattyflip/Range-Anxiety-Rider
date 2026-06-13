@@ -175,5 +175,9 @@ service cloud.firestore {
         allow update, delete: if isSignedIn() && (request.auth.uid == resource.data.riderId || get(/databases/$(database)/documents/organizations/$(orgId)).data.ownerId == request.auth.uid || isAdmin());
       }
     }
+
+    match /{path=**}/rental_requests/{requestId} {
+      allow read: if isSignedIn() && request.auth.uid == resource.data.riderId;
+    }
   }
 }
