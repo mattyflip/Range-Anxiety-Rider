@@ -6,7 +6,12 @@ const config: CapacitorConfig = {
   webDir: 'dist',
   server: {
     androidScheme: 'https',
-    hostname: 'rangeanxiety.app'
+    hostname: 'rangeanxiety.app',
+    allowNavigation: [
+      "*.google.com",
+      "*.googleapis.com",
+      "*.gstatic.com"
+    ]
   }
 };
 
