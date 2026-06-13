@@ -247,6 +247,7 @@ function MapHome() {
   const [settingsDirty, setSettingsDirty] = useState(true);
   const [userLocation, setUserLocation] = useState<google.maps.LatLngLiteral | null>(null);
   const [mapCenter, setMapCenter] = useState<google.maps.LatLngLiteral>(center);
+  const [mapZoom, setMapZoom] = useState(12);
   const [loading, setLoading] = useState(true);
   const [showRouteReplay, setShowRouteReplay] = useState(false);
   const [isCalculating, setIsCalculating] = useState(false);
@@ -521,10 +522,9 @@ function MapHome() {
       navigator.geolocation.getCurrentPosition((pos) => {
         const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         setUserLocation(loc);
-        if (mapRef.current && userRole !== 'fleet') {
+        if (userRole !== 'fleet') {
           setMapCenter(loc);
-          mapRef.current.panTo(loc);
-          mapRef.current.setZoom(11); // 10 mile radius approx
+          setMapZoom(11); // 10 mile radius approx
         }
       }, (err) => {
         console.warn("Initial auto-centering failed:", err.message);
@@ -543,9 +543,9 @@ function MapHome() {
            setLocations(['Recorded Ride Start', 'Recorded Ride End', '', '', '']);
            setPois([]);
            localStorage.removeItem('ebike_load_route');
-           if (mapRef.current && data.path.length > 0) {
-              mapRef.current.panTo(data.path[0]);
-              mapRef.current.setZoom(14);
+           if (data.path.length > 0) {
+              setMapCenter(data.path[0]);
+              setMapZoom(14);
            }
         } else if (data && typeof data.origin === 'string' && data.origin.trim()) {
           const wps = data.waypoints?.filter((w: any) => typeof w === 'string') || [];
@@ -571,9 +571,9 @@ function MapHome() {
   }, [authInitialized, user]);
 
   useEffect(() => {
-    if (userData?.homeRegion && mapRef.current) {
+    if (userData?.homeRegion) {
       const coords = STATE_COORDINATES[userData.homeRegion];
-      if (coords) { mapRef.current.panTo(coords); mapRef.current.setZoom(8); }
+      if (coords) { setMapCenter(coords); setMapZoom(8); }
     }
   }, [userData?.homeRegion]);
 
@@ -689,7 +689,8 @@ function MapHome() {
 
     const firstStep = response.routes[0].legs[0].steps[0];
     speak(`Starting trip. ${firstStep.instructions.replace(/<[^>]*>?/gm, '')}`);
-    if (mapRef.current) { mapRef.current.setZoom(18); mapRef.current.setTilt(45); }
+    if (mapRef.current) { mapRef.current.setTilt(45); }
+    setMapZoom(18);
   };
 
   const startFreeTracking = () => {
@@ -701,10 +702,10 @@ function MapHome() {
     setActualDistanceMiles(0);
     setLastNavLocation(userLocation);
     setRealTimeSpeedMph(0);
+    setMapZoom(18);
     if (mapRef.current) {
-       mapRef.current.setZoom(18);
        mapRef.current.setTilt(45);
-       if (userLocation) mapRef.current.panTo(userLocation);
+       if (userLocation) { setMapCenter(userLocation); }
     }
   };
 
@@ -1530,11 +1531,8 @@ function MapHome() {
       const handleSuccess = (pos: GeolocationPosition) => {
         const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         setUserLocation(loc);
-        if (mapRef.current) {
-          setMapCenter(loc);
-          mapRef.current.panTo(loc);
-          mapRef.current.setZoom(16); // closer zoom for "locate me"
-        }
+        setMapCenter(loc);
+        setMapZoom(16); // closer zoom for "locate me"
       };
 
       // Try High Accuracy First
@@ -1780,8 +1778,8 @@ function MapHome() {
                         key={lu.id} 
                         onClick={() => {
                            if (mapRef.current) {
-                             mapRef.current.panTo(lu.position);
-                             mapRef.current.setZoom(15);
+                             setMapCenter(lu.position);
+                             setMapZoom(15);
                              setMessageRiderTarget(lu);
                            }
                         }}
@@ -2268,8 +2266,8 @@ function MapHome() {
 
           <GoogleMap 
             mapContainerStyle={{ width: '100%', height: '100%' }} 
-            center={userRole === 'fleet' ? (shopLocation || center) : mapCenter} 
-            zoom={12} 
+            center={userRole === 'fleet' ? (shopLocation || center) : mapCenter}
+            zoom={mapZoom}
             onClick={(e) => {
               if (userRole === 'fleet' && isDrawingPerimeter) {
                 if (e.latLng) {
