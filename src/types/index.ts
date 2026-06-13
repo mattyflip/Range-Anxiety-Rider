@@ -75,6 +75,7 @@ export interface UserProfile {
   profilePic?: string;
   role: 'rider' | 'fleet';
   isAdmin: boolean;
+  isBetaTester?: boolean;
   isPro: boolean; // B2C Pro
   isExploreTier?: boolean; // Legacy/Separate tier
   isShopTier?: boolean; // B2B Starter or higher
