@@ -1524,6 +1524,8 @@ function MapHome() {
       return;
     }
 
+    showToast("Finding your location...", "info");
+
     if (navigator.geolocation) {
       const handleSuccess = (pos: GeolocationPosition) => {
         const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
@@ -1531,7 +1533,7 @@ function MapHome() {
         if (mapRef.current) {
           setMapCenter(loc);
           mapRef.current.panTo(loc);
-          mapRef.current.setZoom(11); // 10 mile radius approx
+          mapRef.current.setZoom(16); // closer zoom for "locate me"
         }
       };
 
@@ -1548,18 +1550,18 @@ function MapHome() {
               handleSuccess,
               (fallbackErr) => {
                  if (fallbackErr.code === 3) {
-                   showToast("Location request timed out completely. Try again or check your device settings.");
+                   showToast("Location request timed out. Please ensure you have a clear view of the sky or try again later.");
                  } else {
-                   showToast("Location error (fallback): " + fallbackErr.message);
+                   showToast("Failed to get location. " + fallbackErr.message);
                  }
               },
-              { enableHighAccuracy: false, timeout: 5000, maximumAge: 30000 }
+              { enableHighAccuracy: false, timeout: 15000, maximumAge: 60000 }
             );
           } else {
-            showToast("Location error: " + err.message);
+             showToast("Failed to get location. " + err.message);
           }
         },
-        { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 }
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
     } else {
       showToast("Geolocation is not supported by your browser.");
