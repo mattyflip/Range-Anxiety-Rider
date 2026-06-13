@@ -330,7 +330,7 @@ function MapHome() {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [upgradeContext, setUpgradeContext] = useState({ title: '', message: '', feature: '' });
   
-  const limits = getTierLimits(userData);
+  
 
   const handleOpenRouteReplay = () => {
     if (!(userData?.isBetaTester || userData?.isAdmin)) {
