@@ -19,7 +19,7 @@ const ShopPaywallModal: React.FC<ShopPaywallModalProps> = ({ userEmail }) => {
   const body = encodeURIComponent(
     `Hi,\n\nI'm interested in setting up a shop account for the Range Anxiety Rider platform.\n\nMy account email is: ${userEmail || '(not provided)'}\n\nI'd love to learn more about the $39.99/month plan and schedule an onboarding consultation.\n\nThanks!`
   );
-  const mailtoLink = `mailto:Info@rangeanxietyrider.com?subject=${subject}&body=${body}`;
+  const mailtoLink = `mailto:mattyfliptv@gmail.com?subject=${subject}&body=${body}`;
 
   return (
     <div style={{
@@ -156,7 +156,7 @@ const ShopPaywallModal: React.FC<ShopPaywallModalProps> = ({ userEmail }) => {
         {/* Fine Print */}
         <p style={{ textAlign: 'center', color: '#444', fontSize: '0.72rem', lineHeight: 1.6, margin: 0 }}>
           Once your account is activated you'll gain immediate access to all shop features.<br />
-          Contact us at <a href="mailto:Info@rangeanxietyrider.com" style={{ color: '#ff6600', textDecoration: 'none' }}>Info@rangeanxietyrider.com</a>
+          Contact us at <a href="mailto:mattyfliptv@gmail.com" style={{ color: '#ff6600', textDecoration: 'none' }}>mattyfliptv@gmail.com</a>
         </p>
       </div>
     </div>
