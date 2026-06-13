@@ -68,7 +68,7 @@ const FleetDashboard = () => {
     else if (nominalVoltage === 36) { min = 30; max = 42; }
     else if (nominalVoltage === 72) { min = 60; max = 84; }
     else return voltage;
-    let pct = ((voltage - min) / (max - min)) * 100;
+    const pct = ((voltage - min) / (max - min)) * 100;
     return Math.max(0, Math.min(100, Math.round(pct)));
   };
 
