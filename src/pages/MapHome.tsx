@@ -30,7 +30,7 @@ import { calculateRangePolygon, calculateBurnRate, calculateHeadwind } from '../
 import Toast, { type ToastType } from '../shared/ui/Toast';
 import LocationDisclosureModal from '../shared/ui/LocationDisclosureModal';
 import UpgradeModal from '../shared/ui/UpgradeModal';
-import { getTierLimits } from '../utils/tierLimits';
+
 
 interface GoogleRouteStep {
   navigationInstruction?: { instructions: string };
