@@ -2003,6 +2003,19 @@ function MapHome() {
             }} />
           </section>
 
+          {tripMode === 'plan' ? (
+            <div style={{ marginTop: '1rem' }}>
+              {showHelpMode && <HelpBubble text="Once everything is set, calculate your route to see your remaining battery, efficiency, and trip details!" />}
+              <button className="tour-calculate" onClick={handleCalculate} disabled={isCalculating} style={{ width: '100%', padding: '1rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold', opacity: isCalculating ? 0.5 : 1 }}>
+                {isCalculating ? 'CALCULATING...' : 'UPDATE ROUTE'}
+              </button>
+            </div>
+          ) : (
+            <button onClick={startFreeTracking} style={{ width: '100%', padding: '1.2rem', background: 'linear-gradient(to bottom, #34a853, #2e9148)', color: 'white', border: 'none', borderRadius: '16px', fontWeight: 900, fontSize: '1.2rem', marginTop: '1rem', boxShadow: '0 4px 15px rgba(52,168,83,0.4)' }}>
+              🏁 START TRACKING
+            </button>
+          )}
+
           <section className="form-group" style={{ borderTop: '1px solid #333', paddingTop: '1rem', marginTop: '1rem' }}>
             <label style={{ color: '#ff6600' }}>Group Ride</label>
             {!activeRide ? (
@@ -2044,19 +2057,6 @@ function MapHome() {
               </div>
             )}
           </section>
-
-          {tripMode === 'plan' ? (
-            <div style={{ marginTop: '1rem' }}>
-              {showHelpMode && <HelpBubble text="Once everything is set, calculate your route to see your remaining battery, efficiency, and trip details!" />}
-              <button className="tour-calculate" onClick={handleCalculate} disabled={isCalculating} style={{ width: '100%', padding: '1rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold', opacity: isCalculating ? 0.5 : 1 }}>
-                {isCalculating ? 'CALCULATING...' : 'UPDATE ROUTE'}
-              </button>
-            </div>
-          ) : (
-            <button onClick={startFreeTracking} style={{ width: '100%', padding: '1.2rem', background: 'linear-gradient(to bottom, #34a853, #2e9148)', color: 'white', border: 'none', borderRadius: '16px', fontWeight: 900, fontSize: '1.2rem', marginTop: '1rem', boxShadow: '0 4px 15px rgba(52,168,83,0.4)' }}>
-              🏁 START TRACKING
-            </button>
-          )}
 
           {/* Route Alternatives Picker */}
           {allAnalyzedRoutes.length > 1 && (
