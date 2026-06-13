@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { auth, db } from '../../firebase'
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth'
-import { doc, setDoc, serverTimestamp, getDocs, collection, query, where } from 'firebase/firestore'
+import { doc, setDoc, serverTimestamp, getDocs, collection, query, where, getDoc, updateDoc, arrayUnion } from 'firebase/firestore'
 import TermsOfService from '../legal/TermsOfService'
 import PrivacyPolicy from '../legal/PrivacyPolicy'
 import { US_STATES, OTHER_REGIONS, calculateAge, getEbikeSafetyInfo } from '../../utils/ebikeLaws'
@@ -24,6 +24,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
   const [agreedToToS, setAgreedToToS] = useState(false);
   const [showToSPage, setShowToSPage] = useState(false);
   const [showPrivacyPage, setShowPrivacyPage] = useState(false);
+  const [referralCode, setReferralCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -68,6 +69,29 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
           return;
         }
 
+        let isValidReferralCode = false;
+        let referralDocRef = null;
+        let referralData = null;
+
+        if (referralCode.trim()) {
+          referralDocRef = doc(db, 'referral_codes', referralCode.trim());
+          const referralSnap = await getDoc(referralDocRef);
+          if (!referralSnap.exists()) {
+            setError("Invalid referral code.");
+            return;
+          }
+          referralData = referralSnap.data();
+          if (referralData.expiresAt && referralData.expiresAt.toMillis() < Date.now()) {
+            setError("This referral code has expired.");
+            return;
+          }
+          if (referralData.currentUses >= referralData.maxUses) {
+            setError("This referral code has reached its maximum number of uses.");
+            return;
+          }
+          isValidReferralCode = true;
+        }
+
         const userCredential = await createUserWithEmailAndPassword(auth, authEmail, authPass);
         const normalizedEmail = authEmail.trim().toLowerCase();
         
@@ -98,9 +122,21 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
             ageAtSignup: age,
             isPro: false, 
             isAdmin: false,
+            isBetaTester: isValidReferralCode,
             createdAt: serverTimestamp(),
             uid: userCredential.user.uid
           });
+          
+          if (isValidReferralCode && referralDocRef && referralData) {
+            try {
+              await updateDoc(referralDocRef, {
+                currentUses: referralData.currentUses + 1,
+                usedBy: arrayUnion({ uid: userCredential.user.uid, email: normalizedEmail, usedAt: new Date().toISOString() })
+              });
+            } catch (e) {
+              console.error("Failed to update referral code usage", e);
+            }
+          }
         } catch (e: any) { 
           console.error("User profile creation failed:", e);
           throw new Error("Failed to create user profile: " + e.message);
@@ -190,6 +226,10 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
             <div className="form-group" style={{ marginBottom: '1rem' }}>
               <label style={{ display: 'block', color: '#888', fontSize: '0.7rem', marginBottom: '0.3rem' }}>City (Optional)</label>
               <input type="text" value={city} onChange={e => setCity(e.target.value)} style={{ width: '100%', padding: '0.6rem', background: '#222', border: '1px solid #444', borderRadius: '4px', color: 'white' }} />
+            </div>
+            <div className="form-group" style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', color: '#888', fontSize: '0.7rem', marginBottom: '0.3rem' }}>Beta Referral Code (Optional)</label>
+              <input type="text" value={referralCode} onChange={e => setReferralCode(e.target.value)} style={{ width: '100%', padding: '0.6rem', background: '#222', border: '1px solid #444', borderRadius: '4px', color: 'white' }} />
             </div>
           </>
         )}

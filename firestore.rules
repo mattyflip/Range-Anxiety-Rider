@@ -143,6 +143,17 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
     
+    match /referral_codes/{codeId} {
+      allow read: if true;
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || (
+        isSignedIn() &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['currentUses', 'usedBy']) &&
+        request.resource.data.currentUses == resource.data.currentUses + 1 &&
+        request.resource.data.currentUses <= resource.data.maxUses
+      );
+    }
+    
     match /bike_submissions/{docId} {
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
       allow read: if isAdmin();

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, query, onSnapshot, where, updateDoc, doc } from 'firebase/firestore';
+import { collection, query, onSnapshot, where, updateDoc, doc, setDoc, deleteDoc, Timestamp, serverTimestamp } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
 import NavBar from '../shared/ui/NavBar';
 import SEO from '../shared/ui/SEO';
@@ -27,6 +27,16 @@ interface ActiveGroupRide {
   [key: string]: any;
 }
 
+interface ReferralCodeData {
+  id: string;
+  maxUses: number;
+  currentUses: number;
+  expiresAt: Timestamp | null;
+  createdBy: string;
+  createdAt: Timestamp;
+  usedBy: Array<{ uid: string; email: string; usedAt: string }>;
+}
+
 const COLORS = ['#ff6600', '#ff9900', '#00C49F', '#FFBB28', '#FF8042'];
 
 const AdminAnalytics: React.FC = () => {
@@ -44,6 +54,12 @@ const AdminAnalytics: React.FC = () => {
   const [liveUnits, setLiveUnits] = useState<LiveUnitData[]>([]);
   const [activeGroupRides, setActiveGroupRides] = useState<ActiveGroupRide[]>([]);
   const [endingRides, setEndingRides] = useState<Set<string>>(new Set());
+  
+  const [referralCodes, setReferralCodes] = useState<ReferralCodeData[]>([]);
+  const [newCodeMaxUses, setNewCodeMaxUses] = useState(10);
+  const [newCodeExpiresInDays, setNewCodeExpiresInDays] = useState(7);
+  const [isGeneratingCode, setIsGeneratingCode] = useState(false);
+  const [expandedCode, setExpandedCode] = useState<string | null>(null);
 
   // Mocked historical data for charts since we don't have historical collections set up for this yet
   const allUserGrowthData = {
@@ -125,10 +141,20 @@ const AdminAnalytics: React.FC = () => {
       setActiveGroupRides(rides);
     });
 
+    // Fetch referral codes
+    const codesUnsub = onSnapshot(query(collection(db, 'referral_codes')), (snap) => {
+      const codes: ReferralCodeData[] = [];
+      snap.forEach(d => {
+        codes.push({ id: d.id, ...d.data() } as ReferralCodeData);
+      });
+      setReferralCodes(codes);
+    });
+
     return () => {
       usersUnsub();
       orgsUnsub();
       groupRidesUnsub();
+      codesUnsub();
     };
   }, [user, userData, authLoading, navigate]);
 
@@ -155,6 +181,39 @@ const AdminAnalytics: React.FC = () => {
           newSet.delete(rideId);
           return newSet;
         });
+      }
+    }
+  };
+
+  const handleGenerateCode = async () => {
+    setIsGeneratingCode(true);
+    try {
+      const codeStr = Math.random().toString(36).substring(2, 8).toUpperCase();
+      const expirationDate = new Date();
+      expirationDate.setDate(expirationDate.getDate() + newCodeExpiresInDays);
+
+      await setDoc(doc(db, 'referral_codes', codeStr), {
+        maxUses: newCodeMaxUses,
+        currentUses: 0,
+        expiresAt: Timestamp.fromDate(expirationDate),
+        createdBy: user?.uid,
+        createdAt: serverTimestamp(),
+        usedBy: []
+      });
+    } catch (e: any) {
+      console.error("Failed to generate code:", e);
+      alert("Failed to generate code: " + e.message);
+    } finally {
+      setIsGeneratingCode(false);
+    }
+  };
+  
+  const handleDeleteCode = async (codeId: string) => {
+    if (window.confirm(`Are you sure you want to delete referral code ${codeId}?`)) {
+      try {
+        await deleteDoc(doc(db, 'referral_codes', codeId));
+      } catch (e) {
+        console.error("Failed to delete code:", e);
       }
     }
   };
@@ -240,6 +299,80 @@ const AdminAnalytics: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* Beta Referral Codes */}
+        <div style={{ background: '#1a1a1a', padding: '1.5rem', borderRadius: '16px', border: '1px solid #333', marginBottom: '2rem' }}>
+          <h3 style={{ margin: '0 0 1rem 0', color: '#ff6600' }}>Beta Referral Codes</h3>
+          
+          <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            <div style={{ flex: 1, minWidth: '150px' }}>
+              <label style={{ display: 'block', color: '#888', fontSize: '0.8rem', marginBottom: '0.5rem' }}>Max Uses</label>
+              <input type="number" min="1" value={newCodeMaxUses} onChange={e => setNewCodeMaxUses(Number(e.target.value))} style={{ width: '100%', padding: '0.6rem', background: '#222', border: '1px solid #444', borderRadius: '8px', color: 'white' }} />
+            </div>
+            <div style={{ flex: 1, minWidth: '150px' }}>
+              <label style={{ display: 'block', color: '#888', fontSize: '0.8rem', marginBottom: '0.5rem' }}>Expires In (Days)</label>
+              <input type="number" min="1" value={newCodeExpiresInDays} onChange={e => setNewCodeExpiresInDays(Number(e.target.value))} style={{ width: '100%', padding: '0.6rem', background: '#222', border: '1px solid #444', borderRadius: '8px', color: 'white' }} />
+            </div>
+            <button 
+              onClick={handleGenerateCode} 
+              disabled={isGeneratingCode}
+              style={{ background: '#ff6600', color: 'white', border: 'none', padding: '0.6rem 1.5rem', borderRadius: '8px', fontWeight: 'bold', cursor: isGeneratingCode ? 'not-allowed' : 'pointer', height: '40px' }}
+            >
+              {isGeneratingCode ? 'Generating...' : 'Generate New Code'}
+            </button>
+          </div>
+
+          <div style={{ display: 'grid', gap: '1rem' }}>
+            {referralCodes.length === 0 ? (
+              <div style={{ color: '#888', fontSize: '0.9rem' }}>No referral codes generated yet.</div>
+            ) : (
+              referralCodes.map(code => (
+                <div key={code.id} style={{ background: '#222', padding: '1rem', borderRadius: '12px', border: '1px solid #444' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <div style={{ color: 'white', fontWeight: 900, fontSize: '1.2rem', letterSpacing: '2px' }}>{code.id}</div>
+                      <div style={{ color: '#888', fontSize: '0.8rem', marginTop: '0.3rem' }}>
+                        Uses: <span style={{ color: code.currentUses >= code.maxUses ? '#ff4444' : '#00C49F' }}>{code.currentUses}</span> / {code.maxUses}
+                        <span style={{ margin: '0 0.5rem' }}>|</span>
+                        Expires: {code.expiresAt ? new Date(code.expiresAt.toMillis()).toLocaleDateString() : 'Never'}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button 
+                        onClick={() => setExpandedCode(expandedCode === code.id ? null : code.id)}
+                        style={{ background: '#333', color: 'white', border: 'none', padding: '0.4rem 0.8rem', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}
+                      >
+                        {expandedCode === code.id ? 'Hide Users' : `View Users (${code.usedBy?.length || 0})`}
+                      </button>
+                      <button 
+                        onClick={() => handleDeleteCode(code.id)}
+                        style={{ background: 'rgba(255,68,68,0.2)', color: '#ff4444', border: 'none', padding: '0.4rem 0.8rem', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                  {expandedCode === code.id && (
+                    <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #333' }}>
+                      {(!code.usedBy || code.usedBy.length === 0) ? (
+                        <div style={{ color: '#888', fontSize: '0.8rem' }}>No users have used this code yet.</div>
+                      ) : (
+                        <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                          {code.usedBy.map((u, i) => (
+                            <li key={i} style={{ color: '#ccc', fontSize: '0.8rem', display: 'flex', justifyContent: 'space-between' }}>
+                              <span>{u.email}</span>
+                              <span style={{ color: '#888' }}>{new Date(u.usedAt).toLocaleDateString()}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
 
         {/* Charts Section */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(500px, 1fr))', gap: '1.5rem' }}>
