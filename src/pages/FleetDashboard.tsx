@@ -10,6 +10,7 @@ import Toast, { type ToastType } from '../shared/ui/Toast'
 import ConfirmationModal from '../shared/ui/ConfirmationModal'
 import type { Bike, LiveUnit, Notification } from '../types';
 import { useUserData } from '../hooks/useUserData';
+import ShopPaywallModal from '../shared/ui/ShopPaywallModal';
 
 const FleetDashboard = () => {
   const navigate = useNavigate();
@@ -514,6 +515,12 @@ const FleetDashboard = () => {
   };
 
   if (loading) return <div style={{ color: 'white', padding: '4rem', textAlign: 'center' }}>Loading Fleet Data...</div>;
+
+  // Paywall: fleet users who haven't subscribed to the shop tier see the upgrade screen
+  const isSubscribed = userData?.isShopTier || userData?.isAdmin || false;
+  if (!isSubscribed) {
+    return <ShopPaywallModal userEmail={user?.email || undefined} />;
+  }
 
   const rentedBikes = fleetBikes.filter(b => b.status === 'rented');
   const availableBikes = fleetBikes.filter(b => b.status === 'available');
