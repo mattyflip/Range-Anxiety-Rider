@@ -16,7 +16,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 
 // Initialize Firebase App Check
-if (typeof window !== \"undefined\") {
+if (typeof window !== "undefined") {
   const recaptchaKey = import.meta.env.VITE_RECAPTCHA_ENTERPRISE_SITE_KEY;
   
   if (import.meta.env.VITE_FIREBASE_APPCHECK_DEBUG_TOKEN || window.location.hostname === 'localhost') {
@@ -30,10 +30,10 @@ if (typeof window !== \"undefined\") {
         isTokenAutoRefreshEnabled: true
       });
     } catch (e) {
-      console.warn(\"App Check initialization failed:\", e);
+      console.warn("App Check initialization failed:", e);
     }
   } else {
-    console.warn(\"App Check skipped: No valid reCAPTCHA key provided.\");
+    console.warn("App Check skipped: No valid reCAPTCHA key provided.");
   }
 }
 export const auth = getAuth(app);
