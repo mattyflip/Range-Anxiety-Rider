@@ -247,7 +247,6 @@ function MapHome() {
   const [settingsDirty, setSettingsDirty] = useState(true);
   const [userLocation, setUserLocation] = useState<google.maps.LatLngLiteral | null>(null);
   const [mapCenter, setMapCenter] = useState<google.maps.LatLngLiteral>(center);
-  const [mapZoom, setMapZoom] = useState(12);
   const [loading, setLoading] = useState(true);
   const [showRouteReplay, setShowRouteReplay] = useState(false);
   const [isCalculating, setIsCalculating] = useState(false);
@@ -523,8 +522,9 @@ function MapHome() {
         const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         setUserLocation(loc);
         if (userRole !== 'fleet') {
-          setMapCenter(loc);
-          setMapZoom(11); // 10 mile radius approx
+          // Imperatively pan — do NOT call setMapCenter here or the re-render will reset zoom to 12
+          if (mapRef.current) mapRef.current.panTo(loc);
+          if (mapRef.current) mapRef.current.setZoom(11);
         }
       }, (err) => {
         console.warn("Initial auto-centering failed:", err.message);
@@ -543,9 +543,9 @@ function MapHome() {
            setLocations(['Recorded Ride Start', 'Recorded Ride End', '', '', '']);
            setPois([]);
            localStorage.removeItem('ebike_load_route');
-           if (data.path.length > 0) {
-              setMapCenter(data.path[0]);
-              setMapZoom(14);
+           if (data.path.length > 0 && mapRef.current) {
+              mapRef.current.panTo(data.path[0]);
+              mapRef.current.setZoom(14);
            }
         } else if (data && typeof data.origin === 'string' && data.origin.trim()) {
           const wps = data.waypoints?.filter((w: any) => typeof w === 'string') || [];
@@ -571,9 +571,10 @@ function MapHome() {
   }, [authInitialized, user]);
 
   useEffect(() => {
-    if (userData?.homeRegion) {
+    if (userData?.homeRegion && mapRef.current) {
       const coords = STATE_COORDINATES[userData.homeRegion];
-      if (coords) { setMapCenter(coords); setMapZoom(8); }
+      // Imperatively pan — do NOT call setMapCenter or next re-render resets zoom
+      if (coords) { mapRef.current.panTo(coords); mapRef.current.setZoom(8); }
     }
   }, [userData?.homeRegion]);
 
@@ -689,8 +690,7 @@ function MapHome() {
 
     const firstStep = response.routes[0].legs[0].steps[0];
     speak(`Starting trip. ${firstStep.instructions.replace(/<[^>]*>?/gm, '')}`);
-    if (mapRef.current) { mapRef.current.setTilt(45); }
-    setMapZoom(18);
+    if (mapRef.current) { mapRef.current.setZoom(18); mapRef.current.setTilt(45); }
   };
 
   const startFreeTracking = () => {
@@ -702,10 +702,10 @@ function MapHome() {
     setActualDistanceMiles(0);
     setLastNavLocation(userLocation);
     setRealTimeSpeedMph(0);
-    setMapZoom(18);
     if (mapRef.current) {
+       mapRef.current.setZoom(18);
        mapRef.current.setTilt(45);
-       if (userLocation) { setMapCenter(userLocation); }
+       if (userLocation) mapRef.current.panTo(userLocation);
     }
   };
 
@@ -1531,8 +1531,11 @@ function MapHome() {
       const handleSuccess = (pos: GeolocationPosition) => {
         const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         setUserLocation(loc);
-        setMapCenter(loc);
-        setMapZoom(16); // closer zoom for "locate me"
+        // Imperatively pan+zoom — do NOT call setMapCenter or the re-render resets zoom={12}
+        if (mapRef.current) {
+          mapRef.current.panTo(loc);
+          mapRef.current.setZoom(16);
+        }
       };
 
       // Try High Accuracy First
@@ -1778,8 +1781,8 @@ function MapHome() {
                         key={lu.id} 
                         onClick={() => {
                            if (mapRef.current) {
-                             setMapCenter(lu.position);
-                             setMapZoom(15);
+                             mapRef.current.panTo(lu.position);
+                             mapRef.current.setZoom(15);
                              setMessageRiderTarget(lu);
                            }
                         }}
@@ -2267,16 +2270,7 @@ function MapHome() {
           <GoogleMap 
             mapContainerStyle={{ width: '100%', height: '100%' }} 
             center={userRole === 'fleet' ? (shopLocation || center) : mapCenter}
-            zoom={mapZoom}
-            onZoomChanged={() => {
-              if (mapRef.current) setMapZoom(mapRef.current.getZoom() ?? 12);
-            }}
-            onCenterChanged={() => {
-              if (mapRef.current && !isCameraLocked && !isNavigating && !isTrackingFreeRide) {
-                const c = mapRef.current.getCenter();
-                if (c) setMapCenter({ lat: c.lat(), lng: c.lng() });
-              }
-            }}
+            zoom={12}
             onClick={(e) => {
               if (userRole === 'fleet' && isDrawingPerimeter) {
                 if (e.latLng) {
