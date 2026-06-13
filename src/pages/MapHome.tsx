@@ -1512,6 +1512,12 @@ function MapHome() {
     setActiveRide(null); setRideParticipants([]);
   };
 
+  const setRideLeader = async (participantId: string) => {
+    if (!activeRide || user?.uid !== activeRide.creatorId) return;
+    await updateDoc(doc(db, "group_rides", activeRide.id), { leaderId: participantId });
+    setActiveRide({ ...activeRide, leaderId: participantId } as any);
+  };
+
   const onMapLoad = useCallback((map: google.maps.Map) => { 
     mapRef.current = map; 
     // Force a resize calculation after a short delay
@@ -2082,6 +2088,19 @@ function MapHome() {
                 <div style={{ background: 'rgba(52,168,83,0.1)', padding: '1rem', borderRadius: '12px', border: '1px solid #34a853' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}><strong>{activeRide.name}</strong> <span>PIN: {activeRide.pin}</span></div>
                   <div style={{ margin: '0.5rem 0', fontSize: '0.8rem' }}>{rideParticipants.length} Participants</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '0.8rem', maxHeight: '150px', overflowY: 'auto' }}>
+                    {rideParticipants.map(p => (
+                      <div key={p.userId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.2)', padding: '0.4rem', borderRadius: '4px' }}>
+                        <span style={{ fontSize: '0.8rem', color: 'white', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                          {p.name} 
+                          {activeRide.leaderId === p.userId && <span style={{ color: '#34a853', fontSize: '0.7rem', fontWeight: 'bold' }}>★ LEADER</span>}
+                        </span>
+                        {user?.uid === activeRide.creatorId && activeRide.leaderId !== p.userId && (
+                          <button onClick={() => setRideLeader(p.userId)} style={{ padding: '0.2rem 0.5rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '4px', fontSize: '0.6rem', cursor: 'pointer' }}>Make Leader</button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
                     <button onClick={leaveRide} style={{ flex: 1, padding: '0.5rem', background: '#444', border: 'none', borderRadius: '4px', color: 'white' }}>Leave</button>
                     {user?.uid === activeRide.creatorId && <button onClick={endRide} style={{ flex: 1, padding: '0.5rem', background: '#d93025', border: 'none', borderRadius: '4px', color: 'white', fontWeight: 'bold' }}>End</button>}
@@ -2496,10 +2515,10 @@ function MapHome() {
               {rideParticipants.map(p => (
                 <AdvancedMarker key={p.userId} position={{ lat: p.lat, lng: p.lng }} title={p.name}>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                    <div style={{ background: activeRide?.creatorId === p.userId ? '#34a853' : '#ff6600', color: 'white', padding: '4px 10px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 'bold', border: '2px solid white', marginBottom: '4px', whiteSpace: 'nowrap', boxShadow: '0 4px 10px rgba(0,0,0,0.5)' }}>
-                      {p.name}
+                    <div style={{ background: activeRide?.leaderId === p.userId ? '#34a853' : (activeRide?.creatorId === p.userId ? '#ff6600' : '#444'), color: 'white', padding: '4px 10px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 'bold', border: '2px solid white', marginBottom: '4px', whiteSpace: 'nowrap', boxShadow: '0 4px 10px rgba(0,0,0,0.5)' }}>
+                      {p.name} {activeRide?.leaderId === p.userId && ' ★'}
                     </div>
-                    <div style={{ background: 'white', width: '28px', height: '28px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: `2px solid ${activeRide?.creatorId === p.userId ? '#34a853' : '#ff6600'}`, boxShadow: '0 4px 10px rgba(0,0,0,0.3)' }}>🚴</div>
+                    <div style={{ background: 'white', width: '28px', height: '28px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: `2px solid ${activeRide?.leaderId === p.userId ? '#34a853' : (activeRide?.creatorId === p.userId ? '#ff6600' : '#444')}`, boxShadow: '0 4px 10px rgba(0,0,0,0.3)' }}>🚴</div>
                   </div>
                 </AdvancedMarker>
               ))}
