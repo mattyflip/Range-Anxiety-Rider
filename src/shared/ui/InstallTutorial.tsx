@@ -20,7 +20,7 @@ const InstallTutorial: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       right: 0,
       bottom: 0,
       backgroundColor: 'rgba(0,0,0,0.9)',
-      zIndex: 20000,
+      zIndex: 200000,
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',

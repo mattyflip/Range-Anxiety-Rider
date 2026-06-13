@@ -41,7 +41,7 @@ const Toast: React.FC<ToastProps> = ({ message, type = 'info', onClose, duration
         padding: '12px 24px',
         borderRadius: '8px',
         boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-        zIndex: 100002, // Above other overlays
+        zIndex: 300000, // Above other overlays
         display: 'flex',
         alignItems: 'center',
         gap: '12px',

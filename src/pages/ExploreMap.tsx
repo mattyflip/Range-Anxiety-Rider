@@ -223,7 +223,7 @@ const ExploreMap: React.FC = () => {
         )}
 
         {notification && (
-          <div style={{ position: 'fixed', top: '5.5rem', left: '50%', transform: 'translateX(-50%)', zIndex: 10000, background: notification.type === 'warning' ? '#ff4444' : '#34a853', color: 'white', padding: '1rem 2rem', borderRadius: '12px', fontWeight: 'bold', boxShadow: '0 4px 15px rgba(0,0,0,0.4)', textAlign: 'center', minWidth: '300px' }}>
+          <div style={{ position: 'fixed', top: '5.5rem', left: '50%', transform: 'translateX(-50%)', zIndex: 250000, background: notification.type === 'warning' ? '#ff4444' : '#34a853', color: 'white', padding: '1rem 2rem', borderRadius: '12px', fontWeight: 'bold', boxShadow: '0 4px 15px rgba(0,0,0,0.4)', textAlign: 'center', minWidth: '300px' }}>
             {notification.message}
             <button onClick={() => setNotification(null)} style={{ marginLeft: '1rem', background: 'none', border: 'none', color: 'white', fontWeight: 'bold', cursor: 'pointer' }}>✕</button>
           </div>

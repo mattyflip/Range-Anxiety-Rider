@@ -82,7 +82,7 @@ const CommentModal: React.FC<CommentModalProps> = ({ postId, postAuthorId, postC
   };
 
   return (
-    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.9)', zIndex: 10002, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', backdropFilter: 'blur(10px)' }}>
+    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.9)', zIndex: 200000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', backdropFilter: 'blur(10px)' }}>
       <div style={{ background: '#1a1a1a', width: '100%', maxWidth: '500px', height: '80vh', borderRadius: '24px', border: '1px solid #333', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <div style={{ padding: '1.5rem', borderBottom: '1px solid #333', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h3 style={{ color: 'white', margin: 0 }}>Comments</h3>

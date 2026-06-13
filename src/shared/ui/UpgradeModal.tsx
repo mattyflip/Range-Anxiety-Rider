@@ -23,7 +23,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({
       right: 0,
       bottom: 0,
       backgroundColor: 'rgba(0,0,0,0.85)',
-      zIndex: 25000,
+      zIndex: 200000,
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',

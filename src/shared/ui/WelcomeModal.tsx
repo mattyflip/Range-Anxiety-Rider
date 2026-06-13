@@ -19,7 +19,7 @@ const WelcomeModal: React.FC<WelcomeModalProps> = ({ onClose }) => {
         right: 0, 
         bottom: 0, 
         backgroundColor: 'rgba(0,0,0,0.95)', 
-        zIndex: 30000, 
+        zIndex: 200000, 
         display: 'flex', 
         alignItems: 'center', 
         justifyContent: 'center', 

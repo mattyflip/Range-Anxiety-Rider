@@ -14,7 +14,7 @@ const LocationDisclosureModal: React.FC<LocationDisclosureModalProps> = ({ onAcc
       right: 0,
       bottom: 0,
       backgroundColor: 'rgba(0,0,0,0.9)',
-      zIndex: 30000,
+      zIndex: 200000,
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
