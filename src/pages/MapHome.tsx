@@ -145,7 +145,21 @@ function MapHome() {
   const shareCardRef = useRef<HTMLDivElement>(null);
 
   const [unitSystem, setUnitSystem] = useState<'imperial' | 'metric'>('imperial');
-  const [specs, setSpecs] = useState<BikeSpecs>({ voltage: 48, capacityAh: 15, motorWatts: 750, bikeWeightLbs: 65 });
+  const [specs, setSpecs] = useState<BikeSpecs>(() => {
+    const saved = localStorage.getItem('lastBikeSpecs');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.warn('Failed to parse saved bike specs');
+      }
+    }
+    return { voltage: 48, capacityAh: 15, motorWatts: 750, bikeWeightLbs: 65, tirePSI: 30, tireType: 'road' };
+  });
+
+  useEffect(() => {
+    localStorage.setItem('lastBikeSpecs', JSON.stringify(specs));
+  }, [specs]);
   
   // Group Ride State
   const [activeRide, setActiveRide] = useState<GroupRide | null>(null);
