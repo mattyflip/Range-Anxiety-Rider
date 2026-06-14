@@ -11,13 +11,10 @@
 }
 
 .logo {
-  font-family: var(--font-display);
-  font-size: var(--text-2xl);
-  color: var(--accent-color);
-  letter-spacing: 0.1em;
+  width: 120px;
+  height: auto;
   margin-bottom: 2rem;
   animation: pulse 2s infinite ease-in-out;
-  text-transform: uppercase;
 }
 
 .skeletonBar {

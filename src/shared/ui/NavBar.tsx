@@ -108,7 +108,7 @@ const NavBar: React.FC<NavBarProps> = ({ user: providedUser, onShowInstall, onSh
     <header className={styles.header}>
       <div className={`logo-container ${styles.logoContainer}`}>
         <Link to={user ? (isFleet ? "/fleet" : "/map") : "/"} className={styles.logoLink}>
-          <img src="/app-icon.png" alt="Logo" className={styles.logoImage} />
+          <img src="/logo.png" alt="Logo" className={styles.logoImage} />
           <span className={`desktop-only ${styles.logoText}`}>RANGE ANXIETY</span>
         </Link>
       </div>
