@@ -1936,9 +1936,33 @@ function MapHome() {
             </section>
           )}
 
+          <section className="form-group tour-current-battery" style={{ marginTop: '1rem', marginBottom: '1rem' }}>
+            <label>Current Battery Level</label>
+            {showHelpMode && <HelpBubble text="Set your starting battery percentage or voltage here." />}
+            <div className="mode-toggle">
+              <button className={batteryInputMode === 'percent' ? 'active' : ''} onClick={() => handleToggleBatteryMode('percent')}>%</button>
+              <button className={batteryInputMode === 'voltage' ? 'active' : ''} onClick={() => handleToggleBatteryMode('voltage')}>V</button>
+            </div>
+            <input type="number" value={batteryInputMode === 'percent' ? startBattery : startVoltage} onChange={e => {
+              const valStr = e.target.value;
+              const val = valStr === '' ? '' : parseFloat(valStr);
+              const { min, max } = getBatteryLevels(Number(specs.voltage));
+              if (batteryInputMode === 'percent') {
+                setStartBattery(val);
+                if (val !== '') setStartVoltage(Number((min + (val / 100) * (max - min)).toFixed(1)));
+                else setStartVoltage('');
+              } else {
+                setStartVoltage(val);
+                if (val !== '') setStartBattery(Math.min(100, Math.max(0, Number((((val - min) / (max - min)) * 100).toFixed(0)))));
+                else setStartBattery('');
+              }
+              markDirty(); 
+            }} />
+          </section>
+
           <div className="tour-battery-specs" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <section className="form-group">
-              <label>Voltage</label>
+              <label>Nominal Voltage</label>
               {showHelpMode && <HelpBubble text="These are the most important fields! Your battery voltage and capacity determine the total energy available." />}
               <input type="number" disabled={isRenting} style={{ opacity: isRenting ? 0.5 : 1 }} value={specs.voltage} onChange={e => { setSpecs(p => ({ ...p, voltage: e.target.value === '' ? '' : parseFloat(e.target.value) })); markDirty(); }} />
             </section>
@@ -2016,29 +2040,7 @@ function MapHome() {
             )}
           </section>
 
-          <section className="form-group tour-current-battery" style={{ marginTop: '1rem' }}>
-            <label>Current Battery Level</label>
-            {showHelpMode && <HelpBubble text="Set your starting battery percentage or voltage here." />}
-            <div className="mode-toggle">
-              <button className={batteryInputMode === 'percent' ? 'active' : ''} onClick={() => handleToggleBatteryMode('percent')}>%</button>
-              <button className={batteryInputMode === 'voltage' ? 'active' : ''} onClick={() => handleToggleBatteryMode('voltage')}>V</button>
-            </div>
-            <input type="number" value={batteryInputMode === 'percent' ? startBattery : startVoltage} onChange={e => {
-              const valStr = e.target.value;
-              const val = valStr === '' ? '' : parseFloat(valStr);
-              const { min, max } = getBatteryLevels(Number(specs.voltage));
-              if (batteryInputMode === 'percent') {
-                setStartBattery(val);
-                if (val !== '') setStartVoltage(Number((min + (val / 100) * (max - min)).toFixed(1)));
-                else setStartVoltage('');
-              } else {
-                setStartVoltage(val);
-                if (val !== '') setStartBattery(Math.min(100, Math.max(0, Number((((val - min) / (max - min)) * 100).toFixed(0)))));
-                else setStartBattery('');
-              }
-              markDirty(); 
-            }} />
-          </section>
+
 
           {tripMode === 'plan' ? (
             <div style={{ marginTop: '1rem' }}>
