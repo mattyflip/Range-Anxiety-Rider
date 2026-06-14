@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { db, auth } from '../../firebase'
 import { signOut } from 'firebase/auth'
 import { collection, query, where, onSnapshot, doc, updateDoc } from 'firebase/firestore'
+import styles from './NavBar.module.css';
 
 import { useUserData } from '../../hooks/useUserData'
 import type { User } from 'firebase/auth'
@@ -67,14 +68,10 @@ const NavBar: React.FC<NavBarProps> = ({ user: providedUser, onShowInstall, onSh
     if (!user) {
       return (
         <>
-          <Link to="/about" style={{ color: '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>About</Link>
+          <Link to="/about" className={styles.navLink}>About</Link>
           <button 
             onClick={onShowAuth}
-            style={{ 
-              background: 'linear-gradient(45deg, #ff6600, #ff9900)', color: 'white', border: 'none', 
-              borderRadius: '20px', padding: '0.3rem 1rem', fontSize: '0.7rem', fontWeight: 'bold', 
-              cursor: 'pointer', whiteSpace: 'nowrap', boxShadow: '0 4px 10px rgba(255,102,0,0.3)'
-            }}
+            className={styles.primaryButton}
           >
             Login
           </button>
@@ -85,88 +82,76 @@ const NavBar: React.FC<NavBarProps> = ({ user: providedUser, onShowInstall, onSh
     if (isFleet) {
       return (
         <>
-          <Link to="/fleet" style={{ color: location.pathname === '/fleet' ? '#ff6600' : '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Fleet Hub</Link>
-          <Link to="/map" style={{ color: location.pathname === '/map' ? '#ff6600' : '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Fleet Map</Link>
-          <Link to="/shop-profile" style={{ color: location.pathname === '/shop-profile' ? '#ff6600' : '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Shop Profile</Link>
-          <Link to="/about" style={{ color: location.pathname === '/about' ? '#ff6600' : '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>About</Link>
+          <Link to="/fleet" className={location.pathname === '/fleet' ? styles.navLinkActive : styles.navLink}>Fleet Hub</Link>
+          <Link to="/map" className={location.pathname === '/map' ? styles.navLinkActive : styles.navLink}>Fleet Map</Link>
+          <Link to="/shop-profile" className={location.pathname === '/shop-profile' ? styles.navLinkActive : styles.navLink}>Shop Profile</Link>
+          <Link to="/about" className={location.pathname === '/about' ? styles.navLinkActive : styles.navLink}>About</Link>
         </>
       );
     }
 
     return (
       <>
-        <Link to="/map" style={{ color: location.pathname === '/map' ? '#ff6600' : '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Trip Map</Link>
-        <Link to="/rent" style={{ color: location.pathname === '/rent' ? '#ff6600' : '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Rent</Link>
-        <Link to="/rentals" style={{ color: location.pathname === '/rentals' ? '#ff6600' : '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>My Rentals</Link>
-        <Link to="/feed" style={{ color: location.pathname === '/feed' ? '#ff6600' : '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Community</Link>
-        <Link to="/forum" style={{ color: location.pathname.startsWith('/forum') ? '#ff6600' : '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Forum</Link>
-        <Link to="/faq" style={{ color: location.pathname === '/faq' ? '#ff6600' : '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>FAQ</Link>
-        <Link to="/about" style={{ color: location.pathname === '/about' ? '#ff6600' : '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>About</Link>
-        <Link to={`/profile/${userData?.username || 'me'}`} style={{ color: location.pathname.startsWith('/profile') ? '#ff6600' : '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Profile</Link>
+        <Link to="/map" className={location.pathname === '/map' ? styles.navLinkActive : styles.navLink}>Trip Map</Link>
+        <Link to="/rent" className={location.pathname === '/rent' ? styles.navLinkActive : styles.navLink}>Rent</Link>
+        <Link to="/rentals" className={location.pathname === '/rentals' ? styles.navLinkActive : styles.navLink}>My Rentals</Link>
+        <Link to="/feed" className={location.pathname === '/feed' ? styles.navLinkActive : styles.navLink}>Community</Link>
+        <Link to="/forum" className={location.pathname.startsWith('/forum') ? styles.navLinkActive : styles.navLink}>Forum</Link>
+        <Link to="/faq" className={location.pathname === '/faq' ? styles.navLinkActive : styles.navLink}>FAQ</Link>
+        <Link to="/about" className={location.pathname === '/about' ? styles.navLinkActive : styles.navLink}>About</Link>
+        <Link to={`/profile/${userData?.username || 'me'}`} className={location.pathname.startsWith('/profile') ? styles.navLinkActive : styles.navLink}>Profile</Link>
       </>
     );
   };
 
   return (
-    <header style={{ 
-      display: 'flex', 
-      justifyContent: 'space-between', 
-      alignItems: 'center', 
-      padding: '0.8rem 1.5rem', 
-      background: '#121212', 
-      borderBottom: '1px solid #333',
-      position: 'sticky',
-      top: 0,
-      zIndex: 1000,
-      height: '4.5rem'
-    }}>
-      <div className="logo-container" style={{ display: 'flex', alignItems: 'center' }}>
-        <Link to={user ? (isFleet ? "/fleet" : "/map") : "/"} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <img src="/app-icon.png" alt="Logo" style={{ height: '2.5rem', width: 'auto' }} />
-          <span style={{ color: 'white', fontWeight: 900, fontSize: '1rem', letterSpacing: '-0.5px' }} className="desktop-only">RANGE ANXIETY</span>
+    <header className={styles.header}>
+      <div className={`logo-container ${styles.logoContainer}`}>
+        <Link to={user ? (isFleet ? "/fleet" : "/map") : "/"} className={styles.logoLink}>
+          <img src="/app-icon.png" alt="Logo" className={styles.logoImage} />
+          <span className={`desktop-only ${styles.logoText}`}>RANGE ANXIETY</span>
         </Link>
       </div>
 
-      <div style={{ display: 'flex', gap: '1.2rem', alignItems: 'center' }}>
+      <div className={styles.navGroup}>
         {/* Desktop Navigation */}
         <nav className="desktop-only nav-links">
           {renderNavLinks()}
           
           {isAdmin && (
-            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-              <Link to="/admin/analytics" style={{ color: location.pathname === '/admin/analytics' ? '#ff6600' : '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' }}>Command Center</Link>
-              <Link to="/admin/library" style={{ color: location.pathname === '/admin/library' ? '#ff6600' : '#888', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' }}>Catalog</Link>
-              <button onClick={toggleRole} style={{ background: 'rgba(255,102,0,0.1)', border: '1px solid #ff6600', color: '#ff6600', borderRadius: '20px', padding: '0.3rem 0.8rem', fontSize: '0.65rem', fontWeight: 'bold', cursor: 'pointer' }}>
+            <div className={styles.adminGroup}>
+              <Link to="/admin/analytics" className={location.pathname === '/admin/analytics' ? styles.navLinkActive : styles.navLink}>Command Center</Link>
+              <Link to="/admin/library" className={location.pathname === '/admin/library' ? styles.navLinkActive : styles.navLink}>Catalog</Link>
+              <button onClick={toggleRole} className={styles.switchRoleBtn}>
                 Switch to {userData?.role === 'fleet' ? 'Rider' : 'Manager'}
               </button>
             </div>
           )}
 
           {user && (
-            <button onClick={handleLogout} style={{ background: 'none', border: '1px solid #444', color: '#888', borderRadius: '20px', padding: '0.3rem 0.8rem', fontSize: '0.65rem', fontWeight: 'bold', cursor: 'pointer' }}>Log Out</button>
+            <button onClick={handleLogout} className={styles.logoutBtn}>Log Out</button>
           )}
 
-          <button onClick={onShowInstall} style={{ background: 'linear-gradient(45deg, #ff6600, #ff9900)', color: 'white', border: 'none', borderRadius: '20px', padding: '0.3rem 1rem', fontSize: '0.7rem', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 10px rgba(255,102,0,0.3)' }}>Get App</button>
+          <button onClick={onShowInstall} className={styles.primaryButton}>Get App</button>
         </nav>
 
         {/* Notifications (Always visible if user) */}
         {user && (
           <button 
             onClick={() => navigate('/notifications')}
-            style={{ background: 'none', border: 'none', color: unreadCount > 0 ? '#ff6600' : '#888', fontSize: '1.2rem', cursor: 'pointer', position: 'relative', display: 'flex', alignItems: 'center' }}
+            className={`${styles.notificationBtn} ${unreadCount > 0 ? styles.notificationBtnActive : ''}`}
           >
             🔔
             {unreadCount > 0 && (
-              <span style={{ position: 'absolute', top: '-5px', right: '-5px', background: '#ff0000', color: 'white', fontSize: '0.6rem', padding: '2px 5px', borderRadius: '10px', fontWeight: 'bold', boxShadow: '0 0 5px rgba(255,0,0,0.5)' }}>{unreadCount}</span>
+              <span className={styles.notificationBadge}>{unreadCount}</span>
             )}
           </button>
         )}
 
         {/* Mobile Hamburger Button */}
         <button 
-          className="mobile-only" 
+          className={`mobile-only ${styles.mobileHamburger}`} 
           onClick={() => setIsMenuOpen(!isMenuOpen)}
-          style={{ background: 'none', border: 'none', color: '#ff6600', fontSize: '1.8rem', cursor: 'pointer', padding: '0.5rem' }}
         >
           {isMenuOpen ? '✕' : '☰'}
         </button>
@@ -179,19 +164,19 @@ const NavBar: React.FC<NavBarProps> = ({ user: providedUser, onShowInstall, onSh
           
           {isAdmin && (
             <>
-              <Link to="/admin/analytics" style={{ color: '#888', textDecoration: 'none', fontSize: '1rem', fontWeight: 700, textTransform: 'uppercase' }}>Command Center</Link>
-              <Link to="/admin/library" style={{ color: '#888', textDecoration: 'none', fontSize: '1rem', fontWeight: 700, textTransform: 'uppercase' }}>Catalog</Link>
-              <button onClick={toggleRole} style={{ width: '100%', background: 'rgba(255,102,0,0.1)', border: '1px solid #ff6600', color: '#ff6600', borderRadius: '12px', padding: '0.8rem', fontSize: '0.9rem', fontWeight: 'bold', cursor: 'pointer' }}>
+              <Link to="/admin/analytics" className={styles.mobileNavLink}>Command Center</Link>
+              <Link to="/admin/library" className={styles.mobileNavLink}>Catalog</Link>
+              <button onClick={toggleRole} className={styles.mobileSwitchRoleBtn}>
                 Switch to {userData?.role === 'fleet' ? 'Rider' : 'Manager'}
               </button>
             </>
           )}
 
           {user && (
-            <button onClick={handleLogout} style={{ width: '100%', background: 'none', border: '1px solid #444', color: '#888', borderRadius: '12px', padding: '0.8rem', fontSize: '0.9rem', fontWeight: 'bold', cursor: 'pointer' }}>Log Out</button>
+            <button onClick={handleLogout} className={styles.mobileLogoutBtn}>Log Out</button>
           )}
 
-          <button onClick={onShowInstall} style={{ width: '100%', background: 'linear-gradient(45deg, #ff6600, #ff9900)', color: 'white', border: 'none', borderRadius: '12px', padding: '1rem', fontSize: '1rem', fontWeight: 'bold', cursor: 'pointer' }}>Get The App</button>
+          <button onClick={onShowInstall} className={styles.mobilePrimaryBtn}>Get The App</button>
         </div>
       )}
     </header>

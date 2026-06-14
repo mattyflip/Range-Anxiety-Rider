@@ -1,0 +1,121 @@
+.container {
+  height: 100vh;
+  background: #121212;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.poiBar {
+  position: fixed;
+  bottom: 9.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding: 0.5rem;
+  width: auto;
+  max-width: 95vw;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+}
+
+.poiButton {
+  padding: 0.6rem 1rem;
+  background: rgba(20,20,20,0.9);
+  color: white;
+  border: 1px solid #333;
+  border-radius: 20px;
+  font-weight: 900;
+  font-size: 0.65rem;
+  white-space: nowrap;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+}
+
+.mapControlsOverlay {
+  position: fixed;
+  bottom: 5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100001;
+  display: flex;
+  flex-direction: row;
+  gap: 0.8rem;
+  background: rgba(0,0,0,0.5);
+  padding: 0.6rem 1rem;
+  border-radius: 40px;
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+.locateBtn {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: none;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.mobileToggleBtn {
+  height: 50px;
+  padding: 0 1.5rem;
+  border-radius: 40px;
+  background: var(--accent-color);
+  color: white;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  font-size: 0.85rem;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.helpBtn {
+  margin-left: 0.8rem;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  cursor: pointer;
+  font-weight: 900;
+}
+
+.helpBtnActive {
+  background: var(--accent-color);
+}
+
+.helpBtnInactive {
+  background: #333;
+}
+
+.mainLayout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.sidebar {
+  width: 350px;
+  padding: 20px;
+  background: rgba(10, 10, 10, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-right: 1px solid var(--border-color);
+  box-shadow: 1px 0 20px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}

@@ -21,13 +21,14 @@ import MapHome from './pages/MapHome'
 import MyRentals from './pages/MyRentals'
 import AdminLibrary from './pages/AdminLibrary'
 import AdminAnalytics from './pages/AdminAnalytics'
+import LoadingScreen from './shared/ui/LoadingScreen'
 
 // Protected Route Component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useUserData()
   const location = useLocation()
 
-  if (loading) return <div style={{ background: '#121212', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ff6600' }}>Loading...</div>
+  if (loading) return <LoadingScreen message="AUTHORIZING..." />
 
   if (!user) {
     // Redirect to home if not logged in
@@ -54,7 +55,7 @@ const AuthRedirect = ({ children }: { children: React.ReactNode }) => {
 const RoleRoute = ({ children, requiredRole }: { children: React.ReactNode, requiredRole: string }) => {
   const { user, userData, loading } = useUserData()
 
-  if (loading) return <div style={{ background: '#121212', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ff6600' }}>Verifying Role...</div>
+  if (loading) return <LoadingScreen message="VERIFYING ROLE..." />
 
   if (!user) return <Navigate to="/" replace />
   
@@ -72,7 +73,7 @@ const RoleRoute = ({ children, requiredRole }: { children: React.ReactNode, requ
 const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, userData, loading } = useUserData()
 
-  if (loading) return <div style={{ background: '#121212', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ff6600' }}>Verifying Admin...</div>
+  if (loading) return <LoadingScreen message="VERIFYING ADMIN..." />
 
   if (!user) return <Navigate to="/" replace />
   

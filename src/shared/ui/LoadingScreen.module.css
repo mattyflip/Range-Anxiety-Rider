@@ -1,0 +1,60 @@
+.container {
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-color);
+  position: relative;
+  overflow: hidden;
+}
+
+.logo {
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  color: var(--accent-color);
+  letter-spacing: 0.1em;
+  margin-bottom: 2rem;
+  animation: pulse 2s infinite ease-in-out;
+  text-transform: uppercase;
+}
+
+.skeletonBar {
+  height: 4px;
+  width: 200px;
+  background: var(--surface-3);
+  border-radius: 2px;
+  position: relative;
+  overflow: hidden;
+}
+
+.skeletonBar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 50%;
+  background: linear-gradient(90deg, transparent, var(--accent-color), transparent);
+  animation: shimmer 1.5s infinite linear;
+}
+
+.message {
+  margin-top: 1rem;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--secondary-text);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.6; text-shadow: 0 0 10px transparent; }
+  50% { opacity: 1; text-shadow: 0 0 20px var(--accent-glow); }
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}

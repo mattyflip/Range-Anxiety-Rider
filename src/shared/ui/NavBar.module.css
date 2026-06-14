@@ -1,0 +1,207 @@
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.8rem 1.5rem;
+  background: #121212;
+  border-bottom: 1px solid #333;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  height: 4.5rem;
+}
+
+.logoContainer {
+  display: flex;
+  align-items: center;
+}
+
+.logoLink {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-decoration: none;
+}
+
+.logoImage {
+  height: 2.5rem;
+  width: auto;
+}
+
+.logoText {
+  color: white;
+  font-weight: 900;
+  font-size: 1rem;
+  letter-spacing: -0.5px;
+}
+
+.navGroup {
+  display: flex;
+  gap: 1.2rem;
+  align-items: center;
+}
+
+.navLink {
+  color: #888;
+  text-decoration: none;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transition: color 0.2s;
+}
+
+.navLink:hover {
+  color: white;
+}
+
+.navLinkActive {
+  color: var(--accent-color);
+  text-decoration: none;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.primaryButton {
+  background: linear-gradient(45deg, var(--accent-color), #ff9900);
+  color: white;
+  border: none;
+  border-radius: 20px;
+  padding: 0.3rem 1rem;
+  font-size: 0.7rem;
+  font-weight: bold;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 4px 10px rgba(255,102,0,0.3);
+  transition: opacity 0.2s;
+}
+
+.primaryButton:hover {
+  opacity: 0.9;
+}
+
+.adminGroup {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.switchRoleBtn {
+  background: rgba(255,102,0,0.1);
+  border: 1px solid var(--accent-color);
+  color: var(--accent-color);
+  border-radius: 20px;
+  padding: 0.3rem 0.8rem;
+  font-size: 0.65rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.switchRoleBtn:hover {
+  background: rgba(255,102,0,0.2);
+}
+
+.logoutBtn {
+  background: none;
+  border: 1px solid #444;
+  color: #888;
+  border-radius: 20px;
+  padding: 0.3rem 0.8rem;
+  font-size: 0.65rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.logoutBtn:hover {
+  color: white;
+  border-color: #666;
+}
+
+.notificationBtn {
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 1.2rem;
+  cursor: pointer;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.notificationBtnActive {
+  color: var(--accent-color);
+}
+
+.notificationBadge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background: #ff0000;
+  color: white;
+  font-size: 0.6rem;
+  padding: 2px 5px;
+  border-radius: 10px;
+  font-weight: bold;
+  box-shadow: 0 0 5px rgba(255,0,0,0.5);
+}
+
+.mobileHamburger {
+  background: none;
+  border: none;
+  color: var(--accent-color);
+  font-size: 1.8rem;
+  cursor: pointer;
+  padding: 0.5rem;
+}
+
+.mobileNavDropdown {
+  /* .mobile-nav-dropdown is already handling the container from index.css, we'll keep that but style the items */
+}
+
+.mobileNavLink {
+  color: #888;
+  text-decoration: none;
+  font-size: 1rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.mobileSwitchRoleBtn {
+  width: 100%;
+  background: rgba(255,102,0,0.1);
+  border: 1px solid var(--accent-color);
+  color: var(--accent-color);
+  border-radius: 12px;
+  padding: 0.8rem;
+  font-size: 0.9rem;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.mobileLogoutBtn {
+  width: 100%;
+  background: none;
+  border: 1px solid #444;
+  color: #888;
+  border-radius: 12px;
+  padding: 0.8rem;
+  font-size: 0.9rem;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.mobilePrimaryBtn {
+  width: 100%;
+  background: linear-gradient(45deg, var(--accent-color), #ff9900);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 1rem;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+}
