@@ -205,6 +205,12 @@ function MapHome() {
   const [isPro, setIsPro] = useState(false);
   const [isExploreTier, setIsExploreTier] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  
+  const handleShowAuth = (mode: 'login' | 'register' = 'login') => {
+    setAuthMode(mode);
+    setShowAuthModal(true);
+  };
   const [showGroupRidePaywall, setShowGroupRidePaywall] = useState(false);
   const [bikeSearchQuery, setBikeSearchQuery] = useState("");
   const [showBikeResults, setShowBikeResults] = useState(false);
@@ -1615,7 +1621,7 @@ function MapHome() {
   return (
     <div className={styles.container}>
       <SEO title={userRole === 'fleet' ? "Fleet Map" : "Rider Map"} />
-      <NavBar user={user} onShowInstall={() => setShowInstallTutorial(true)} onShowAuth={() => setShowAuthModal(true)} />
+      <NavBar user={user} onShowInstall={() => setShowInstallTutorial(true)} onShowAuth={handleShowAuth} />
       
       {/* Persistent Controls - Split so POI stays behind sidebar, but Toggle stays on top */}
       {/* POI Fast Search Bar (Behind Sidebar) */}
@@ -2602,7 +2608,7 @@ function MapHome() {
           />
         )}
 
-        {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
+        {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} initialMode={authMode} />}
         {showToSPage && <TermsOfService onClose={() => setShowToSPage(false)} />}
         {showPrivacyPage && <PrivacyPolicy onClose={() => setShowPrivacyPage(false)} />}
         {showWelcomeModal && <WelcomeModal onClose={() => setShowWelcomeModal(false)} />}

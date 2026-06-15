@@ -381,6 +381,12 @@ const Profile: React.FC = () => {
   };
 
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  
+  const handleShowAuth = (mode: 'login' | 'register' = 'login') => {
+    setAuthMode(mode);
+    setShowAuthModal(true);
+  };
   const [showInstallTutorial, setShowInstallTutorial] = useState(false);
 
   if (loading || authLoading) return <div style={{ minHeight: '100vh', background: '#121212' }} />;
@@ -392,7 +398,7 @@ const Profile: React.FC = () => {
   return (
     <div className="container" style={{ minHeight: '100vh', background: '#121212', overflowY: 'auto' }}>
       <SEO title={`${profileData.username}'s Profile`} />
-      <NavBar user={user} onShowInstall={() => setShowInstallTutorial(true)} onShowAuth={() => setShowAuthModal(true)} />
+      <NavBar user={user} onShowInstall={() => setShowInstallTutorial(true)} onShowAuth={handleShowAuth} />
 
       <main style={{ padding: '1.5rem', maxWidth: '800px', margin: '0 auto' }}>
         <div style={{ textAlign: 'center', marginBottom: '2.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -696,7 +702,7 @@ const Profile: React.FC = () => {
         </div>
       )}
 
-      {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
+      {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} initialMode={authMode} />}
       {showInstallTutorial && <InstallTutorial onClose={() => setShowInstallTutorial(false)} />}
       {toastMessage && <Toast message={toastMessage} type={toastType} onClose={() => setToastMessage(null)} />}
       {showUpgradeModal && (

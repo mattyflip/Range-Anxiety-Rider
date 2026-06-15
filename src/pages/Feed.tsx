@@ -35,7 +35,13 @@ const Feed: React.FC = () => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [showInstallTutorial, setShowInstallTutorial] = useState(false);
+
+  const handleShowAuth = (mode: 'login' | 'register' = 'login') => {
+    setAuthMode(mode);
+    setShowAuthModal(true);
+  };
 
   const isAdmin = userData?.isAdmin || false;
 
@@ -234,7 +240,7 @@ const Feed: React.FC = () => {
       <NavBar 
         user={user} 
         onShowInstall={() => setShowInstallTutorial(true)} 
-        onShowAuth={() => setShowAuthModal(true)}
+        onShowAuth={handleShowAuth}
       />
 
       <main style={{ padding: '2rem 1.5rem', maxWidth: '600px', margin: '0 auto' }}>
@@ -297,7 +303,7 @@ const Feed: React.FC = () => {
 
                 <div style={{ padding: '1.2rem' }}>
                   <div style={{ display: 'flex', gap: '1.2rem', marginBottom: '1rem', alignItems: 'center' }}>
-                    <LikeWidget post={post} user={user} userData={userData} onAuthNeeded={() => setShowAuthModal(true)} />
+                    <LikeWidget post={post} user={user} userData={userData} onAuthNeeded={() => handleShowAuth('register')} />
                     
                     {post.commentsEnabled !== false && (
                       <button 
@@ -421,7 +427,7 @@ const Feed: React.FC = () => {
                   <span dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(selectedFullPost.caption) }} />
                 </p>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '1rem' }}>
-                   <span style={{ color: '#ff6600', fontWeight: 'bold' }}><LikeWidget post={selectedFullPost} user={user} userData={userData} onAuthNeeded={() => setShowAuthModal(true)} /></span>
+                   <span style={{ color: '#ff6600', fontWeight: 'bold' }}><LikeWidget post={selectedFullPost} user={user} userData={userData} onAuthNeeded={() => handleShowAuth('register')} /></span>
                    {selectedFullPost.tripData && (
                      <button 
                        onClick={() => handleLoadRoute(selectedFullPost)}
@@ -450,7 +456,7 @@ const Feed: React.FC = () => {
       )}
 
       {showInstallTutorial && <InstallTutorial onClose={() => setShowInstallTutorial(false)} />}
-      {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
+      {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} initialMode={authMode} />}
       
       {/* Admin Edit Modal */}
       {adminEditingPost && (

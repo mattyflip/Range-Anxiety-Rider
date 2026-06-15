@@ -31,6 +31,12 @@ const ThreadView: React.FC = () => {
   const [activeReplyId, setActiveReplyId] = useState<string | null>(null);
   
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  
+  const handleShowAuth = (mode: 'login' | 'register' = 'login') => {
+    setAuthMode(mode);
+    setShowAuthModal(true);
+  };
   const [showInstallTutorial, setShowInstallTutorial] = useState(false);
 
   // Admin states
@@ -323,7 +329,7 @@ const ThreadView: React.FC = () => {
         title={thread.title} 
         description={thread.body?.substring(0, 160) || "Join the discussion on Range Anxiety."}
       />
-      <NavBar user={user} onShowInstall={() => setShowInstallTutorial(true)} onShowAuth={() => setShowAuthModal(true)} />
+      <NavBar user={user} onShowInstall={() => setShowInstallTutorial(true)} onShowAuth={handleShowAuth} />
 
       <main style={{ padding: '2rem 1.5rem', maxWidth: '800px', margin: '0 auto' }}>
         <Link to={`/forum/c/${communityId}`} style={{ color: '#888', textDecoration: 'none', fontSize: '0.8rem', fontWeight: 'bold', textTransform: 'uppercase' }}>← Back to c/{communityData?.name || communityId}</Link>
@@ -393,7 +399,7 @@ const ThreadView: React.FC = () => {
            ) : (
              <div style={{ padding: '2rem', background: '#1a1a1a', borderRadius: '16px', textAlign: 'center', border: '1px dashed #333', marginBottom: '3rem' }}>
                 <p style={{ color: '#666' }}>Sign in to join the discussion.</p>
-                <button onClick={() => setShowAuthModal(true)} style={{ background: '#ff6600', color: 'white', border: 'none', borderRadius: '8px', padding: '0.6rem 1.5rem', fontWeight: 'bold', cursor: 'pointer', marginTop: '0.5rem' }}>Log In</button>
+                <button onClick={() => handleShowAuth('login')} style={{ background: '#ff6600', color: 'white', border: 'none', borderRadius: '8px', padding: '0.6rem 1.5rem', fontWeight: 'bold', cursor: 'pointer', marginTop: '0.5rem' }}>Log In</button>
              </div>
            )}
 
@@ -445,7 +451,7 @@ const ThreadView: React.FC = () => {
         </div>
       )}
 
-      {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
+      {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} initialMode={authMode} />}
       {showInstallTutorial && <InstallTutorial onClose={() => setShowInstallTutorial(false)} />}
     </div>
   );

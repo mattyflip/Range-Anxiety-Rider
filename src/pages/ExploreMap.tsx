@@ -20,10 +20,16 @@ const ExploreMap: React.FC = () => {
   const navigate = useNavigate();
   const { user, userData, loading: authLoading } = useUserData();
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [showInstallTutorial, setShowInstallTutorial] = useState(false);
   
   const [showToS, setShowToS] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
+
+  const handleShowAuth = (mode: 'login' | 'register' = 'login') => {
+    setAuthMode(mode);
+    setShowAuthModal(true);
+  };
 
   // Tracking states
   const [isTracking, setIsTracking] = useState(false);
@@ -212,7 +218,7 @@ const ExploreMap: React.FC = () => {
   if (!canExplore) {
     return (
       <div className="container" style={{ minHeight: '100vh', background: '#121212', color: 'white' }}>
-        <NavBar user={user} onShowInstall={() => setShowInstallTutorial(true)} onShowAuth={() => setShowAuthModal(true)} />
+        <NavBar user={user} onShowInstall={() => setShowInstallTutorial(true)} onShowAuth={handleShowAuth} />
         <main style={{ padding: '4rem 2rem', textAlign: 'center' }}>
           <h1 style={{ fontSize: '2.5rem', color: '#ff6600' }}>Explore Mode</h1>
           <div style={{ fontSize: '4rem', margin: '2rem 0' }}>🧭</div>
@@ -223,7 +229,7 @@ const ExploreMap: React.FC = () => {
             <button onClick={checkoutExploreTier} style={{ width: '100%', padding: '1rem 2rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', fontSize: '1.1rem' }}>Get Explore Mode</button>
           </div>
         </main>
-        {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
+        {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} initialMode={authMode} />}
       </div>
     );
   }
@@ -231,7 +237,7 @@ const ExploreMap: React.FC = () => {
   return (
     <div className="container" style={{ height: '100vh', background: '#121212', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <SEO title="Explore Mode" />
-      <NavBar user={user} onShowInstall={() => setShowInstallTutorial(true)} onShowAuth={() => setShowAuthModal(true)} />
+      <NavBar user={user} onShowInstall={() => setShowInstallTutorial(true)} onShowAuth={handleShowAuth} />
       
       <div style={{ flex: 1, position: 'relative', width: '100%', height: '100%', minHeight: 0 }}>
         {!isLoaded ? (
@@ -319,7 +325,7 @@ const ExploreMap: React.FC = () => {
           </div>
         </div>
       </div>
-      {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
+      {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} initialMode={authMode} />}
       {showInstallTutorial && <InstallTutorial onClose={() => setShowInstallTutorial(false)} />}
       {showToS && <TermsOfService onClose={() => setShowToS(false)} />}
       {showPrivacy && <PrivacyPolicy onClose={() => setShowPrivacy(false)} />}

@@ -15,6 +15,12 @@ const Notifications: React.FC = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  
+  const handleShowAuth = (mode: 'login' | 'register' = 'login') => {
+    setAuthMode(mode);
+    setShowAuthModal(true);
+  };
   const [showInstallTutorial, setShowInstallTutorial] = useState(false);
 
   const [authChecked, setAuthChecked] = useState(false);
@@ -89,7 +95,7 @@ const Notifications: React.FC = () => {
       <NavBar 
         user={user} 
         onShowInstall={() => setShowInstallTutorial(true)} 
-        onShowAuth={() => setShowAuthModal(true)} 
+        onShowAuth={handleShowAuth} 
       />
 
       <main style={{ padding: '2rem 1.5rem', maxWidth: '800px', margin: '0 auto' }}>
@@ -110,7 +116,7 @@ const Notifications: React.FC = () => {
         ) : !user ? (
           <div style={{ color: '#666', textAlign: 'center', padding: '4rem 0' }}>
              <p>Please sign in to view your notifications.</p>
-             <button onClick={() => setShowAuthModal(true)} style={{ background: '#ff6600', color: 'white', border: 'none', padding: '0.8rem 2rem', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', marginTop: '1rem' }}>Sign In</button>
+             <button onClick={() => handleShowAuth('login')} style={{ background: '#ff6600', color: 'white', border: 'none', padding: '0.8rem 2rem', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', marginTop: '1rem' }}>Sign In</button>
           </div>
         ) : notifications.length === 0 ? (
           <div style={{ color: '#444', textAlign: 'center', padding: '4rem 0' }}>No notifications yet.</div>
@@ -185,7 +191,7 @@ const Notifications: React.FC = () => {
         )}
       </main>
 
-      {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
+      {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} initialMode={authMode} />}
       {showInstallTutorial && <InstallTutorial onClose={() => setShowInstallTutorial(false)} />}
     </div>
   );

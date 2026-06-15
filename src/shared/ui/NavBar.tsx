@@ -12,7 +12,7 @@ import type { User } from 'firebase/auth'
 interface NavBarProps {
   user: User | null;
   onShowInstall: () => void;
-  onShowAuth: () => void;
+  onShowAuth: (mode?: 'login' | 'register') => void;
 }
 
 const NavBar: React.FC<NavBarProps> = ({ user: providedUser, onShowInstall, onShowAuth }) => {
@@ -71,7 +71,7 @@ const NavBar: React.FC<NavBarProps> = ({ user: providedUser, onShowInstall, onSh
         <>
           <Link to="/about" className={styles.navLink}>About</Link>
           <button 
-            onClick={onShowAuth}
+            onClick={() => onShowAuth('login')}
             className={styles.primaryButton}
           >
             Login
@@ -133,7 +133,10 @@ const NavBar: React.FC<NavBarProps> = ({ user: providedUser, onShowInstall, onSh
             <button onClick={handleLogout} className={styles.logoutBtn}>Log Out</button>
           )}
 
-          <button onClick={onShowInstall} className={styles.primaryButton}>
+          <button 
+            onClick={Capacitor.getPlatform() === 'android' ? () => onShowAuth('register') : onShowInstall} 
+            className={styles.primaryButton}
+          >
             {Capacitor.getPlatform() === 'android' ? 'Create Account' : 'Get App'}
           </button>
         </nav>
@@ -179,7 +182,10 @@ const NavBar: React.FC<NavBarProps> = ({ user: providedUser, onShowInstall, onSh
             <button onClick={handleLogout} className={styles.mobileLogoutBtn}>Log Out</button>
           )}
 
-          <button onClick={onShowInstall} className={styles.mobilePrimaryBtn}>
+          <button 
+            onClick={Capacitor.getPlatform() === 'android' ? () => onShowAuth('register') : onShowInstall} 
+            className={styles.mobilePrimaryBtn}
+          >
             {Capacitor.getPlatform() === 'android' ? 'Create Account' : 'Get The App'}
           </button>
         </div>

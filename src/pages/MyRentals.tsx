@@ -26,6 +26,12 @@ const MyRentals: React.FC = () => {
   const [rentals, setRentals] = useState<RentalRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  
+  const handleShowAuth = (mode: 'login' | 'register' = 'login') => {
+    setAuthMode(mode);
+    setShowAuthModal(true);
+  };
   const [showInstallTutorial, setShowInstallTutorial] = useState(false);
   const [selectedRental, setSelectedRental] = useState<RentalRequest | null>(null);
 
@@ -205,7 +211,7 @@ const MyRentals: React.FC = () => {
   return (
     <div style={{ minHeight: '100vh', background: '#121212', color: 'white' }}>
       <SEO title="My Rentals" />
-      <NavBar user={user} onShowInstall={() => setShowInstallTutorial(true)} onShowAuth={() => setShowAuthModal(true)} />
+      <NavBar user={user} onShowInstall={() => setShowInstallTutorial(true)} onShowAuth={handleShowAuth} />
 
       <main style={{ maxWidth: '600px', margin: '0 auto', padding: '2rem 1rem' }}>
         <header style={{ marginBottom: '2rem' }}>
@@ -371,7 +377,7 @@ const MyRentals: React.FC = () => {
         </div>
       )}
 
-      {showAuthModal && <AuthModal onClose={() => { setShowAuthModal(false); navigate('/'); }} />}
+      {showAuthModal && <AuthModal onClose={() => { setShowAuthModal(false); navigate('/'); }} initialMode={authMode} />}
       {showInstallTutorial && <InstallTutorial onClose={() => setShowInstallTutorial(false)} />}
       {toastMessage && <Toast message={toastMessage} type={toastType} onClose={() => setToastMessage(null)} />}
       {confirmation && (

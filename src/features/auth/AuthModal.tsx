@@ -10,10 +10,11 @@ import styles from './AuthModal.module.css'
 interface AuthModalProps {
   onClose: () => void;
   onSuccess?: () => void;
+  initialMode?: 'login' | 'register';
 }
 
-const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
-  const [isRegistering, setIsRegistering] = useState(false);
+const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess, initialMode = 'login' }) => {
+  const [isRegistering, setIsRegistering] = useState(initialMode === 'register');
   const [authEmail, setAuthEmail] = useState('');
   const [authPass, setAuthPass] = useState('');
   const [fullName, setFullName] = useState('');

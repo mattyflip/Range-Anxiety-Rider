@@ -7,6 +7,12 @@ import { useUserData } from '../hooks/useUserData';
 const About: React.FC = () => {
   const { user, loading } = useUserData();
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+
+  const handleShowAuth = (mode: 'login' | 'register' = 'login') => {
+    setAuthMode(mode);
+    setShowAuthModal(true);
+  };
 
   return (
     <div className="container" style={{ minHeight: '100vh', background: '#121212', color: 'white' }}>
@@ -17,7 +23,7 @@ const About: React.FC = () => {
       <NavBar 
         user={user} 
         onShowInstall={() => {}} 
-        onShowAuth={() => setShowAuthModal(true)} 
+        onShowAuth={handleShowAuth} 
       />
 
       <main style={{ padding: '4rem 1.5rem', maxWidth: '900px', margin: '0 auto', textAlign: 'center' }}>
@@ -36,7 +42,7 @@ const About: React.FC = () => {
               </p>
               {!user && (
                 <button 
-                  onClick={() => setShowAuthModal(true)}
+                  onClick={() => handleShowAuth('register')}
                   style={{ 
                     padding: '1.2rem 3rem', 
                     background: '#ff6600', 
@@ -97,7 +103,7 @@ const About: React.FC = () => {
         </div>
       </main>
 
-      {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
+      {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} initialMode={authMode} />}
     </div>
   );
 };

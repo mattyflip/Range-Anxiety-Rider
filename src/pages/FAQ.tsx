@@ -7,12 +7,18 @@ import SEO from '../shared/ui/SEO'
 const FAQ: React.FC = () => {
   const [user, setUser] = useState<any>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
   useEffect(() => {
     const unsub = auth.onAuthStateChanged(u => setUser(u));
     return () => unsub();
   }, []);
+
+  const handleShowAuth = (mode: 'login' | 'register' = 'login') => {
+    setAuthMode(mode);
+    setShowAuthModal(true);
+  };
 
   const faqs = [
     {
@@ -63,7 +69,7 @@ const FAQ: React.FC = () => {
       <NavBar 
         user={user} 
         onShowInstall={() => {}} 
-        onShowAuth={() => setShowAuthModal(true)} 
+        onShowAuth={handleShowAuth} 
       />
 
       <main style={{ padding: '4rem 1.5rem', maxWidth: '800px', margin: '0 auto' }}>
@@ -138,7 +144,7 @@ const FAQ: React.FC = () => {
         </footer>
       </main>
 
-      {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
+      {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} initialMode={authMode} />}
     </div>
   );
 };

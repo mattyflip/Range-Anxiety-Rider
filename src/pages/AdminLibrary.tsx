@@ -23,6 +23,12 @@ const AdminLibrary: React.FC = () => {
   const [typeFilter, setTypeFilter] = useState('All Types');
   
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+
+  const handleShowAuth = (mode: 'login' | 'register' = 'login') => {
+    setAuthMode(mode);
+    setShowAuthModal(true);
+  };
 
   // Toast state
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -238,7 +244,7 @@ const AdminLibrary: React.FC = () => {
   return (
     <div className="container" style={{ minHeight: '100vh', background: '#121212', color: 'white' }}>
       <SEO title="Admin Library Manager" />
-      <NavBar user={user} onShowInstall={() => {}} onShowAuth={() => setShowAuthModal(true)} />
+      <NavBar user={user} onShowInstall={() => {}} onShowAuth={handleShowAuth} />
 
       <main style={{ padding: '2rem', maxWidth: '1000px', margin: '0 auto' }}>
         <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3rem', flexWrap: 'wrap', gap: '1.5rem' }}>
@@ -427,7 +433,7 @@ const AdminLibrary: React.FC = () => {
         </div>
       )}
 
-      {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
+      {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} initialMode={authMode} />}
       {toastMessage && <Toast message={toastMessage} type={toastType} onClose={() => setToastMessage(null)} />}
       {confirmation && (
         <ConfirmationModal

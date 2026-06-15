@@ -33,6 +33,12 @@ const CommunityView: React.FC = () => {
   const [isUploading, setIsUploading] = useState(false);
   
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+
+  const handleShowAuth = (mode: 'login' | 'register' = 'login') => {
+    setAuthMode(mode);
+    setShowAuthModal(true);
+  };
   const [showInstallTutorial, setShowInstallTutorial] = useState(false);
 
   useEffect(() => {
@@ -195,7 +201,7 @@ const CommunityView: React.FC = () => {
         description={communityData?.description || `Join the c/${communityId} community on Range Anxiety. Discuss battery life, mods, and routes for your e-bike.`}
         url={`https://rangeanxietyrider.com/forum/c/${communityId}`}
       />
-      <NavBar user={user} onShowInstall={() => setShowInstallTutorial(true)} onShowAuth={() => setShowAuthModal(true)} />
+      <NavBar user={user} onShowInstall={() => setShowInstallTutorial(true)} onShowAuth={handleShowAuth} />
       <main style={{ padding: '2rem 1.5rem', maxWidth: '900px', margin: '0 auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
           <div>
@@ -285,7 +291,7 @@ const CommunityView: React.FC = () => {
           </div>
         </div>
       )}
-      {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
+      {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} initialMode={authMode} />}
       {showInstallTutorial && <InstallTutorial onClose={() => setShowInstallTutorial(false)} />}
     </div>
   );

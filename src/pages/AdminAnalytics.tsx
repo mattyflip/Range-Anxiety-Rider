@@ -43,6 +43,12 @@ const AdminAnalytics: React.FC = () => {
   const navigate = useNavigate();
   const { user, userData, loading: authLoading } = useUserData();
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+
+  const handleShowAuth = (mode: 'login' | 'register' = 'login') => {
+    setAuthMode(mode);
+    setShowAuthModal(true);
+  };
   const [loading, setLoading] = useState(true);
   const [timeframe, setTimeframe] = useState('7D');
   const [rawUsers, setRawUsers] = useState<any[]>([]);
@@ -251,7 +257,7 @@ const AdminAnalytics: React.FC = () => {
   return (
     <div className="container" style={{ minHeight: '100vh', background: '#121212', color: 'white' }}>
       <SEO title="Command Center | Admin" />
-      <NavBar user={user} onShowInstall={() => {}} onShowAuth={() => setShowAuthModal(true)} />
+      <NavBar user={user} onShowInstall={() => {}} onShowAuth={handleShowAuth} />
 
       <main style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
         <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1.5rem' }}>
@@ -452,7 +458,7 @@ const AdminAnalytics: React.FC = () => {
         </div>
       </main>
 
-      {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
+      {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} initialMode={authMode} />}
     </div>
   );
 };

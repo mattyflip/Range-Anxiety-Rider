@@ -37,6 +37,12 @@ const Rent: React.FC = () => {
     phone: ''
   });
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  
+  const handleShowAuth = (mode: 'login' | 'register' = 'login') => {
+    setAuthMode(mode);
+    setShowAuthModal(true);
+  };
   const [showInstallTutorial, setShowInstallTutorial] = useState(false);
 
   // Calculate total price
@@ -146,7 +152,7 @@ const Rent: React.FC = () => {
   return (
     <div className="container" style={{ minHeight: '100vh', background: '#121212', color: 'white' }}>
       <SEO title="Rent an E-Bike" />
-      <NavBar user={user} onShowInstall={() => setShowInstallTutorial(true)} onShowAuth={() => setShowAuthModal(true)} />
+      <NavBar user={user} onShowInstall={() => setShowInstallTutorial(true)} onShowAuth={handleShowAuth} />
 
       <main style={{ padding: '2rem', maxWidth: '1000px', margin: '0 auto' }}>
         <header style={{ marginBottom: '3rem' }}>
@@ -280,7 +286,7 @@ const Rent: React.FC = () => {
         )}
       </main>
 
-      {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
+      {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} initialMode={authMode} />}
       {showInstallTutorial && <InstallTutorial onClose={() => setShowInstallTutorial(false)} />}
     </div>
   );

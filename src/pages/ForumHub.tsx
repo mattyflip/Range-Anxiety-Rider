@@ -28,8 +28,14 @@ const ForumHub: React.FC = () => {
   const [newCommName, setNewCommName] = useState('');
   const [newCommDesc, setNewCommDesc] = useState('');
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [showInstallTutorial, setShowInstallTutorial] = useState(false);
   const navigate = useNavigate();
+
+  const handleShowAuth = (mode: 'login' | 'register' = 'login') => {
+    setAuthMode(mode);
+    setShowAuthModal(true);
+  };
 
   const isAdmin = userData?.isAdmin || false;
 
@@ -100,7 +106,7 @@ const ForumHub: React.FC = () => {
       <NavBar 
         user={user} 
         onShowInstall={() => setShowInstallTutorial(true)} 
-        onShowAuth={() => setShowAuthModal(true)}
+        onShowAuth={handleShowAuth}
       />
 
       <main style={{ padding: '2rem', maxWidth: '900px', margin: '0 auto' }}>
@@ -110,7 +116,7 @@ const ForumHub: React.FC = () => {
             <h2 style={{ color: 'white', marginBottom: '1rem' }}>Member Only Forum</h2>
             <p style={{ color: '#888', marginBottom: '2rem', fontSize: '1.1rem' }}>Join the community to participate in specialized e-bike groups and discussions.</p>
             <button 
-              onClick={() => setShowAuthModal(true)}
+              onClick={() => handleShowAuth('register')}
               style={{ padding: '1rem 2.5rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold', fontSize: '1.1rem', cursor: 'pointer', boxShadow: '0 10px 20px rgba(255,102,0,0.2)' }}
             >
               Create Account to Enter
@@ -266,7 +272,7 @@ const ForumHub: React.FC = () => {
       )}
 
       {showInstallTutorial && <InstallTutorial onClose={() => setShowInstallTutorial(false)} />}
-      {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
+      {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} initialMode={authMode} />}
     </div>
   );
 };
