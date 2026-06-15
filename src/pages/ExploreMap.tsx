@@ -165,7 +165,10 @@ const ExploreMap: React.FC = () => {
       const idempotencyKey = crypto.randomUUID();
       const res = await fetch('/api/create-checkout-session', { 
         method: 'POST', 
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, 
+        headers: { 
+          'Content-Type': 'application/json', 
+          'Authorization': `Bearer ${token}` 
+        }, 
         body: JSON.stringify({ userId: user.uid, email: user.email, tier: 'explore', idempotencyKey }) 
       });
       const data = await res.json();

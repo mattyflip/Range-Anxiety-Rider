@@ -23,9 +23,10 @@ import orangePin from '../assets/orange-pin.png'
 import { createNotification } from '../utils/notifications'
 import { STATE_COORDINATES } from '../utils/ebikeLaws'
 import SEO from '../shared/ui/SEO'
-import type { Bike, LiveUnit, Organization, SavedBike, BikeSpecs } from '../types';
+import type { Bike, LiveUnit, Organization, SavedBike, BikeSpecs, GroupRide, Participant } from '../types';
 import { useUserData } from '../hooks/useUserData';
 import { useBikeLibrary } from '../hooks/useBikeLibrary';
+import { useGroupRide } from '../hooks/useGroupRide';
 import { calculateRangePolygon, calculateBurnRate, calculateHeadwind } from '../utils/physics';
 import Toast, { type ToastType } from '../shared/ui/Toast';
 import LocationDisclosureModal from '../shared/ui/LocationDisclosureModal';
@@ -56,28 +57,6 @@ interface GoogleRoute {
 }
 
 const LIBRARIES: ("places" | "geometry" | "marker")[] = ["places", "geometry", "marker"];
-
-interface GroupRide {
-  id: string;
-  name: string;
-  isPublic: boolean;
-  pin: string;
-  creatorId: string;
-  origin: string;
-  startLat: number;
-  startLng: number;
-  status: string;
-  leaderId?: string;
-  leaderTrail?: google.maps.LatLngLiteral[];
-}
-
-interface Participant {
-  userId: string;
-  name: string;
-  lat: number;
-  lng: number;
-  lastUpdatedAt: number;
-}
 
 interface TripDetails {
   origin: string;
@@ -123,6 +102,16 @@ const HelpBubble = ({ text }: { text: string }) => (
 function MapHome() {
   const { isLoaded } = useJsApiLoader({ id: 'google-map-script', googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "", libraries: LIBRARIES });
   const { user, userData, loading: authLoading } = useUserData();
+
+  const fetchWithAuth = useCallback(async (url: string, options: RequestInit = {}) => {
+    const token = user ? await user.getIdToken() : null;
+    const headers = {
+      ...options.headers,
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+    };
+    return fetch(url, { ...options, headers });
+  }, [user]);
+
   const { bikes: globalBikes } = useBikeLibrary();
   const [authInitialized, setAuthInitialized] = useState(false);
   const [showLocationDisclosure, setShowLocationDisclosure] = useState(() => {
@@ -161,13 +150,29 @@ function MapHome() {
     localStorage.setItem('lastBikeSpecs', JSON.stringify(specs));
   }, [specs]);
   
-  // Group Ride State
-  const [activeRide, setActiveRide] = useState<GroupRide | null>(null);
-  const [publicRides, setPublicRides] = useState<GroupRide[]>([]);
-  const [rideParticipants, setRideParticipants] = useState<Participant[]>([]);
-  const [groupRideName, setGroupRideName] = useState('');
-  const [isPublicRide, setIsPublicRide] = useState(true);
-  const [joinPin, setJoinPin] = useState('');
+  // Group Ride State & Logic (Extracted to Hook)
+  const {
+    activeRide,
+    publicRides,
+    rideParticipants,
+    groupRideName,
+    setGroupRideName,
+    isPublicRide,
+    setIsPublicRide,
+    joinPin,
+    setJoinPin,
+    createRide,
+    joinRide,
+    leaveRide,
+    endRide,
+    setRideLeader
+  } = useGroupRide({ 
+    user, 
+    userData, 
+    center, 
+    onLocationUpdate: (loc) => setUserLocation(loc),
+    showAuthModal: () => setShowAuthModal(true)
+  });
 
   const [isRoundTrip, setIsRoundTrip] = useState(false);
   
@@ -366,9 +371,9 @@ function MapHome() {
     try {
       showToast("Forwarding to secure checkout...", "info");
       const token = await user.getIdToken();
-      const res = await fetch('/api/create-checkout-session', { 
+      const res = await fetchWithAuth('/api/create-checkout-session', { 
         method: 'POST', 
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, 
+        headers: { 'Content-Type': 'application/json' }, 
         body: JSON.stringify({ userId: user.uid, email: user.email, tier: 'pro' }) 
       });
       const data = await res.json();
@@ -597,7 +602,7 @@ function MapHome() {
     if (!response || !response.routes[0]) return;
     const polyline = response.routes[0].overview_polyline;
     const points = (polyline as { points?: string }).points || polyline;
-    fetch(`/api/static-map?polyline=${encodeURIComponent(points)}`).then(r => r.blob()).then(blob => {
+    fetchWithAuth(`/api/static-map?polyline=${encodeURIComponent(points)}`).then(r => r.blob()).then(blob => {
       const reader = new FileReader(); reader.onloadend = () => setMapSnapshot(reader.result as string); reader.readAsDataURL(blob);
     }).catch(console.error);
   }, [response, selectedRouteIndex]);
@@ -614,10 +619,10 @@ function MapHome() {
           const bike = shopBikes.find(b => b.id === selectedBikeId);
           if (bike && bike.status === 'rented' && bike.currentRiderId === user.uid) {
              const [eRes, wRes] = await Promise.all([
-               fetch('/api/elevation', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: `${loc.lat},${loc.lng}` }) }).then(r => r.json()),
-               fetch(`/api/weather?lat=${loc.lat}&lng=${loc.lng}`).then(r => r.json())
+               fetchWithAuth('/api/elevation', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: `${loc.lat},${loc.lng}` }) }).then(r => r.json()),
+               fetchWithAuth(`/api/weather?lat=${loc.lat}&lng=${loc.lng}`).then(r => r.json())
              ]);
-             const calcRes = await fetch('/api/calculate-range', {
+             const calcRes = await fetchWithAuth('/api/calculate-range', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -921,7 +926,7 @@ function MapHome() {
     
     try {
       // 1. Search for Charging POIs near the "Stranded" point
-      const res = await fetch(`/api/charging?lat=${metrics.deathPoint.lat}&lng=${metrics.deathPoint.lng}&distance=5`);
+      const res = await fetchWithAuth(`/api/charging?lat=${metrics.deathPoint.lat}&lng=${metrics.deathPoint.lng}&distance=5`);
       const chargingPois = await res.json();
       
       if (chargingPois.length === 0) {
@@ -974,7 +979,7 @@ function MapHome() {
     const calcBikeRange = async () => {
       try {
         const originCoords = messageRiderTarget.position;
-        const wRes = await fetch(`/api/weather?lat=${originCoords.lat}&lng=${originCoords.lng}`).then(r => r.json());
+        const wRes = await fetchWithAuth(`/api/weather?lat=${originCoords.lat}&lng=${originCoords.lng}`).then(r => r.json());
         const wind = { speed: wRes.wind_speed || 0, direction: wRes.wind_degree || 0 };
         
         const matchedBike = shopBikes.find(b => b.id === messageRiderTarget.bikeId);
@@ -1078,7 +1083,7 @@ function MapHome() {
 
        try {
          // 1. Fetch Local Weather for Wind
-         const wRes = await fetch(`/api/weather?lat=${originCoords.lat}&lng=${originCoords.lng}`).then(r => r.json());
+         const wRes = await fetchWithAuth(`/api/weather?lat=${originCoords.lat}&lng=${originCoords.lng}`).then(r => r.json());
          const wind = { speed: wRes.wind_speed || 0, direction: wRes.wind_degree || 0 };
 
          // 2. Generate Initial Physics-Aware Points
@@ -1205,7 +1210,7 @@ function MapHome() {
           const realisticDurationSeconds = (distanceMiles / speedMph) * 3600;
 
           const [eRes, wRes] = await Promise.all([
-            fetch('/api/elevation', { 
+            fetchWithAuth('/api/elevation', { 
               method: 'POST', 
               headers: { 'Content-Type': 'application/json' }, 
               body: JSON.stringify({ path: encodedPolyline }) 
@@ -1213,7 +1218,7 @@ function MapHome() {
               if (!r.ok) return { gain: 0, loss: 0 };
               return r.json();
             }),
-            fetch(`/api/weather?lat=${route.legs[0].startLocation.latLng.latitude}&lng=${route.legs[0].startLocation.latLng.longitude}`).then(async r => {
+            fetchWithAuth(`/api/weather?lat=${route.legs[0].startLocation.latLng.latitude}&lng=${route.legs[0].startLocation.latLng.longitude}`).then(async r => {
               if (!r.ok) return { wind_speed: 0, wind_degree: 0 };
               return r.json();
             })
@@ -1290,7 +1295,7 @@ function MapHome() {
             heading = google.maps.geometry.spherical.computeHeading(start, end);
           }
 
-          const calcRes = await fetch(`/api/calculate-range?_t=${Date.now()}`, {
+          const calcRes = await fetchWithAuth(`/api/calculate-range?_t=${Date.now()}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
             body: JSON.stringify({
@@ -1431,106 +1436,15 @@ function MapHome() {
     try {
       const token = await user.getIdToken();
       const idempotencyKey = crypto.randomUUID();
-      const res = await fetch('/api/create-checkout-session', { 
+      const res = await fetchWithAuth('/api/create-checkout-session', { 
         method: 'POST', 
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, 
+        headers: { 'Content-Type': 'application/json' }, 
         body: JSON.stringify({ userId: user.uid, email: user.email, tier: 'explore', idempotencyKey }) 
       });
       const data = await res.json();
       if (data.url) window.location.href = data.url;
       else showToast(`Checkout failed: ${data.error || 'Please try again.'}`);
     } catch (e: any) { showToast(`Checkout failed: ${e instanceof Error ? e.message : 'Unknown error'}`); }
-  };
-
-  // Sync Public Rides (20mi radius)
-  useEffect(() => {
-    if (!user) return;
-    const q = query(collection(db, "group_rides"), where("isPublic", "==", true), where("status", "==", "active"));
-    const unsub = onSnapshot(q, (snap) => {
-      const rides: GroupRide[] = [];
-      snap.forEach(d => rides.push({ id: d.id, ...d.data() } as GroupRide));
-      setPublicRides(rides);
-    });
-    return () => unsub();
-  }, [user]);
-
-  // Sync Participants
-  useEffect(() => {
-    if (!activeRide) return;
-    const q = collection(db, `group_rides/${activeRide.id}/participants`);
-    const unsub = onSnapshot(q, (snap) => {
-      const parts: Participant[] = [];
-      snap.forEach(d => parts.push(d.data() as Participant));
-      setRideParticipants(parts);
-    });
-    return () => unsub();
-  }, [activeRide?.id]);
-
-  // Location Upload during Ride
-  useEffect(() => {
-    if (!activeRide || !user) return;
-    const interval = setInterval(() => {
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(async (pos) => {
-          const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-          setUserLocation(loc);
-          await setDoc(doc(db, `group_rides/${activeRide.id}/participants`, user.uid), {
-            userId: user.uid, name: userData?.username || 'Rider', lat: loc.lat, lng: loc.lng, lastUpdatedAt: Date.now()
-          }, { merge: true });
-          if (activeRide.leaderId === user.uid) {
-            await updateDoc(doc(db, "group_rides", activeRide.id), { leaderTrail: arrayUnion(loc) });
-          }
-        });
-      }
-    }, 15000);
-    return () => clearInterval(interval);
-  }, [activeRide?.id, user, userData?.username]);
-
-  const createRide = async () => {
-    if (!user) { setShowAuthModal(true); return; }
-    if (!groupRideName) { alert("Name required."); return; }
-    const pin = Math.floor(1000 + Math.random() * 9000).toString();
-    const rideData = { name: groupRideName, isPublic: isPublicRide, pin, creatorId: user.uid, status: 'active', startLat: center.lat, startLng: center.lng, leaderId: user.uid };
-    const rideRef = await addDoc(collection(db, "group_rides"), rideData);
-    setActiveRide({ id: rideRef.id, ...rideData } as any);
-    await setDoc(doc(db, `group_rides/${rideRef.id}/participants`, user.uid), { userId: user.uid, name: userData?.username || 'Host', lat: center.lat, lng: center.lng, lastUpdatedAt: Date.now() });
-  };
-
-  const joinRide = async (rideId?: string) => {
-    if (!user) { setShowAuthModal(true); return; }
-    let targetRide;
-    if (rideId) {
-      const snap = await getDoc(doc(db, "group_rides", rideId));
-      if (snap.exists()) targetRide = { id: snap.id, ...snap.data() };
-    } else {
-      const q = query(collection(db, "group_rides"), where("pin", "==", joinPin), where("status", "==", "active"));
-      const snap = await getDocs(q);
-      if (!snap.empty) targetRide = { id: snap.docs[0].id, ...snap.docs[0].data() };
-    }
-
-    if (targetRide) {
-      await setDoc(doc(db, `group_rides/${targetRide.id}/participants`, user.uid), { userId: user.uid, name: userData?.username || 'Rider', lat: center.lat, lng: center.lng, lastUpdatedAt: Date.now() });
-      setActiveRide(targetRide as any);
-      setJoinPin('');
-    } else { alert("Ride not found."); }
-  };
-
-  const leaveRide = async () => {
-    if (!activeRide || !user) return;
-    await deleteDoc(doc(db, `group_rides/${activeRide.id}/participants`, user.uid));
-    setActiveRide(null); setRideParticipants([]);
-  };
-
-  const endRide = async () => {
-    if (!activeRide) return;
-    await updateDoc(doc(db, "group_rides", activeRide.id), { status: 'offline' });
-    setActiveRide(null); setRideParticipants([]);
-  };
-
-  const setRideLeader = async (participantId: string) => {
-    if (!activeRide || user?.uid !== activeRide.creatorId) return;
-    await updateDoc(doc(db, "group_rides", activeRide.id), { leaderId: participantId });
-    setActiveRide({ ...activeRide, leaderId: participantId } as any);
   };
 
   const onMapLoad = useCallback((map: google.maps.Map) => { 

@@ -1,5 +1,6 @@
 import axios from 'axios';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { verifyAuth } from './_auth.js';
 
 /**
  * RANGE ANXIETY RIDER - OpenChargeMap (OCM) Integration
@@ -14,6 +15,10 @@ import { setCorsHeaders } from './_cors.js';
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     if (setCorsHeaders(req, res)) return;
+
+    // Validate authentication
+    const decodedToken = await verifyAuth(req, res);
+    if (!decodedToken) return;
 
     const OCM_API_KEY = process.env.OPENCHARGEMAP_API_KEY;
     let lat: any, lng: any, radius = 25; // Default 25 miles

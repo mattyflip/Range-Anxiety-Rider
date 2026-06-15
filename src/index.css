@@ -28,7 +28,7 @@
   --spacing-unit: 1rem;
   --header-height: 4.5rem;
   
-  /* Fluid Typography using clamp() */
+  /* Fluid type: min at 320px viewport, ideal at ~768px, max at 1440px */
   --text-sm: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem);
   --text-base: clamp(0.875rem, 0.8rem + 0.375vw, 1rem);
   --text-lg: clamp(1rem, 0.9rem + 0.5vw, 1.25rem);

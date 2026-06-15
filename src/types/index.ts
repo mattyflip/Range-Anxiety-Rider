@@ -296,6 +296,28 @@ export interface Bike {
   rentedAt?: string;
 }
 
+export interface GroupRide {
+  id: string;
+  name: string;
+  isPublic: boolean;
+  pin: string;
+  creatorId: string;
+  origin: string;
+  startLat: number;
+  startLng: number;
+  status: string;
+  leaderId?: string;
+  leaderTrail?: google.maps.LatLngLiteral[];
+}
+
+export interface Participant {
+  userId: string;
+  name: string;
+  lat: number;
+  lng: number;
+  lastUpdatedAt: number;
+}
+
 /**
  * Live Telemetry model stored in /organizations/{orgId}/live_units/{riderUid}
  */

@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { verifyAuth } from './_auth.js';
 
 const ALLOWED_ORIGINS = [
   'https://rangeanxietyrider.com',
@@ -29,6 +30,10 @@ function setCorsHeadersLocal(req: VercelRequest, res: VercelResponse): boolean {
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     if (setCorsHeadersLocal(req, res)) return;
+
+    // Validate authentication
+    const decodedToken = await verifyAuth(req, res);
+    if (!decodedToken) return;
 
     const lat = req.query.lat as string;
     const lon = req.query.lng as string;

@@ -3,6 +3,7 @@ import axios from 'axios';
 import polylineCodec from '@mapbox/polyline';
 
 import { setCorsHeaders } from './_cors.js';
+import { verifyAuth } from './_auth.js';
 
 /**
  * Simplifies a polyline by keeping every Nth point to stay under Google's 8192 char URL limit.
@@ -27,6 +28,10 @@ function simplifyPolyline(encoded: string, maxLen: number = 2000): string {
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     if (setCorsHeaders(req, res)) return;
+
+    // Validate authentication
+    const decodedToken = await verifyAuth(req, res);
+    if (!decodedToken) return;
 
     const polyline = req.query.polyline as string;
     

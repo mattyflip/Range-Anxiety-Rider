@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 import { setCorsHeaders } from './_cors.js';
+import { verifyAuth } from './_auth.js';
 import { calculateBurnRate, calculateHeadwind, estimateVoltage, getRollingResCoefficient, PHYSICS_CONSTANTS } from './_physics.js';
 import { z } from 'zod';
 
@@ -34,6 +35,10 @@ const CalculateRangeRequestSchema = z.object({
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     if (setCorsHeaders(req, res)) return;
+
+    // Validate authentication
+    const decodedToken = await verifyAuth(req, res);
+    if (!decodedToken) return;
 
     if (req.method !== 'POST') {
       return res.status(405).json({ error: 'METHOD_NOT_ALLOWED' });

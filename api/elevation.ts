@@ -2,6 +2,7 @@ import axios from 'axios';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import polylineCodec from '@mapbox/polyline';
 import { setCorsHeaders } from './_cors.js';
+import { verifyAuth } from './_auth.js';
 
 /**
  * Simplifies a polyline to stay within safe URL limits for the Google Elevation API.
@@ -24,6 +25,10 @@ function simplifyPolyline(encoded: string, maxLen: number = 2000): string {
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     if (setCorsHeaders(req, res)) return;
+
+    // Validate authentication
+    const decodedToken = await verifyAuth(req, res);
+    if (!decodedToken) return;
 
     const apiKey = process.env.GOOGLE_MAPS_BACKEND_KEY || process.env.VITE_GOOGLE_MAPS_API_KEY;
 

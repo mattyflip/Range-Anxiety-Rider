@@ -48,7 +48,7 @@
   font-weight: 700;
   text-transform: uppercase;
   white-space: nowrap;
-  transition: color 0.2s;
+  transition: color 0.2s ease, transform 0.2s ease;
 }
 
 .navLink:hover {

@@ -26,6 +26,13 @@
   position: relative;
 }
 
+@media (max-width: 480px) {
+  .modal {
+    width: calc(100% - 2rem);
+    padding: 1.5rem;
+  }
+}
+
 .title {
   margin-bottom: 2rem;
   text-align: center;
