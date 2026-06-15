@@ -11,54 +11,56 @@ export const usePushNotifications = (user: User | null) => {
     const setupPush = async () => {
       if (!user) return;
 
-      const info = await Device.getInfo();
-      if (info.platform === 'web') {
-        console.log('[PUSH] Skipping push registration on web.');
-        return;
-      }
-
-      // 1. Check/Request Permissions
-      let permStatus = await PushNotifications.checkPermissions();
-      if (permStatus.receive === 'prompt') {
-        permStatus = await PushNotifications.requestPermissions();
-      }
-
-      if (permStatus.receive !== 'granted') {
-        console.warn('[PUSH] User denied push permissions.');
-        return;
-      }
-
-      // 2. Register with FCM/APNS
-      await PushNotifications.register();
-
-      // 3. Listen for token
-      PushNotifications.addListener('registration', async (token) => {
-        console.log('[PUSH] Token registered:', token.value);
-        // Store token in Firestore under the user document
-        const userRef = doc(db, 'users', user.uid);
-        try {
-          await updateDoc(userRef, {
-            pushTokens: arrayUnion(token.value)
-          });
-        } catch (e) {
-          console.error('[PUSH] Failed to store token:', e);
+      try {
+        const info = await Device.getInfo();
+        if (info.platform === 'web') {
+          console.log('[PUSH] Skipping push registration on web.');
+          return;
         }
-      });
 
-      PushNotifications.addListener('registrationError', (error) => {
-        console.error('[PUSH] Registration error:', error.error);
-      });
+        // 1. Check/Request Permissions
+        let permStatus = await PushNotifications.checkPermissions();
+        if (permStatus.receive === 'prompt') {
+          permStatus = await PushNotifications.requestPermissions();
+        }
 
-      // 4. Listen for notifications while app is open
-      PushNotifications.addListener('pushNotificationReceived', (notification) => {
-        console.log('[PUSH] Notification received:', notification);
-        // You could trigger a local toast here if you want
-      });
+        if (permStatus.receive !== 'granted') {
+          console.warn('[PUSH] User denied push permissions.');
+          return;
+        }
 
-      PushNotifications.addListener('pushNotificationActionPerformed', (notification) => {
-        console.log('[PUSH] Notification action performed:', notification);
-        // Handle clicking the notification (e.g. navigate to a specific page)
-      });
+        // 2. Register with FCM/APNS
+        await PushNotifications.register();
+
+        // 3. Listen for token
+        PushNotifications.addListener('registration', async (token) => {
+          console.log('[PUSH] Token registered:', token.value);
+          // Store token in Firestore under the user document
+          const userRef = doc(db, 'users', user.uid);
+          try {
+            await updateDoc(userRef, {
+              pushTokens: arrayUnion(token.value)
+            });
+          } catch (e) {
+            console.error('[PUSH] Failed to store token:', e);
+          }
+        });
+
+        PushNotifications.addListener('registrationError', (error) => {
+          console.error('[PUSH] Registration error:', error.error);
+        });
+
+        // 4. Listen for notifications while app is open
+        PushNotifications.addListener('pushNotificationReceived', (notification) => {
+          console.log('[PUSH] Notification received:', notification);
+        });
+
+        PushNotifications.addListener('pushNotificationActionPerformed', (notification) => {
+          console.log('[PUSH] Notification action performed:', notification);
+        });
+      } catch (err) {
+        console.error('[PUSH] Native push initialization failed. Is google-services.json missing?', err);
+      }
     };
 
     setupPush();
