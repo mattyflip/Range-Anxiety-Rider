@@ -4,6 +4,7 @@ import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
 import { setCorsHeaders } from './_cors.js';
+import { verifyAuth } from './_auth.js';
 
 const serviceAccount: ServiceAccount = {
   projectId: process.env.VITE_FIREBASE_PROJECT_ID,
@@ -38,18 +39,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   // --- AUTHENTICATION ---
-  const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Unauthorized: Missing token' });
-  }
-
-  const token = authHeader.split('Bearer ')[1];
-  let decodedToken;
-  try {
-    decodedToken = await auth.verifyIdToken(token);
-  } catch (err) {
-    return res.status(401).json({ error: 'Unauthorized: Invalid token' });
-  }
+  const decodedToken = await verifyAuth(req, res);
+  if (!decodedToken) return;
 
   const userId = decodedToken.uid;
 

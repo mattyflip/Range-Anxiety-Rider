@@ -4,6 +4,7 @@ import { getApps, initializeApp, cert, ServiceAccount } from 'firebase-admin/app
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 import { setCorsHeaders } from './_cors.js';
+import { verifyAuth } from './_auth.js';
 import { z } from 'zod';
 
 const EmailRequestSchema = z.object({
@@ -37,18 +38,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   // --- AUTHENTICATION ---
-  const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
-
-  const token = authHeader.split('Bearer ')[1];
-  let decodedToken;
-  try {
-    decodedToken = await getAuth().verifyIdToken(token);
-  } catch (err) {
-    return res.status(401).json({ error: 'Invalid token' });
-  }
+  const decodedToken = await verifyAuth(req, res);
+  if (!decodedToken) return;
 
   const parsed = EmailRequestSchema.safeParse(req.body);
   if (!parsed.success) {

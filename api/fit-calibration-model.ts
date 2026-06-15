@@ -4,6 +4,7 @@ import { getFirestore } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 import MLR from 'ml-regression-multivariate-linear';
 import { setCorsHeaders } from './_cors.js';
+import { verifyAuth } from './_auth.js';
 
 interface MLRInstance {
   weights: number[][];
@@ -35,14 +36,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const { bikeId, orgId } = req.body;
-    const authHeader = req.headers.authorization;
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'UNAUTHORIZED' });
-    }
-
-    const idToken = authHeader.split('Bearer ')[1];
-    const decodedToken = await auth.verifyIdToken(idToken);
+    // --- AUTHENTICATION ---
+    const decodedToken = await verifyAuth(req, res);
+    if (!decodedToken) return;
     const uid = decodedToken.uid;
 
     if (!bikeId) {
