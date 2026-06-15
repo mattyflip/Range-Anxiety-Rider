@@ -4,7 +4,7 @@ import ModernAutocomplete from '../features/map/ModernAutocomplete'
 import { toPng } from 'html-to-image'
 import { decode } from '@googlemaps/polyline-codec'
 import { db, storage } from '../firebase'
-import { doc, getDoc, collection, addDoc, serverTimestamp, updateDoc, query, onSnapshot, setDoc, arrayUnion, deleteDoc, where, getDocs } from 'firebase/firestore'
+import { doc, collection, addDoc, serverTimestamp, updateDoc, query, onSnapshot, setDoc, arrayUnion } from 'firebase/firestore'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { Suspense, lazy } from 'react';
 import InstallTutorial from '../shared/ui/InstallTutorial';
@@ -23,7 +23,7 @@ import orangePin from '../assets/orange-pin.png'
 import { createNotification } from '../utils/notifications'
 import { STATE_COORDINATES } from '../utils/ebikeLaws'
 import SEO from '../shared/ui/SEO'
-import type { Bike, LiveUnit, Organization, SavedBike, BikeSpecs, GroupRide, Participant } from '../types';
+import type { Bike, LiveUnit, Organization, SavedBike, BikeSpecs } from '../types';
 import { useUserData } from '../hooks/useUserData';
 import { useBikeLibrary } from '../hooks/useBikeLibrary';
 import { useGroupRide } from '../hooks/useGroupRide';
@@ -370,7 +370,6 @@ function MapHome() {
     if (!user) { setShowAuthModal(true); return; }
     try {
       showToast("Forwarding to secure checkout...", "info");
-      const token = await user.getIdToken();
       const res = await fetchWithAuth('/api/create-checkout-session', { 
         method: 'POST', 
         headers: { 'Content-Type': 'application/json' }, 
@@ -485,17 +484,6 @@ function MapHome() {
           }, (err) => console.error("Firestore unsubBikes rental error:", err));
         }
         setLoading(false);
-
-        const savedRideId = localStorage.getItem('active_ride_id');
-        if (savedRideId && !activeRide) {
-          getDoc(doc(db, "group_rides", savedRideId)).then(rideSnap => {
-            if (rideSnap.exists() && rideSnap.data()?.status === 'active') {
-              setActiveRide({ id: rideSnap.id, ...rideSnap.data() } as GroupRide);
-            } else {
-              localStorage.removeItem('active_ride_id');
-            }
-          });
-        }
     } else if (!authLoading && !user) {
         setIsPro(false); setIsExploreTier(false);
         localStorage.removeItem('active_ride_id');
@@ -1434,7 +1422,6 @@ function MapHome() {
   const checkoutExploreTier = async () => {
     if (!user) { setShowAuthModal(true); return; }
     try {
-      const token = await user.getIdToken();
       const idempotencyKey = crypto.randomUUID();
       const res = await fetchWithAuth('/api/create-checkout-session', { 
         method: 'POST', 
