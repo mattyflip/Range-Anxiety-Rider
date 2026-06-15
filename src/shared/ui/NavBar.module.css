@@ -3,12 +3,13 @@
   justify-content: space-between;
   align-items: center;
   padding: 0.8rem 1.5rem;
+  padding-top: calc(0.8rem + env(safe-area-inset-top, 0px));
   background: #121212;
   border-bottom: 1px solid #333;
   position: sticky;
   top: 0;
   z-index: 100005;
-  height: 4.5rem;
+  height: calc(4.5rem + env(safe-area-inset-top, 0px));
 }
 
 .logoContainer {

@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { db, auth } from '../../firebase'
 import { signOut } from 'firebase/auth'
 import { collection, query, where, onSnapshot, doc, updateDoc } from 'firebase/firestore'
+import { Capacitor } from '@capacitor/core'
 import styles from './NavBar.module.css';
 
 import { useUserData } from '../../hooks/useUserData'
@@ -132,7 +133,9 @@ const NavBar: React.FC<NavBarProps> = ({ user: providedUser, onShowInstall, onSh
             <button onClick={handleLogout} className={styles.logoutBtn}>Log Out</button>
           )}
 
-          <button onClick={onShowInstall} className={styles.primaryButton}>Get App</button>
+          <button onClick={onShowInstall} className={styles.primaryButton}>
+            {Capacitor.getPlatform() === 'android' ? 'Create Account' : 'Get App'}
+          </button>
         </nav>
 
         {/* Notifications (Always visible if user) */}
@@ -176,7 +179,9 @@ const NavBar: React.FC<NavBarProps> = ({ user: providedUser, onShowInstall, onSh
             <button onClick={handleLogout} className={styles.mobileLogoutBtn}>Log Out</button>
           )}
 
-          <button onClick={onShowInstall} className={styles.mobilePrimaryBtn}>Get The App</button>
+          <button onClick={onShowInstall} className={styles.mobilePrimaryBtn}>
+            {Capacitor.getPlatform() === 'android' ? 'Create Account' : 'Get The App'}
+          </button>
         </div>
       )}
     </header>
