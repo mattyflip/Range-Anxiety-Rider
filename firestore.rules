@@ -19,6 +19,10 @@ service cloud.firestore {
     }
     
     function isAdmin() { 
+      return isSignedIn() && request.auth.token.admin == true;
+    }
+
+    function isAdminLegacy() { 
       return isSignedIn() && (request.auth.token.admin == true || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true);
     }
     
