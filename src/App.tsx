@@ -45,7 +45,7 @@ const AuthRedirect = ({ children }: { children: React.ReactNode }) => {
   if (loading) return null
 
   if (user) {
-    return <Navigate to={userData?.role === 'fleet' ? "/fleet" : "/map"} replace />
+    return <Navigate to={userData?.role === 'fleet' ? "/shop-profile" : "/map"} replace />
   }
 
   return <>{children}</>

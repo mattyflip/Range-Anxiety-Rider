@@ -31,6 +31,7 @@ import { calculateRangePolygon, calculateBurnRate, calculateHeadwind } from '../
 import Toast, { type ToastType } from '../shared/ui/Toast';
 import LocationDisclosureModal from '../shared/ui/LocationDisclosureModal';
 import UpgradeModal from '../shared/ui/UpgradeModal';
+import ShopPaywallModal from '../shared/ui/ShopPaywallModal';
 import styles from './MapHome.module.css';
 
 
@@ -100,7 +101,7 @@ const HelpBubble = ({ text }: { text: string }) => (
 );
 
 function MapHome() {
-  const { isLoaded } = useJsApiLoader({ id: 'google-map-script', googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "", libraries: LIBRARIES });
+  const { isLoaded, loadError } = useJsApiLoader({ id: 'google-map-script', googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "", libraries: LIBRARIES });
   const { user, userData, loading: authLoading } = useUserData();
 
   const fetchWithAuth = useCallback(async (url: string, options: RequestInit = {}) => {
@@ -1608,6 +1609,12 @@ function MapHome() {
   const filteredBikes = [...globalBikes, ...savedBikes].filter(b => b.name.toLowerCase().includes(bikeSearchQuery.toLowerCase()));
   const isRenting = userRole === 'rider' && !!selectedBikeId;
 
+  // Paywall: fleet users who haven't subscribed to the shop tier see the upgrade screen
+  const isSubscribed = userData?.isShopTier || userData?.isAdmin || false;
+  if (userRole === 'fleet' && !isSubscribed) {
+    return <ShopPaywallModal userEmail={user?.email || undefined} />;
+  }
+
   // Dynamic Mobile Label Logic
   const getMobileToggleLabel = () => {
     if (showMobileMenu) return 'MAP';
@@ -1616,6 +1623,7 @@ function MapHome() {
     return 'TRIP METRICS';
   };
 
+  if (loadError) return <div style={{ color: 'red', padding: '4rem', textAlign: 'center' }}>Error loading Google Maps. Please check your API key configuration.</div>;
   if (loading || !isLoaded) return <div style={{ color: 'white', padding: '4rem', textAlign: 'center' }}>Initializing Map Hub...</div>;
 
   return (

@@ -90,11 +90,29 @@ const Profile: React.FC = () => {
     setShowUpgradeModal(false);
     if (!user) return;
     try {
-      // Logic for Stripe Checkout would go here
       showToast("Forwarding to secure checkout...", "info");
-      // window.location.href = ...
-    } catch (e) {
+      const idToken = await user.getIdToken();
+      const response = await fetch('/api/create-checkout-session', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${idToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          userId: user.uid,
+          tier: 'explore'
+        })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Checkout failed');
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error('No checkout URL returned');
+      }
+    } catch (e: any) {
       console.error(e);
+      showToast(e.message || "Failed to initiate checkout", "error");
     }
   };
 

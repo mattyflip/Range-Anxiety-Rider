@@ -6,7 +6,6 @@ const packageJson = JSON.parse(readFileSync('./package.json', 'utf-8'))
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: './',
   plugins: [react()],
   test: {
     environment: 'jsdom',

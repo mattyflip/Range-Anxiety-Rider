@@ -240,7 +240,9 @@ const ExploreMap: React.FC = () => {
       <NavBar user={user} onShowInstall={() => setShowInstallTutorial(true)} onShowAuth={handleShowAuth} />
       
       <div style={{ flex: 1, position: 'relative', width: '100%', height: '100%', minHeight: 0 }}>
-        {!isLoaded ? (
+        {loadError ? (
+          <div style={{ height: '100%', width: '100%', background: '#121212', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ff4444' }}>Error loading map: Invalid API Key.</div>
+        ) : !isLoaded ? (
           <div style={{ height: '100%', width: '100%', background: '#121212', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666' }}>Loading...</div>
         ) : (
           <GoogleMap

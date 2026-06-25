@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "837716517309",
+    "project_id": "range-anxiety-rider-12258",
+    "storage_bucket": "range-anxiety-rider-12258.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:837716517309:android:77eda171fdce5d2a0bb2d4",
+        "android_client_info": {
+          "package_name": "com.ebikeking.rangeanxiety"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDcVC7eORkr8jmys-jlsj9pTFgm607KhaI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

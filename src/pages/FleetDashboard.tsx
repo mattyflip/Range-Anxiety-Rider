@@ -491,28 +491,6 @@ const FleetDashboard = () => {
     setShowShowBikeModal(true);
   };
 
-  const handleTestEmail = async () => {
-    if (!user?.email) return;
-    try {
-      await sendEmail({
-        to: user.email,
-        subject: "📧 Email System Test - Range Anxiety Rider",
-        text: "If you are reading this, your professional email domain (Info@rangeanxietyrider.com) is correctly configured and working through Resend!",
-        html: `
-          <div style="font-family: sans-serif; padding: 20px; background: #f9f9f9;">
-            <h2 style="color: #ff6600;">System Diagnostic: SUCCESS</h2>
-            <p>Your professional email domain is now active.</p>
-            <hr/>
-            <p style="font-size: 0.8rem; color: #666;">Sent from Range Anxiety Rider Platform</p>
-          </div>
-        `
-      });
-      alert("Success! Check your inbox (and spam folder) for the test email.");
-    } catch (e: any) {
-      console.error(e);
-      alert("Email Failed: " + e.message + "\n\nTip: Ensure your RESEND_API_KEY is in Vercel and your domain is verified in Resend.");
-    }
-  };
 
   if (loading) return <div style={{ color: 'white', padding: '4rem', textAlign: 'center' }}>Loading Fleet Data...</div>;
 
@@ -538,12 +516,6 @@ const FleetDashboard = () => {
             <div style={{ color: '#888', fontWeight: 'bold' }}>{userData?.orgName || 'Bike Shop'} Management</div>
           </div>
           <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap' }}>
-            <button 
-              onClick={handleTestEmail}
-              style={{ padding: '0.8rem 1.2rem', background: '#222', color: '#888', border: '1px solid #333', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.75rem' }}
-            >
-              📧 TEST EMAIL
-            </button>
             <button 
               onClick={() => { setEditingBike(null); setBikeForm({ unitId: '', voltage: '48', capacityAh: '15', capacityUnit: 'Ah', motorWatts: '750', tirePSI: '30', tireType: 'all-terrain', driveMode: 'both', bikeWeightLbs: '65', targetSpeedMph: '20', controllerAmps: '', cycleCount: '0', imageUrl: '', pricePerHour: '' }); setShowShowBikeModal(true); }}
               style={{ padding: '0.8rem 1.5rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }}
