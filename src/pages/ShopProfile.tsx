@@ -58,6 +58,35 @@ const ShopProfile: React.FC = () => {
     setToastType(type);
   }, []);
 
+  const handleShopUpgrade = async () => {
+    if (!user) return;
+    try {
+      showToast("Forwarding to secure checkout...", "info");
+      const idToken = await user.getIdToken();
+      const response = await fetch('/api/create-checkout-session', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${idToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          userId: user.uid,
+          tier: 'shop'
+        })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Checkout failed');
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error('No checkout URL returned');
+      }
+    } catch (e: any) {
+      console.error(e);
+      showToast(e.message || "Failed to initiate checkout", "error");
+    }
+  };
+
   const handleDeleteAccount = async () => {
     if (!user) return;
     
@@ -313,7 +342,7 @@ const ShopProfile: React.FC = () => {
           </div>
         )}
 
-        {isShopTier && (
+        {isShopTier ? (
           <section className="card" style={{ background: '#1a1a1a', padding: '2rem', borderRadius: '24px', border: '1px solid #333', marginBottom: '2rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
@@ -322,6 +351,12 @@ const ShopProfile: React.FC = () => {
               </div>
               <div style={{ fontSize: '2rem' }}>🏬</div>
             </div>
+          </section>
+        ) : (
+          <section className="card" style={{ background: 'linear-gradient(135deg, #1a1a1a, #221000)', padding: '2rem', borderRadius: '24px', border: '2px solid rgba(255,102,0,0.5)', marginBottom: '2rem', textAlign: 'center' }}>
+            <h2 style={{ color: 'white', fontSize: '1.5rem', margin: '0 0 0.5rem 0' }}>Unlock Fleet Hub</h2>
+            <p style={{ color: '#888', fontSize: '0.9rem', marginBottom: '1.5rem' }}>Subscribe to the Shop Tier ($49.99/mo) to access real-time tracking, rental management, and more.</p>
+            <button onClick={handleShopUpgrade} style={{ padding: '0.8rem 2rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer' }}>Subscribe Now</button>
           </section>
         )}
 

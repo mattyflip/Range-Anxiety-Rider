@@ -45,7 +45,11 @@ const AuthRedirect = ({ children }: { children: React.ReactNode }) => {
   if (loading) return null
 
   if (user) {
-    return <Navigate to={userData?.role === 'fleet' ? "/shop-profile" : "/map"} replace />
+    if (userData?.role === 'fleet') {
+      const isSubscribed = userData?.isShopTier || userData?.isAdmin || false;
+      return <Navigate to={isSubscribed ? "/fleet" : "/shop-profile"} replace />
+    }
+    return <Navigate to="/map" replace />
   }
 
   return <>{children}</>
