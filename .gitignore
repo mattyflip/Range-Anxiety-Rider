@@ -26,6 +26,7 @@ server/
 *.sw?
 .vercel
 .env*.local
+.env.production
 
 # TypeScript build artifacts — never commit these
 tsconfig.api.tsbuildinfo
