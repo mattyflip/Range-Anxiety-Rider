@@ -52,6 +52,9 @@ const Profile: React.FC = () => {
   const [editRiderWeight, setEditRiderWeight] = useState('');
   const [isSavingProfile, setIsSavingProfile] = useState(false);
 
+  // Tab state
+  const [activeTab, setActiveTab] = useState<'garage' | 'posts' | 'reviews'>('garage');
+
   // Garage states
   const [showBikeModal, setShowBikeModal] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
@@ -455,7 +458,30 @@ const Profile: React.FC = () => {
            </div>
         </section>
 
+        {/* Tabs */}
+        <div style={{ display: 'flex', borderBottom: '1px solid #333', marginBottom: '2rem' }}>
+          <button 
+            onClick={() => setActiveTab('garage')} 
+            style={{ flex: 1, background: 'none', border: 'none', color: activeTab === 'garage' ? '#ff6600' : '#888', padding: '1rem', fontSize: '1rem', fontWeight: 'bold', cursor: 'pointer', borderBottom: activeTab === 'garage' ? '2px solid #ff6600' : '2px solid transparent', transition: 'all 0.2s' }}
+          >
+            Garage
+          </button>
+          <button 
+            onClick={() => setActiveTab('posts')} 
+            style={{ flex: 1, background: 'none', border: 'none', color: activeTab === 'posts' ? '#ff6600' : '#888', padding: '1rem', fontSize: '1rem', fontWeight: 'bold', cursor: 'pointer', borderBottom: activeTab === 'posts' ? '2px solid #ff6600' : '2px solid transparent', transition: 'all 0.2s' }}
+          >
+            Posts & Trips
+          </button>
+          <button 
+            onClick={() => setActiveTab('reviews')} 
+            style={{ flex: 1, background: 'none', border: 'none', color: activeTab === 'reviews' ? '#ff6600' : '#888', padding: '1rem', fontSize: '1rem', fontWeight: 'bold', cursor: 'pointer', borderBottom: activeTab === 'reviews' ? '2px solid #ff6600' : '2px solid transparent', transition: 'all 0.2s' }}
+          >
+            Reviews
+          </button>
+        </div>
+
         {/* My Garage Section */}
+        {activeTab === 'garage' && (
         <section style={{ marginBottom: '3rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem', flexWrap: 'wrap', gap: '1rem' }}>
             <h2 style={{ color: 'white', fontSize: '1.1rem', margin: 0 }}>My Garage</h2>
@@ -519,8 +545,10 @@ const Profile: React.FC = () => {
             )}
           </div>
         </section>
+        )}
 
         {/* Posts & Trips Section */}
+        {activeTab === 'posts' && (
         <section style={{ marginBottom: '3rem' }}>
           <h2 style={{ color: 'white', fontSize: '1.2rem', marginBottom: '1.5rem' }}>Posts & Trips</h2>
           {loadingPosts ? (
@@ -554,8 +582,10 @@ const Profile: React.FC = () => {
             </div>
           )}
         </section>
+        )}
 
         {/* Reviews Section */}
+        {activeTab === 'reviews' && (
         <section style={{ marginBottom: '4rem' }}>
           <h2 style={{ color: 'white', fontSize: '1.2rem', marginBottom: '1.5rem' }}>Rider Reviews</h2>
           
@@ -592,6 +622,7 @@ const Profile: React.FC = () => {
              )}
           </div>
         </section>
+        )}
       </main>
 
       {showSettings && (
