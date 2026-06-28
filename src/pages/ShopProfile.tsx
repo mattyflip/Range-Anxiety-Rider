@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { db, auth } from '../firebase'
 import { doc, updateDoc, setDoc, getDoc } from 'firebase/firestore'
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { signOut } from 'firebase/auth'
 import { useJsApiLoader, GoogleMap } from '@react-google-maps/api'
 import NavBar from '../shared/ui/NavBar'
@@ -28,6 +29,8 @@ const ShopProfile: React.FC = () => {
   const [shopLng, setShopLng] = useState<number | null>(null);
   const [shopPhone, setShopPhone] = useState('');
   const [shopEmail, setShopEmail] = useState('');
+  const [shopLogo, setShopLogo] = useState('');
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   
   // Pricing states
   const [pricePerHour, setPricePerHour] = useState('');
@@ -142,6 +145,7 @@ const ShopProfile: React.FC = () => {
           setShopLng(d.location?.lng || null);
           setShopPhone(d.phone || '');
           setShopEmail(d.email || '');
+          setShopLogo(d.logoUrl || '');
           // Load pricing
           setPricePerHour(d.pricing?.pricePerHour?.toString() || '25');
           setPricePerDay(d.pricing?.pricePerDay?.toString() || '100');
@@ -167,6 +171,7 @@ const ShopProfile: React.FC = () => {
       await setDoc(doc(db, "organizations", orgId), {
         name: shopName,
         bio: shopBio,
+        logoUrl: shopLogo,
         address: shopAddress,
         location: {
           lat: shopLat,
@@ -219,6 +224,34 @@ const ShopProfile: React.FC = () => {
             <section className="card" style={{ background: '#1a1a1a', padding: '2rem', borderRadius: '24px', border: '1px solid #ff6600', marginBottom: '2rem' }}>
               <h2 style={{ color: '#ff6600', fontSize: '1.2rem', marginBottom: '1.5rem' }}>Shop Information</h2>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+                <div className="form-group">
+                  <label style={{ display: 'block', color: '#888', fontSize: '0.75rem', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Shop Logo / Profile Pic</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <div style={{ width: '80px', height: '80px', borderRadius: '12px', background: '#222', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #333', flexShrink: 0 }}>
+                      {shopLogo ? <img src={shopLogo} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Shop Logo" /> : <span style={{ fontSize: '2rem' }}>🏬</span>}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <input type="file" accept="image/*" onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file || !user) return;
+                        setIsUploadingLogo(true);
+                        try {
+                          const { storage } = await import('../firebase');
+                          const storageRef = ref(storage, `shop_logos/${user.uid}/${Date.now()}_${file.name}`);
+                          await uploadBytes(storageRef, file);
+                          const url = await getDownloadURL(storageRef);
+                          setShopLogo(url);
+                        } catch (err) {
+                          console.error(err);
+                          showToast("Failed to upload shop logo.", "error");
+                        } finally {
+                          setIsUploadingLogo(false);
+                        }
+                      }} disabled={isUploadingLogo} />
+                      {isUploadingLogo && <div style={{ color: '#ff6600', fontSize: '0.8rem', marginTop: '0.4rem' }}>Uploading...</div>}
+                    </div>
+                  </div>
+                </div>
                 <div className="form-group">
                   <label style={{ display: 'block', color: '#888', fontSize: '0.75rem', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Shop Name</label>
                   <input type="text" value={shopName} onChange={e => setShopName(e.target.value)} style={{ width: '100%', padding: '0.9rem', background: '#111', border: '1px solid #333', borderRadius: '12px', color: 'white' }} />
