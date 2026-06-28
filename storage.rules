@@ -32,6 +32,13 @@ service firebase.storage {
       allow delete: if isOwner(userId) || isAdmin();
     }
 
+    // --- Shop Logos ---
+    match /shop_logos/{userId}/{allPaths=**} {
+      allow read: if true; 
+      allow write: if isOwner(userId) || isAdmin();
+      allow delete: if isOwner(userId) || isAdmin();
+    }
+
     // --- Bike Garage Photos ---
     match /bikes/{userId}/{allPaths=**} {
       allow read: if true;
