@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { db, storage } from '../firebase'
 import { doc, collection, setDoc, query, where, onSnapshot, updateDoc, serverTimestamp, orderBy } from 'firebase/firestore'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
@@ -16,6 +16,7 @@ import { getTierLimits } from '../utils/tierLimits';
 
 const Profile: React.FC = () => {
   const { username } = useParams<{ username: string }>();
+  const navigate = useNavigate();
   const { user, userData, loading: authLoading } = useUserData();
   
   const [profileData, setProfileData] = useState<UserProfile | null>(null);
@@ -354,6 +355,11 @@ const Profile: React.FC = () => {
       });
       setShowSettings(false);
       showToast("Profile updated!", "success");
+      
+      const newUrlUsername = newUsername.replace(/ /g, '_');
+      if (username && newUrlUsername.toLowerCase() !== username.toLowerCase()) {
+        navigate(`/profile/${newUrlUsername}`);
+      }
     } catch (e) {
       console.error(e);
       showToast("Failed to update profile.", "error");
