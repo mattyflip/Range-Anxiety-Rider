@@ -54,7 +54,7 @@ const Profile: React.FC = () => {
   const [isSavingProfile, setIsSavingProfile] = useState(false);
 
   // Tab state
-  const [activeTab, setActiveTab] = useState<'garage' | 'posts' | 'reviews'>('garage');
+  const [activeTab, setActiveTab] = useState<'garage' | 'posts' | 'trips' | 'reviews'>('garage');
 
   // Garage states
   const [showBikeModal, setShowBikeModal] = useState(false);
@@ -476,7 +476,13 @@ const Profile: React.FC = () => {
             onClick={() => setActiveTab('posts')} 
             style={{ flex: 1, background: 'none', border: 'none', color: activeTab === 'posts' ? '#ff6600' : '#888', padding: '1rem', fontSize: '1rem', fontWeight: 'bold', cursor: 'pointer', borderBottom: activeTab === 'posts' ? '2px solid #ff6600' : '2px solid transparent', transition: 'all 0.2s' }}
           >
-            Posts & Trips
+            Posts
+          </button>
+          <button 
+            onClick={() => setActiveTab('trips')} 
+            style={{ flex: 1, background: 'none', border: 'none', color: activeTab === 'trips' ? '#ff6600' : '#888', padding: '1rem', fontSize: '1rem', fontWeight: 'bold', cursor: 'pointer', borderBottom: activeTab === 'trips' ? '2px solid #ff6600' : '2px solid transparent', transition: 'all 0.2s' }}
+          >
+            Trips
           </button>
           <button 
             onClick={() => setActiveTab('reviews')} 
@@ -553,28 +559,58 @@ const Profile: React.FC = () => {
         </section>
         )}
 
-        {/* Posts & Trips Section */}
+        {/* Posts Section */}
         {activeTab === 'posts' && (
         <section style={{ marginBottom: '3rem' }}>
-          <h2 style={{ color: 'white', fontSize: '1.2rem', marginBottom: '1.5rem' }}>Posts & Trips</h2>
+          <h2 style={{ color: 'white', fontSize: '1.2rem', marginBottom: '1.5rem' }}>Posts</h2>
           {loadingPosts ? (
             <div style={{ color: '#666', textAlign: 'center', padding: '2rem' }}>Loading posts...</div>
-          ) : userPosts.length === 0 ? (
+          ) : userPosts.filter(p => !p.tripData).length === 0 ? (
              <div style={{ textAlign: 'center', padding: '2.5rem', background: '#1a1a1a', borderRadius: '24px', border: '1px dashed #333' }}>
                <div style={{ fontSize: '2.5rem', marginBottom: '0.8rem' }}>📸</div>
-               <p style={{ color: '#666', margin: 0, fontSize: '0.9rem' }}>No posts or trips yet.</p>
+               <p style={{ color: '#666', margin: 0, fontSize: '0.9rem' }}>No posts yet.</p>
              </div>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '1rem' }}>
-              {userPosts.map(post => (
+              {userPosts.filter(p => !p.tripData).map(post => (
                 <div key={post.id} style={{ background: '#1a1a1a', borderRadius: '16px', border: '1px solid #333', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                   <div style={{ width: '100%', aspectRatio: '1', position: 'relative' }}>
                     <img src={post.imageUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Post" />
-                    {post.tripData && (
-                       <div style={{ position: 'absolute', top: '8px', right: '8px', background: 'rgba(255, 102, 0, 0.9)', color: 'white', fontSize: '0.7rem', fontWeight: 'bold', padding: '4px 8px', borderRadius: '12px' }}>
-                         TRIP
-                       </div>
-                    )}
+                  </div>
+                  <div style={{ padding: '0.8rem' }}>
+                    <p style={{ color: '#ccc', fontSize: '0.8rem', margin: '0 0 0.5rem 0', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{post.caption}</p>
+                    <div style={{ display: 'flex', gap: '0.8rem', color: '#666', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                      <span>❤️ {post.likes?.length || 0}</span>
+                      {post.commentsEnabled !== false && <span>💬 {post.commentCount || 0}</span>}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+        )}
+
+        {/* Trips Section */}
+        {activeTab === 'trips' && (
+        <section style={{ marginBottom: '3rem' }}>
+          <h2 style={{ color: 'white', fontSize: '1.2rem', marginBottom: '1.5rem' }}>Recorded Trips</h2>
+          {loadingPosts ? (
+            <div style={{ color: '#666', textAlign: 'center', padding: '2rem' }}>Loading trips...</div>
+          ) : userPosts.filter(p => !!p.tripData).length === 0 ? (
+             <div style={{ textAlign: 'center', padding: '2.5rem', background: '#1a1a1a', borderRadius: '24px', border: '1px dashed #333' }}>
+               <div style={{ fontSize: '2.5rem', marginBottom: '0.8rem' }}>🗺️</div>
+               <p style={{ color: '#666', margin: 0, fontSize: '0.9rem' }}>No recorded trips yet.</p>
+             </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '1rem' }}>
+              {userPosts.filter(p => !!p.tripData).map(post => (
+                <div key={post.id} style={{ background: '#1a1a1a', borderRadius: '16px', border: '1px solid #333', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                  <div style={{ width: '100%', aspectRatio: '1', position: 'relative' }}>
+                    <img src={post.imageUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Trip" />
+                    <div style={{ position: 'absolute', top: '8px', right: '8px', background: 'rgba(255, 102, 0, 0.9)', color: 'white', fontSize: '0.7rem', fontWeight: 'bold', padding: '4px 8px', borderRadius: '12px' }}>
+                      TRIP
+                    </div>
                   </div>
                   <div style={{ padding: '0.8rem' }}>
                     <p style={{ color: '#ccc', fontSize: '0.8rem', margin: '0 0 0.5rem 0', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{post.caption}</p>
