@@ -88,6 +88,8 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>
 }
 
+import { Capacitor } from '@capacitor/core'
+
 // Deep Link Handler Component
 const DeepLinkHandler = () => {
   const navigate = useNavigate();
@@ -120,17 +122,19 @@ function App() {
 
   useEffect(() => {
     const initMobile = async () => {
-      try {
-        // Set status bar style to match dark theme
-        await StatusBar.setStyle({ style: Style.Dark });
-        await StatusBar.setBackgroundColor({ color: '#121212' });
-        
-        // Hide splash screen after a short delay to ensure app is ready
-        setTimeout(async () => {
-          await SplashScreen.hide();
-        }, 1000);
-      } catch (e) {
-        console.warn('Mobile plugin init failed (probably on web):', e);
+      if (Capacitor.isNativePlatform()) {
+        try {
+          // Set status bar style to match dark theme
+          await StatusBar.setStyle({ style: Style.Dark });
+          await StatusBar.setBackgroundColor({ color: '#121212' });
+          
+          // Hide splash screen after a short delay to ensure app is ready
+          setTimeout(async () => {
+            await SplashScreen.hide();
+          }, 1000);
+        } catch (e) {
+          console.warn('Mobile plugin init failed:', e);
+        }
       }
     };
     initMobile();
