@@ -1,4 +1,4 @@
-import { BikeSpecs } from './physics';
+import type { BikeSpecs } from './physics';
 
 export interface SavedBike {
   id?: string;
