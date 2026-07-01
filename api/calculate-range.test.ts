@@ -1,6 +1,18 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 // @ts-ignore
 import handler from './calculate-range';
+
+vi.mock('firebase-admin/app', () => ({
+  getApps: vi.fn().mockReturnValue([]),
+  initializeApp: vi.fn(),
+  cert: vi.fn(),
+}));
+
+vi.mock('firebase-admin/auth', () => ({
+  getAuth: vi.fn().mockReturnValue({
+    verifyIdToken: vi.fn().mockResolvedValue({ uid: 'test-user', email: 'test@example.com' }),
+  }),
+}));
 
 const mockRes = () => {
   const res: any = {};
@@ -29,7 +41,7 @@ describe('Range Calculation Physics Engine', () => {
   it('should calculate telemetry-based range correctly', async () => {
     const req: any = {
       method: 'POST',
-      headers: { origin: 'http://localhost:3000' },
+      headers: { origin: 'http://localhost:3000', authorization: 'Bearer valid-token' },
       body: {
         type: 'telemetry',
         specs: baseSpecs,
@@ -53,7 +65,7 @@ describe('Range Calculation Physics Engine', () => {
       const res = mockRes();
       await handler({
         method: 'POST',
-        headers: { origin: 'http://localhost:3000' },
+        headers: { origin: 'http://localhost:3000', authorization: 'Bearer valid-token' },
         body: { type: 'telemetry', specs: baseSpecs, batteryPercent: 100, speedMph: 20, riderWeightLbs: weight }
       } as any, res);
       return res.body.remainingMiles;
@@ -70,7 +82,7 @@ describe('Range Calculation Physics Engine', () => {
       const res = mockRes();
       await handler({
         method: 'POST',
-        headers: { origin: 'http://localhost:3000' },
+        headers: { origin: 'http://localhost:3000', authorization: 'Bearer valid-token' },
         body: { type: 'telemetry', specs: baseSpecs, batteryPercent: 100, speedMph: 20, driveMode: 'throttle', throttleMode: mode }
       } as any, res);
       return res.body;
@@ -88,7 +100,7 @@ describe('Range Calculation Physics Engine', () => {
       const res = mockRes();
       await handler({
         method: 'POST',
-        headers: { origin: 'http://localhost:3000' },
+        headers: { origin: 'http://localhost:3000', authorization: 'Bearer valid-token' },
         body: { type: 'telemetry', specs: { ...baseSpecs, tirePSI: psi }, batteryPercent: 100, speedMph: 20 }
       } as any, res);
       return res.body.remainingMiles;
@@ -103,7 +115,7 @@ describe('Range Calculation Physics Engine', () => {
   it('should calculate route-based battery consumption', async () => {
     const req: any = {
       method: 'POST',
-      headers: { origin: 'http://localhost:3000' },
+      headers: { origin: 'http://localhost:3000', authorization: 'Bearer valid-token' },
       body: {
         type: 'route',
         specs: baseSpecs,

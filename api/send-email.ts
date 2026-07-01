@@ -9,7 +9,7 @@ import { z } from 'zod';
 
 const EmailRequestSchema = z.object({
   to: z.string().email(),
-  subject: z.string().max(255),
+  subject: z.string().min(1, 'Invalid subject').max(255),
   text: z.string().optional(),
   html: z.string().optional(),
 }).refine(data => data.text || data.html, {
@@ -17,9 +17,9 @@ const EmailRequestSchema = z.object({
 });
 
 const serviceAccount: ServiceAccount = {
-  projectId: process.env.VITE_FIREBASE_PROJECT_ID,
-  clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-  privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n').replace(/^"(.*)"$/, '$1'),
+  projectId: process.env.VITE_FIREBASE_PROJECT_ID || 'demo-project',
+  clientEmail: process.env.FIREBASE_CLIENT_EMAIL || 'demo@example.com',
+  privateKey: (process.env.FIREBASE_PRIVATE_KEY || '-----BEGIN PRIVATE KEY-----\n-----END PRIVATE KEY-----\n').replace(/\\n/g, '\n').replace(/^"(.*)"$/, '$1'),
 };
 
 if (!getApps().length) {

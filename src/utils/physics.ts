@@ -108,7 +108,15 @@ export function calculateBurnRate(params: BurnRateParams): number {
   // Aero Drag Force (N)
   const Fd = 0.5 * PHYSICS_CONSTANTS.AIR_DENSITY * CdA * Math.pow(totalAirSpeedMs, 2);
 
-  const totalMechanicalPowerW = (Frr + Fg + Fd) * speedMs;
+  // Dynamic Kinetic Energy for Stop-and-Go
+  const rotationalInertiaFactor = 1.05; // 5% extra mass for wheel rotational inertia
+  const effectiveMassKg = totalWeightKg * rotationalInertiaFactor;
+  const kineticEnergyJ = 0.5 * effectiveMassKg * Math.pow(speedMs, 2);
+  const stopsPerKm = params.actualStopsPerKm || 0;
+  const stopsPerSecond = stopsPerKm * (speedMs / 1000);
+  const accelMechanicalPowerW = kineticEnergyJ * stopsPerSecond;
+
+  const totalMechanicalPowerW = ((Frr + Fg + Fd) * speedMs) + accelMechanicalPowerW;
   
   // Human Contribution (Refactored for dramatic impact on range)
   let humanPowerW = 0;
@@ -137,7 +145,19 @@ export function calculateBurnRate(params: BurnRateParams): number {
   }
 
   // If we are above the PAS speed cap, the motor contributes 0W
-  const motorMechanicalPowerW = isAssistLimited ? 0 : Math.max(0, totalMechanicalPowerW - humanPowerW);
+  const rawMotorPowerReq = totalMechanicalPowerW - humanPowerW;
+  const motorMechanicalPowerW = isAssistLimited ? 0 : Math.max(0, rawMotorPowerReq);
+  
+  // --- Regenerative Braking (For Direct Drive Motors) ---
+  let isRegen = false;
+  let regenPowerW = 0;
+  
+  if (specs.motorType === 'Direct Drive Hub Motor' && rawMotorPowerReq < 0) {
+      isRegen = true;
+      // Convert the negative mechanical power into recovered electrical power
+      const regenEfficiency = 0.60; // 60% system efficiency for regen charging
+      regenPowerW = Math.abs(rawMotorPowerReq) * regenEfficiency;
+  }
   
   // Efficiency & Drivetrain Losses
   let drivetrainEfficiency = 0.85; 
@@ -160,13 +180,31 @@ export function calculateBurnRate(params: BurnRateParams): number {
     else if (throttleMode === 'sport') controllerEfficiency *= 0.85;
   }
 
-  const totalEfficiency = drivetrainEfficiency * controllerEfficiency;
-  const electricalPowerW = Math.max(40, motorMechanicalPowerW / totalEfficiency); 
+  // --- Dynamic Motor Efficiency Curve (RPM vs Load) ---
+  // Motors lose efficiency at low speeds under high loads (e.g. steep hills).
+  const loadFactor = motorMechanicalPowerW / (motorWatts || 750);
+  let motorEfficiencyMultiplier = 1.0;
   
-  // Acceleration Penalty (Stop-and-go)
-  const stopAndGoPenalty = 1.25;
+  if (speedMph < 8 && slope > 0.05) {
+     // High torque, low RPM = heat generation, poor efficiency
+     const penalty = Math.min(0.4, (loadFactor * 0.2) + (slope * 2));
+     motorEfficiencyMultiplier = 1.0 - penalty;
+  } else if (speedMph >= 12 && speedMph <= 22 && Math.abs(slope) < 0.03) {
+     // Peak efficiency sweet spot for most hub/mid-drive motors
+     motorEfficiencyMultiplier = 1.05; 
+  }
+
+  const totalEfficiency = drivetrainEfficiency * motorEfficiencyMultiplier * controllerEfficiency;
+  
+  let electricalPowerW = 0;
+  if (isRegen) {
+      electricalPowerW = -regenPowerW;
+  } else {
+      electricalPowerW = Math.max(40, motorMechanicalPowerW / totalEfficiency); 
+  }
+  
   const calibrationFactor = specs.calibrationFactor || 1.0;
-  let totalPowerW = electricalPowerW * stopAndGoPenalty * calibrationFactor;
+  let totalPowerW = electricalPowerW * calibrationFactor;
 
   // --- Layer 3: Adaptive Corrections (Learned from Ride History) ---
   if (specs.correctionFactors) {
@@ -204,7 +242,7 @@ export function calculateBurnRate(params: BurnRateParams): number {
     ? (Number(specs.controllerAmps) * Number(voltage))
     : (motorWatts * 1.5);
 
-  return Math.min(totalPowerW, peakPowerCeiling); 
+  return isRegen ? Math.max(totalPowerW, -peakPowerCeiling) : Math.min(totalPowerW, peakPowerCeiling); 
 }
 
 /**
@@ -229,7 +267,15 @@ export function estimateVoltage(nominalVoltage: number, batteryPercent: number):
  * Assumes average cruise speed of 15mph on flat ground if not provided.
  */
 export function estimateMaxRange(params: BurnRateParams): number {
-  const { voltage = 48, capacityAh = 15 } = params.specs;
+  let { voltage = 48, capacityAh = 15 } = params.specs;
+  
+  // --- Temperature-Induced Battery Sag ---
+  const tempC = params.temperatureC !== undefined ? params.temperatureC : 20;
+  if (tempC < 15) {
+     const tempPenalty = Math.min(0.5, (15 - tempC) * 0.015); // Lose 1.5% capacity per degree below 15C
+     capacityAh = Number(capacityAh) * (1 - tempPenalty);
+  }
+
   const totalWh = Number(voltage) * Number(capacityAh);
   const currentWh = totalWh * ((params.specs.currentBatteryPercent || 100) / 100);
 
@@ -260,7 +306,15 @@ export function calculateRangePolygon(
   const numBearings = 16;
   const cruiseSpeed = 15;
 
-  const { voltage = 48, capacityAh = 15 } = params.specs;
+  let { voltage = 48, capacityAh = 15 } = params.specs;
+  
+  // --- Temperature-Induced Battery Sag ---
+  const tempC = params.temperatureC !== undefined ? params.temperatureC : 20;
+  if (tempC < 15) {
+     const tempPenalty = Math.min(0.5, (15 - tempC) * 0.015);
+     capacityAh = Number(capacityAh) * (1 - tempPenalty);
+  }
+
   const totalWh = Number(voltage) * Number(capacityAh);
   const currentWh = totalWh * ((params.specs.currentBatteryPercent || 100) / 100);
 

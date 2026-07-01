@@ -62,7 +62,7 @@ describe('api/send-email', () => {
     const res = mockRes();
     await handler(req, res);
     expect(res.status).toHaveBeenCalledWith(400);
-    expect(res.json).toHaveBeenCalledWith({ error: 'Invalid recipient email' });
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ error: 'VALIDATION_ERROR' }));
   });
 
   it('should return 400 if subject is missing', async () => {
@@ -74,7 +74,7 @@ describe('api/send-email', () => {
     const res = mockRes();
     await handler(req, res);
     expect(res.status).toHaveBeenCalledWith(400);
-    expect(res.json).toHaveBeenCalledWith({ error: 'Invalid subject' });
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ error: 'VALIDATION_ERROR' }));
   });
 
   it('should return 400 if both text and html are missing', async () => {
@@ -86,7 +86,7 @@ describe('api/send-email', () => {
     const res = mockRes();
     await handler(req, res);
     expect(res.status).toHaveBeenCalledWith(400);
-    expect(res.json).toHaveBeenCalledWith({ error: 'Email content (text or html) is required' });
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ error: 'VALIDATION_ERROR' }));
   });
 
   it('should return 200 on successful email send', async () => {

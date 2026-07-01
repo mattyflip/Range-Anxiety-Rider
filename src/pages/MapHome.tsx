@@ -909,7 +909,7 @@ function MapHome() {
   };
 
   const loadBike = (bike: SavedBike) => {
-    setSpecs(bike.specs); setBikeSearchQuery(bike.name); setShowBikeResults(false);
+    setSpecs(p => ({ ...p, ...bike.specs })); setBikeSearchQuery(bike.name); setShowBikeResults(false);
     setCurrentTripBike(bike);
     if (bike.specs.voltage) setStartVoltage(getBatteryLevels(Number(bike.specs.voltage)).max);
     markDirty();
@@ -1788,19 +1788,6 @@ function MapHome() {
             <button className={unitSystem === 'metric' ? 'active' : ''} onClick={() => setUnitSystem('metric')}>Metric</button>
           </div></div>
           
-          <section className="form-group" style={{ position: 'relative' }}>
-            <label>Bike Library</label>
-            <input type="text" placeholder="Search..." value={bikeSearchQuery} onFocus={() => setShowBikeResults(true)} onChange={e => setBikeSearchQuery(e.target.value)} />
-            {showBikeResults && bikeSearchQuery && (
-              <div className="bike-results-dropdown" style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#1a1a1a', zIndex: 100, border: '1px solid #333', maxHeight: '200px', overflowY: 'auto' }}>
-                {filteredBikes.map(b => <div key={b.name} onClick={() => loadBike(b)} style={{ padding: '0.8rem', borderBottom: '1px solid #222', cursor: 'pointer' }}>{b.name}</div>)}
-              </div>
-            )}
-            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-              <input type="text" placeholder="Nickname" value={newBikeName} onChange={e => setNewBikeName(e.target.value)} style={{ padding: '0.4rem' }} />
-              <button onClick={saveCurrentBike} style={{ padding: '0.4rem 0.8rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '4px' }}>Save</button>
-            </div>
-          </section>
 
 
           {tripMode === 'plan' && (
@@ -1864,6 +1851,20 @@ function MapHome() {
               </div>
             </section>
           )}
+
+          <section className="form-group" style={{ position: 'relative' }}>
+            <label>Bike Library</label>
+            <input type="text" placeholder="Search..." value={bikeSearchQuery} onFocus={() => setShowBikeResults(true)} onChange={e => setBikeSearchQuery(e.target.value)} />
+            {showBikeResults && bikeSearchQuery && (
+              <div className="bike-results-dropdown" style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#1a1a1a', zIndex: 100, border: '1px solid #333', maxHeight: '200px', overflowY: 'auto' }}>
+                {filteredBikes.map(b => <div key={b.name} onClick={() => loadBike(b)} style={{ padding: '0.8rem', borderBottom: '1px solid #222', cursor: 'pointer' }}>{b.name}</div>)}
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+              <input type="text" placeholder="Nickname" value={newBikeName} onChange={e => setNewBikeName(e.target.value)} style={{ padding: '0.4rem' }} />
+              <button onClick={saveCurrentBike} style={{ padding: '0.4rem 0.8rem', background: '#ff6600', color: 'white', border: 'none', borderRadius: '4px' }}>Save</button>
+            </div>
+          </section>
 
           <section className="form-group tour-current-battery" style={{ marginTop: '1rem', marginBottom: '1rem' }}>
             <label>Current Battery Level</label>
